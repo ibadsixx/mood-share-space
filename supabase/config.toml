@@ -1,0 +1,13 @@
+project_id = "ojdhztcetykgvrcwlwen"
+
+[functions.geocoding]
+verify_jwt = false
+
+[functions.publish-scheduled-posts]
+verify_jwt = false
+
+[functions.search-gifs]
+verify_jwt = false
+
+[functions.transcribe-audio]
+verify_jwt = false
