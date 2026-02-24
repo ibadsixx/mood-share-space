@@ -4,6 +4,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { NotificationsDropdown } from '@/components/NotificationsDropdown';
+import { FloatingIM } from '@/components/im/FloatingIM';
 import { 
   Home, 
   MessageCircle, 
@@ -116,10 +117,13 @@ const Layout = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 min-h-[calc(100vh-4rem)]">
+        <main className="flex-1 min-h-[calc(100vh-4rem)] xl:mr-[260px]">
           <Outlet />
         </main>
       </div>
+
+      {/* Floating IM */}
+      <FloatingIM />
     </div>
   );
 };
