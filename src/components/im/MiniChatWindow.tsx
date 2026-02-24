@@ -39,6 +39,7 @@ export const MiniChatWindow: React.FC<MiniChatWindowProps> = ({
     fetchMessages,
     sendMessage,
     getOrCreateDM,
+    setActiveConversationId,
   } = useConversations(currentUserId);
 
   // Initialize conversation
@@ -47,10 +48,15 @@ export const MiniChatWindow: React.FC<MiniChatWindowProps> = ({
       const convId = await getOrCreateDM(user.id);
       if (convId) {
         setConversationId(convId);
+        setActiveConversationId(convId);
         fetchMessages(convId, 0);
       }
     };
     initConversation();
+
+    return () => {
+      setActiveConversationId(null);
+    };
   }, [user.id]);
 
   // Scroll to bottom on new messages
