@@ -31,36 +31,59 @@ export const FloatingIM: React.FC = () => {
 
   const currentUserId = user?.id;
 
-  // Fetch friends/contacts
+  // Fetch friends + conversation contacts
   useEffect(() => {
     if (!currentUserId) return;
 
     const fetchContacts = async () => {
       try {
-        const { data: friendsData, error } = await supabase
-          .from('friends')
-          .select('requester_id, receiver_id')
-          .or(`requester_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
-          .eq('status', 'accepted');
+        // Fetch friends and conversation partners in parallel
+        const [friendsRes, convsRes] = await Promise.all([
+          supabase
+            .from('friends')
+            .select('requester_id, receiver_id')
+            .or(`requester_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
+            .eq('status', 'accepted'),
+          supabase
+            .from('conversation_participants')
+            .select('conversation_id, user_id')
+            .neq('user_id', currentUserId)
+        ]);
 
-        if (error) throw error;
+        // Collect unique user IDs from both sources
+        const userIdSet = new Set<string>();
 
-        if (!friendsData?.length) {
+        friendsRes.data?.forEach((f) => {
+          userIdSet.add(f.requester_id === currentUserId ? f.receiver_id : f.requester_id);
+        });
+
+        // Only include conversation partners where current user is also a participant
+        if (convsRes.data?.length) {
+          // Get conversations the current user is in
+          const { data: myConvs } = await supabase
+            .from('conversation_participants')
+            .select('conversation_id')
+            .eq('user_id', currentUserId);
+
+          const myConvIds = new Set(myConvs?.map(c => c.conversation_id) || []);
+          convsRes.data.forEach((cp) => {
+            if (myConvIds.has(cp.conversation_id)) {
+              userIdSet.add(cp.user_id);
+            }
+          });
+        }
+
+        const allIds = Array.from(userIdSet);
+        if (!allIds.length) {
           setContacts([]);
           setLoading(false);
           return;
         }
 
-        const friendIds = friendsData.map((f) =>
-          f.requester_id === currentUserId ? f.receiver_id : f.requester_id
-        );
-
-        const { data: profiles, error: profilesError } = await supabase
+        const { data: profiles } = await supabase
           .from('profiles')
           .select('id, username, display_name, profile_pic')
-          .in('id', friendIds);
-
-        if (profilesError) throw profilesError;
+          .in('id', allIds);
 
         setContacts(profiles || []);
       } catch (err) {
