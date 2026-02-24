@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generate Emoji JSON</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #1a1a1a;
+      color: #00ff00;
+    }
+    button {
+      background: #00ff00;
+      color: #1a1a1a;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #00cc00;
+    }
+    #output {
+      white-space: pre-wrap;
+      background: #000;
+      padding: 15px;
+      border: 1px solid #00ff00;
+      margin-top: 20px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .stats {
+      background: #2a2a2a;
+      padding: 15px;
+      margin: 20px 0;
+      border-left: 4px solid #00ff00;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎨 Emoji JSON Generator</h1>
+  <p>This tool scans the /emoji directory and generates a complete emoji.json file.</p>
+  
+  <button onclick="generateEmojiJson()">🚀 Generate emoji.json</button>
+  <button onclick="downloadJson()">📥 Download JSON</button>
+  
+  <div class="stats" id="stats"></div>
+  <div id="output"></div>
+
+  <script>
+    let generatedData = null;
+
+    const isFlag = (code) => {
+      const lowerCode = code.toLowerCase();
+      // Regional indicator range: 1f1e6 through 1f1ff
+      return /^1f1[e-f][0-9a-f](-1f1[e-f][0-9a-f])?$/.test(lowerCode);
+    };
+
+    const getCategoryByPrefix = (code) => {
+      const prefix = code.substring(0, 4).toLowerCase();
+      const fullCode = code.toLowerCase();
+      
+      if (prefix >= '1f60' && prefix <= '1f64') return 'smileys';
+      if (prefix >= '1f90' && prefix <= '1faf') return 'people';
+      if (prefix >= '1f46' && prefix <= '1f4a') return 'people';
+      if (prefix >= '1f9b' && prefix <= '1f9f') return 'people';
+      if (prefix === '1f3c' && /^1f3c[0-4]/.test(fullCode)) return 'people';
+      if (prefix === '1f57') return 'people';
+      if (prefix === '1f38' && fullCode === '1f385') return 'people';
+      if (prefix >= '1f3a' && prefix <= '1f3b') return 'activities';
+      if (prefix >= '1f93' && prefix <= '1f94') return 'activities';
+      if (prefix === '1f3c' && /^1f3c[5-9a-f]/.test(fullCode)) return 'activities';
+      if (prefix >= '1f30' && prefix <= '1f37') return 'travel';
+      if (prefix >= '1f68' && prefix <= '1f6f') return 'travel';
+      if (prefix === '1f5f') return 'travel';
+      if (prefix >= '1f4b' && prefix <= '1f4f') return 'objects';
+      if (prefix >= '1f50' && prefix <= '1f5e') return 'objects';
+      if (prefix >= '1f6a' && prefix <= '1f6d') return 'objects';
+      if (prefix >= '1f17' && prefix <= '1f19') return 'symbols';
+      if (prefix >= '1f20' && prefix <= '1f23') return 'symbols';
+      if (prefix === '1f25') return 'symbols';
+      if (fullCode.startsWith('0023') || fullCode.startsWith('002a') || fullCode.startsWith('003')) return 'symbols';
+      if (fullCode.startsWith('00a9') || fullCode.startsWith('00ae')) return 'symbols';
+      if (prefix === '203c' || prefix === '2049') return 'symbols';
+      if (prefix >= '2600' && prefix <= '26ff') return 'symbols';
+      if (prefix >= '2700' && prefix <= '27bf') return 'symbols';
+      if (prefix >= '1f32' && prefix <= '1f37') return 'food';
+      if (prefix >= '1f95' && prefix <= '1f96') return 'food';
+      if (fullCode.startsWith('1f9aa')) return 'food';
+      if (prefix >= '1f40' && prefix <= '1f43') return 'animals';
+      if (prefix >= '1f98' && prefix <= '1f9a') return 'animals';
+      if (prefix >= '1f33' && prefix <= '1f34' && /^1f33[0-9a-f]|1f34[0-3]/.test(fullCode)) return 'animals';
+      
+      return 'uncategorized';
+    };
+
+    async function scanEmojiDirectory() {
+      const output = document.getElementById('output');
+      output.textContent = '🔍 Scanning emoji directory...\n';
+
+      try {
+        // Fetch the directory listing (this works because we're in the same origin)
+        const response = await fetch('/emoji/');
+        const html = await response.text();
+        
+        // Parse HTML to extract .png filenames
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const links = doc.querySelectorAll('a');
+        
+        const pngFiles = [];
+        links.forEach(link => {
+          const href = link.getAttribute('href');
+          if (href && href.endsWith('.png') && !href.includes('..')) {
+            pngFiles.push(href);
+          }
+        });
+
+        output.textContent += `✅ Found ${pngFiles.length} PNG files\n`;
+        return pngFiles;
+      } catch (error) {
+        output.textContent += `❌ Error scanning directory: ${error.message}\n`;
+        output.textContent += '\n⚠️ Falling back to manual file verification...\n';
+        
+        // Fallback: try to load each potential emoji file
+        return await scanByTesting();
+      }
+    }
+
+    async function scanByTesting() {
+      const output = document.getElementById('output');
+      const foundFiles = [];
+      
+      // Test a range of common emoji codes
+      const ranges = [
+        { start: 0x0023, end: 0x0039, suffix: '' },
+        { start: 0x00a9, end: 0x00ae, suffix: '' },
+        { start: 0x1f004, end: 0x1f9ff, suffix: '' }
+      ];
+
+      output.textContent += '🔄 Testing emoji file existence...\n';
+      
+      let tested = 0;
+      for (const range of ranges) {
+        for (let code = range.start; code <= range.end; code++) {
+          const hex = code.toString(16).padStart(4, '0');
+          const filename = `${hex}.png`;
+          
+          try {
+            const response = await fetch(`/emoji/${filename}`, { method: 'HEAD' });
+            if (response.ok) {
+              foundFiles.push(filename);
+            }
+          } catch (e) {
+            // File doesn't exist
+          }
+          
+          tested++;
+          if (tested % 100 === 0) {
+            output.textContent += `.`;
+          }
+        }
+      }
+      
+      output.textContent += `\n✅ Found ${foundFiles.length} files by testing\n`;
+      return foundFiles;
+    }
+
+    async function generateEmojiJson() {
+      const output = document.getElementById('output');
+      const stats = document.getElementById('stats');
+      
+      output.textContent = '🚀 Starting emoji JSON generation...\n\n';
+      stats.textContent = 'Processing...';
+
+      // Manually specify all emoji files since directory listing might not work
+      // This is a comprehensive list based on the emoji directory
+      const allEmojiCodes = await getAllEmojiCodes();
+      
+      const emojiData = [];
+      let flagCount = 0;
+
+      for (const filename of allEmojiCodes) {
+        if (!filename.endsWith('.png')) continue;
+        
+        const code = filename.replace('.png', '');
+        
+        // Skip flags
+        if (isFlag(code)) {
+          flagCount++;
+          continue;
+        }
+
+        emojiData.push({
+          emoji: code.toLowerCase(),
+          name: code.toLowerCase(),
+          category: getCategoryByPrefix(code),
+          url: `/emoji/${filename}`
+        });
+      }
+
+      // Sort by category then by code
+      emojiData.sort((a, b) => {
+        if (a.category !== b.category) {
+          return a.category.localeCompare(b.category);
+        }
+        return a.emoji.localeCompare(b.emoji);
+      });
+
+      generatedData = emojiData;
+
+      // Calculate stats
+      const categoryCounts = {};
+      emojiData.forEach(emoji => {
+        categoryCounts[emoji.category] = (categoryCounts[emoji.category] || 0) + 1;
+      });
+
+      // Display stats
+      stats.innerHTML = `
+        <strong>✅ Generation Complete!</strong><br>
+        📊 Total emojis processed: ${emojiData.length}<br>
+        🏳️ Flags excluded: ${flagCount}<br>
+        📁 Total files scanned: ${allEmojiCodes.length}<br><br>
+        <strong>📋 Category breakdown:</strong><br>
+        ${Object.entries(categoryCounts)
+          .sort((a, b) => b[1] - a[1])
+          .map(([cat, count]) => `   ${cat}: ${count}`)
+          .join('<br>')}
+      `;
+
+      // Show first 10 and last 10
+      output.textContent = '📋 First 10 entries:\n';
+      emojiData.slice(0, 10).forEach((e, i) => {
+        output.textContent += `   ${i + 1}. ${e.emoji} -> ${e.name} [${e.category}] ${e.url}\n`;
+      });
+
+      output.textContent += '\n📋 Last 10 entries:\n';
+      emojiData.slice(-10).forEach((e, i) => {
+        output.textContent += `   ${emojiData.length - 10 + i + 1}. ${e.emoji} -> ${e.name} [${e.category}] ${e.url}\n`;
+      });
+
+      output.textContent += `\n✅ Ready to download! Click "Download JSON" button above.\n`;
+      output.textContent += `📍 Save as: public/emoji/emoji.json\n`;
+    }
+
+    function downloadJson() {
+      if (!generatedData) {
+        alert('Please generate the JSON first!');
+        return;
+      }
+
+      const json = JSON.stringify(generatedData, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'emoji.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      alert(`Downloaded emoji.json with ${generatedData.length} emojis!\n\nSave it to: public/emoji/emoji.json`);
+    }
+
+    // Comprehensive emoji code list - generated from scanning the directory
+    async function getAllEmojiCodes() {
+      // Try to scan directory first
+      const scanned = await scanEmojiDirectory();
+      if (scanned && scanned.length > 0) {
+        return scanned;
+      }
+
+      // Fallback to hardcoded comprehensive list
+      // Generate all possible emoji codes in common ranges
+      const codes = [];
+      
+      // Basic symbols (0023-0039)
+      for (let i = 0x0023; i <= 0x0039; i++) {
+        codes.push(`${i.toString(16).padStart(4, '0')}.png`);
+        codes.push(`${i.toString(16).padStart(4, '0')}-20e3.png`);
+      }
+      
+      // Special symbols
+      codes.push('00a9.png', '00ae.png');
+      
+      // Main emoji range (1f000-1f9ff)
+      for (let i = 0x1f000; i <= 0x1f9ff; i++) {
+        const hex = i.toString(16);
+        codes.push(`${hex}.png`);
+        
+        // Skin tone variations
+        const skinTones = ['1f3fb', '1f3fc', '1f3fd', '1f3fe', '1f3ff'];
+        skinTones.forEach(tone => {
+          codes.push(`${hex}-${tone}.png`);
+          codes.push(`${hex}-${tone}-2640.png`);
+          codes.push(`${hex}-${tone}-2642.png`);
+          codes.push(`${hex}-${tone}-27a1.png`);
+          codes.push(`${hex}-${tone}-2640-27a1.png`);
+          codes.push(`${hex}-${tone}-2642-27a1.png`);
+        });
+        
+        // Gender variations
+        codes.push(`${hex}-2640.png`);
+        codes.push(`${hex}-2642.png`);
+        codes.push(`${hex}-27a1.png`);
+        codes.push(`${hex}-2640-27a1.png`);
+        codes.push(`${hex}-2642-27a1.png`);
+      }
+
+      return codes;
+    }
+  </script>
+</body>
+</html>
