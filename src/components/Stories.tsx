@@ -1,0 +1,156 @@
+import { useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card } from '@/components/ui/card';
+import { useAuth } from '@/hooks/useAuth';
+import { motion } from 'framer-motion';
+import { useStories } from '@/hooks/useStories';
+import CreateStoryDialog from './CreateStoryDialog';
+import StoryViewer from './StoryViewer';
+import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
+
+const Stories = () => {
+  const { user } = useAuth();
+  const [currentUserProfile, setCurrentUserProfile] = useState<{ profile_pic: string | null } | null>(null);
+  const { stories, loading, markAsViewed, deleteStory } = useStories();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedUserStories, setSelectedUserStories] = useState<any>(null);
+
+  const handleCreateStory = () => {
+    setCreateDialogOpen(true);
+  };
+
+  const handleStoryClick = (userStories: any) => {
+    setSelectedUserStories(userStories);
+    setViewerOpen(true);
+  };
+
+  useEffect(() => {
+    const fetchCurrentUserProfile = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('profile_pic')
+        .eq('id', user.id)
+        .single();
+      setCurrentUserProfile(data);
+    };
+    fetchCurrentUserProfile();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="w-full overflow-x-auto scrollbar-hide py-4">
+        <div className="flex gap-2 min-w-max px-6">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="w-[110px] h-[190px] rounded-lg flex-shrink-0" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="w-full overflow-x-auto scrollbar-hide py-4">
+        <div className="flex gap-2 min-w-max px-6">
+          {/* Create Story Card */}
+          {user && (
+            <motion.div
+              whileHover={{ scale: 1.02, y: -2 }}
+              transition={{ duration: 0.2 }}
+              className="flex-shrink-0"
+            >
+              <Card
+                onClick={handleCreateStory}
+                className="relative w-[110px] h-[190px] cursor-pointer overflow-hidden border-border/50 hover:shadow-lg transition-shadow"
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-background/60 to-background/90" />
+                <div className="absolute top-3 left-1/2 -translate-x-1/2">
+                  <Avatar className="h-12 w-12 border-2 border-primary">
+                    <AvatarImage 
+                      src={currentUserProfile?.profile_pic || '/default-avatar.png'} 
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {user?.email?.[0].toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 p-2 text-center">
+                  <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-primary flex items-center justify-center">
+                    <Plus className="w-5 h-5 text-primary-foreground" />
+                  </div>
+                  <p className="text-xs font-semibold text-foreground">Create Story</p>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Story Cards */}
+          {stories.map((userStories) => (
+            <motion.div
+              key={userStories.user_id}
+              whileHover={{ scale: 1.02, y: -2 }}
+              transition={{ duration: 0.2 }}
+              className="flex-shrink-0"
+            >
+              <Card
+                onClick={() => handleStoryClick(userStories)}
+                className="relative w-[110px] h-[190px] cursor-pointer overflow-hidden border-border/50 hover:shadow-lg transition-shadow group"
+              >
+                {/* Story Background Image */}
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${userStories.stories[0].media_url})` }}
+                />
+                
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+
+                {/* User Avatar */}
+                <div className="absolute top-2 left-2">
+                  <Avatar className="h-12 w-12 border-2 border-primary ring-2 ring-background">
+                    <AvatarImage 
+                      src={userStories.profile_pic || '/default-avatar.png'} 
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {userStories.display_name[0]?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+
+                {/* Username */}
+                <div className="absolute bottom-0 left-0 right-0 p-2">
+                  <p className="text-xs font-semibold text-white drop-shadow-lg line-clamp-2">
+                    {userStories.display_name}
+                  </p>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      <CreateStoryDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      
+      {selectedUserStories && (
+        <StoryViewer
+          stories={selectedUserStories.stories}
+          username={selectedUserStories.username}
+          displayName={selectedUserStories.display_name}
+          profilePic={selectedUserStories.profile_pic}
+          open={viewerOpen}
+          onOpenChange={setViewerOpen}
+          onView={markAsViewed}
+          onDelete={user?.id === selectedUserStories.user_id ? deleteStory : undefined}
+        />
+      )}
+    </>
+  );
+};
+
+export default Stories;
