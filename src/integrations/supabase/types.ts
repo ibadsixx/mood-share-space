@@ -913,21 +913,30 @@ export type Database = {
       groups: {
         Row: {
           created_at: string
+          created_by: string | null
           description: string | null
           id: string
+          invite_followers: boolean
           name: string
+          privacy: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
+          invite_followers?: boolean
           name: string
+          privacy?: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
+          invite_followers?: boolean
           name?: string
+          privacy?: string
         }
         Relationships: []
       }
