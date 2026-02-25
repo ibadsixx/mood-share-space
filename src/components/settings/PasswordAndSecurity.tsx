@@ -390,33 +390,54 @@ const PasswordAndSecurity: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Account Picker Dialog */}
-        <Dialog open={showAccountPicker} onOpenChange={setShowAccountPicker}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold">Change password</DialogTitle>
-              <DialogDescription>Choose an account to make changes.</DialogDescription>
-            </DialogHeader>
-            <div className="mt-2">
-              <button
-                onClick={() => {
-                  setShowAccountPicker(false);
-                  setSubView('change-password');
-                }}
-                className="w-full flex items-center justify-between p-4 rounded-lg hover:bg-accent/50 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={profile?.profile_pic || ''} alt={profile?.display_name || 'User'} />
-                    <AvatarFallback>{(profile?.display_name || user?.email || 'U').charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium text-foreground text-sm">{profile?.display_name || user?.email}</p>
-                    <p className="text-xs text-muted-foreground">{user?.email}</p>
-                  </div>
+        {/* Change Password Dialog */}
+        <Dialog open={showAccountPicker} onOpenChange={(open) => { setShowAccountPicker(open); if (!open) setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' }); }}>
+          <DialogContent className="sm:max-w-lg p-0 gap-0">
+            <div className="flex items-center justify-between p-4 border-b border-border/50">
+              <Button variant="ghost" size="icon" onClick={() => setShowAccountPicker(false)}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <DialogTitle className="text-base font-semibold">Password and security</DialogTitle>
+              <div className="w-9" />
+            </div>
+            <DialogDescription className="sr-only">Change your account password</DialogDescription>
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">{profile?.display_name || user?.email}</p>
+                <h3 className="text-xl font-bold text-foreground">Change password</h3>
+                <p className="text-sm text-muted-foreground mt-1">Your password must be at least 6 characters and should include a combination of numbers, letters and special characters (!$@%).</p>
+              </div>
+              <form onSubmit={(e) => { handlePasswordSubmit(e).then(() => setShowAccountPicker(false)); }} className="space-y-3">
+                <Input
+                  type={passwordVisibility.current ? 'text' : 'password'}
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  placeholder="Current password"
+                  className="h-12 bg-accent/30 border-border/50"
+                />
+                <Input
+                  type={passwordVisibility.new ? 'text' : 'password'}
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                  placeholder="New password"
+                  className="h-12 bg-accent/30 border-border/50"
+                />
+                <Input
+                  type={passwordVisibility.confirm ? 'text' : 'password'}
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  placeholder="Re-type new password"
+                  className="h-12 bg-accent/30 border-border/50"
+                />
+                <button type="button" className="text-sm text-primary hover:underline">Forgot your password?</button>
+                <div className="flex items-center gap-2 pt-1">
+                  <input type="checkbox" id="logout-others" defaultChecked className="rounded border-border accent-primary w-4 h-4" />
+                  <label htmlFor="logout-others" className="text-sm text-foreground">Log out of other devices. Choose this if someone else used your account.</label>
                 </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              </button>
+                <Button type="submit" disabled={passwordLoading} className="w-full h-12 mt-2 text-base font-semibold rounded-full">
+                  {passwordLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Changing...</> : 'Change password'}
+                </Button>
+              </form>
             </div>
           </DialogContent>
         </Dialog>
