@@ -4,8 +4,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import QRCode from 'qrcode';
 import {
@@ -53,8 +56,10 @@ type TOTPData = {
 
 const PasswordAndSecurity: React.FC = () => {
   const { user } = useAuth();
+  const { profile } = useProfile(user?.id);
   const { toast } = useToast();
   const [subView, setSubView] = useState<SubView>('main');
+  const [showAccountPicker, setShowAccountPicker] = useState(false);
 
   const [passwordData, setPasswordData] = useState<PasswordData>({
     currentPassword: '', newPassword: '', confirmPassword: '',
@@ -377,13 +382,44 @@ const PasswordAndSecurity: React.FC = () => {
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-foreground">Login & recovery</h3>
         <p className="text-sm text-muted-foreground">Manage your passwords, login preferences and recovery methods.</p>
-        <Card className="border-border/50 overflow-hidden">
+         <Card className="border-border/50 overflow-hidden">
           <CardContent className="p-0">
-            <MenuItem icon={KeyRound} label="Change password" onClick={() => setSubView('change-password')} />
+            <MenuItem icon={KeyRound} label="Change password" onClick={() => setShowAccountPicker(true)} />
             <Separator />
             <MenuItem icon={Smartphone} label="Two-factor authentication" description={totpData.enabled ? 'Enabled' : 'Not enabled'} onClick={() => setSubView('two-factor')} />
           </CardContent>
         </Card>
+
+        {/* Account Picker Dialog */}
+        <Dialog open={showAccountPicker} onOpenChange={setShowAccountPicker}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold">Change password</DialogTitle>
+              <DialogDescription>Choose an account to make changes.</DialogDescription>
+            </DialogHeader>
+            <div className="mt-2">
+              <button
+                onClick={() => {
+                  setShowAccountPicker(false);
+                  setSubView('change-password');
+                }}
+                className="w-full flex items-center justify-between p-4 rounded-lg hover:bg-accent/50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={profile?.profile_pic || ''} alt={profile?.display_name || 'User'} />
+                    <AvatarFallback>{(profile?.display_name || user?.email || 'U').charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium text-foreground text-sm">{profile?.display_name || user?.email}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Security checks */}
