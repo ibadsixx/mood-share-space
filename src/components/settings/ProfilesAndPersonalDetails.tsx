@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ChevronRight, Plus, ArrowLeft, Save } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -68,15 +69,12 @@ const ProfilesAndPersonalDetails: React.FC = () => {
     }
   };
 
-  if (subView === 'profile-detail') {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setSubView('main')}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h2 className="text-2xl font-semibold text-foreground">Profile details</h2>
-        </div>
+  const profileDetailDialog = (
+    <Dialog open={subView === 'profile-detail'} onOpenChange={(open) => !open && setSubView('main')}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Profile details</DialogTitle>
+        </DialogHeader>
 
         <div className="flex flex-col items-center gap-2 py-4">
           <Avatar className="w-24 h-24">
@@ -89,36 +87,32 @@ const ProfilesAndPersonalDetails: React.FC = () => {
           <p className="text-sm text-muted-foreground">Tone</p>
         </div>
 
-        <Card className="border-border/50 overflow-hidden">
-          <CardContent className="p-0">
-            {[
-              { label: 'Display name' },
-              { label: 'Username' },
-              { label: 'Profile picture' },
-              { label: 'Bio' },
-            ].map((item, idx, arr) => (
-              <React.Fragment key={item.label}>
-                <button className="w-full flex items-center justify-between px-4 py-4 hover:bg-accent/50 transition-colors text-left">
-                  <span className="font-medium text-foreground">{item.label}</span>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                </button>
-                {idx < arr.length - 1 && <Separator />}
-              </React.Fragment>
-            ))}
-          </CardContent>
-        </Card>
+        <div className="border rounded-lg border-border/50 overflow-hidden">
+          {[
+            { label: 'Display name' },
+            { label: 'Username' },
+            { label: 'Profile picture' },
+            { label: 'Bio' },
+          ].map((item, idx, arr) => (
+            <React.Fragment key={item.label}>
+              <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors text-left">
+                <span className="font-medium text-foreground text-sm">{item.label}</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+              {idx < arr.length - 1 && <Separator />}
+            </React.Fragment>
+          ))}
+        </div>
 
-        <Card className="border-border/50 bg-muted/30">
-          <CardContent className="p-4">
-            <p className="font-medium text-foreground text-sm">Profile changes apply to this app only</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Your display name and username are unique to this platform. You can update them at any time from your profile settings.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+        <div className="bg-muted/30 rounded-lg p-3">
+          <p className="font-medium text-foreground text-sm">Profile changes apply to this app only</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Your display name and username are unique to this platform. You can update them at any time from your profile settings.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 
   if (subView === 'contact') {
     return (
@@ -181,6 +175,8 @@ const ProfilesAndPersonalDetails: React.FC = () => {
   }
 
   return (
+    <>
+    {profileDetailDialog}
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">Profiles and personal details</h2>
@@ -251,6 +247,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
         </Card>
       </div>
     </div>
+    </>
   );
 };
 
