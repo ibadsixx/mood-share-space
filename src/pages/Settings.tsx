@@ -14,6 +14,7 @@ import { usePhotoUpload } from '@/hooks/usePhotoUpload';
 import { supabase } from '@/integrations/supabase/client';
 import PhotoUploadDialog from '@/components/PhotoUploadDialog';
 import YourInformationAndPermissions from '@/components/YourInformationAndPermissions';
+import ProfilesAndPersonalDetails from '@/components/settings/ProfilesAndPersonalDetails';
 import AdPreferences from '@/components/AdPreferences';
 import PrivacyCheckup from '@/components/PrivacyCheckup';
 import QRCode from 'qrcode';
@@ -506,109 +507,7 @@ const Settings = () => {
   const renderContent = () => {
     switch (activeSection) {
       case 'personal':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground mb-2">Personal Details</h2>
-              <p className="text-muted-foreground">Manage your personal information and how others see you on Tone.</p>
-            </div>
-            
-            <form onSubmit={handlePersonalDetailsSubmit} className="space-y-6">
-              {/* Profile Photo Section */}
-              <Card className="border-border/50">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <Avatar className="w-20 h-20">
-                      <AvatarImage src={personalDetails.profilePhoto} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                        {personalDetails.firstName.charAt(0)}{personalDetails.lastName.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-2">
-                      <PhotoUploadDialog
-                        type="profile"
-                        onUpload={(file, text) => handlePhotoUpload(file, text)}
-                        isUploading={uploading}
-                      >
-                        <Button variant="outline" size="sm" disabled={uploading}>
-                          <Camera className="w-4 h-4 mr-2" />
-                          {uploading ? 'Uploading...' : 'Change Photo'}
-                        </Button>
-                      </PhotoUploadDialog>
-                      {personalDetails.profilePhoto && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-destructive"
-                          onClick={() => setPersonalDetails(prev => ({ ...prev, profilePhoto: '' }))}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Remove
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Personal Information */}
-              <Card className="border-border/50">
-                <CardHeader>
-                  <CardTitle className="text-lg">Basic Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name *</Label>
-                      <Input
-                        id="firstName"
-                        value={personalDetails.firstName}
-                        onChange={(e) => setPersonalDetails(prev => ({ ...prev, firstName: e.target.value }))}
-                        className="focus:ring-primary"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name *</Label>
-                      <Input
-                        id="lastName"
-                        value={personalDetails.lastName}
-                        onChange={(e) => setPersonalDetails(prev => ({ ...prev, lastName: e.target.value }))}
-                        className="focus:ring-primary"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={personalDetails.email}
-                      onChange={(e) => setPersonalDetails(prev => ({ ...prev, email: e.target.value }))}
-                      className="focus:ring-primary"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      value={personalDetails.bio}
-                      onChange={(e) => setPersonalDetails(prev => ({ ...prev, bio: e.target.value }))}
-                      className="min-h-[100px] focus:ring-primary"
-                      placeholder="Tell others about yourself..."
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Button type="submit" className="bg-primary hover:bg-primary/90">
-                <Save className="w-4 h-4 mr-2" />
-                Save Changes
-              </Button>
-            </form>
-          </div>
-        );
+        return <ProfilesAndPersonalDetails />;
 
       case 'security':
         return (
