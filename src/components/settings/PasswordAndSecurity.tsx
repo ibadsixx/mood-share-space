@@ -340,14 +340,29 @@ const PasswordAndSecurity: React.FC = () => {
     const isTablet = /iPad|Android(?!.*Mobi)/i.test(ua);
     const deviceType = isTablet ? 'Tablet' : isMobile ? 'Mobile' : 'Computer';
     
-    // Detect OS
+    // Detect OS with version
     let osName = 'Unknown OS';
-    if (/Windows/i.test(ua)) osName = 'Windows';
-    else if (/Mac OS X|macOS/i.test(ua)) osName = 'macOS';
-    else if (/Linux/i.test(ua)) osName = 'Linux';
-    else if (/Android/i.test(ua)) osName = 'Android';
-    else if (/iPhone|iPad|iPod/i.test(ua)) osName = 'iOS';
-    else if (/CrOS/i.test(ua)) osName = 'Chrome OS';
+    const winMatch = ua.match(/Windows NT ([\d.]+)/);
+    const macMatch = ua.match(/Mac OS X ([\d_.]+)/);
+    const androidMatch = ua.match(/Android ([\d.]+)/);
+    const iosMatch = ua.match(/(?:iPhone|iPad|iPod) OS ([\d_]+)/);
+    const crosMatch = ua.match(/CrOS \S+ ([\d.]+)/);
+
+    if (winMatch) {
+      const ntVer = winMatch[1];
+      const winVersions: Record<string, string> = { '10.0': '10/11', '6.3': '8.1', '6.2': '8', '6.1': '7', '6.0': 'Vista' };
+      osName = `Windows ${winVersions[ntVer] || ntVer}`;
+    } else if (macMatch) {
+      osName = `macOS ${macMatch[1].replace(/_/g, '.')}`;
+    } else if (/Linux/i.test(ua) && !androidMatch) {
+      osName = 'Linux';
+    } else if (androidMatch) {
+      osName = `Android ${androidMatch[1]}`;
+    } else if (iosMatch) {
+      osName = `iOS ${iosMatch[1].replace(/_/g, '.')}`;
+    } else if (crosMatch) {
+      osName = `Chrome OS ${crosMatch[1]}`;
+    }
     
     // Detect browser
     let browserName = 'Unknown Browser';
