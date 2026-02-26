@@ -333,20 +333,65 @@ const PasswordAndSecurity: React.FC = () => {
   }
 
   if (subView === 'where-logged-in') {
+    const ua = navigator.userAgent;
+    
+    // Detect device type
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+    const isTablet = /iPad|Android(?!.*Mobi)/i.test(ua);
+    const deviceType = isTablet ? 'Tablet' : isMobile ? 'Mobile' : 'Computer';
+    
+    // Detect OS
+    let osName = 'Unknown OS';
+    if (/Windows/i.test(ua)) osName = 'Windows';
+    else if (/Mac OS X|macOS/i.test(ua)) osName = 'macOS';
+    else if (/Linux/i.test(ua)) osName = 'Linux';
+    else if (/Android/i.test(ua)) osName = 'Android';
+    else if (/iPhone|iPad|iPod/i.test(ua)) osName = 'iOS';
+    else if (/CrOS/i.test(ua)) osName = 'Chrome OS';
+    
+    // Detect browser
+    let browserName = 'Unknown Browser';
+    if (/Edg\//i.test(ua)) browserName = 'Microsoft Edge';
+    else if (/OPR\//i.test(ua) || /Opera/i.test(ua)) browserName = 'Opera';
+    else if (/Chrome/i.test(ua)) browserName = 'Google Chrome';
+    else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browserName = 'Safari';
+    else if (/Firefox/i.test(ua)) browserName = 'Firefox';
+    
+    const DeviceIcon = isMobile || isTablet ? Smartphone : Monitor;
+
     return (
       <div className="space-y-6">
         <SubHeader title="Where you're logged in" description="Review your active sessions across devices." onBack={() => setSubView('main')} />
+        
         <Card className="border-border/50">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <Monitor className="w-5 h-5 text-muted-foreground" />
-              <div>
-                <p className="font-medium text-foreground text-sm">Current session</p>
-                <p className="text-xs text-muted-foreground">This device · Active now</p>
+          <CardContent className="p-0">
+            <div className="px-4 py-3 border-b border-border/50">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">This device</p>
+            </div>
+            <div className="flex items-start gap-4 px-4 py-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <DeviceIcon className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-foreground text-sm">{browserName}</p>
+                  <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+                    Active now
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{deviceType} · {osName}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · Near your current location
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        <Button variant="outline" className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30">
+          Log out of all other devices
+        </Button>
       </div>
     );
   }
