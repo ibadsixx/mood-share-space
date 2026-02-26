@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Users, UserMinus, Settings, FileText } from 'lucide-react';
 import { Group } from '@/hooks/useGroups';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 
 interface GroupCardProps {
   group: Group;
@@ -14,15 +13,11 @@ interface GroupCardProps {
 }
 
 export const GroupCard = ({ group, onJoin, onLeave, showManageButtons }: GroupCardProps) => {
-  const navigate = useNavigate();
-
-  const handleJoinClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleJoinClick = () => {
     if (onJoin) onJoin(group.id);
   };
 
-  const handleLeaveClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleLeaveClick = () => {
     if (onLeave) onLeave(group.id);
   };
 
@@ -32,10 +27,7 @@ export const GroupCard = ({ group, onJoin, onLeave, showManageButtons }: GroupCa
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card
-        className="h-full hover:shadow-elegant transition-shadow duration-300 cursor-pointer"
-        onClick={() => navigate(`/groups/${group.id}`)}
-      >
+      <Card className="h-full hover:shadow-elegant transition-shadow duration-300">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -64,7 +56,7 @@ export const GroupCard = ({ group, onJoin, onLeave, showManageButtons }: GroupCa
         <CardFooter className="pt-3 border-t">
           <div className="flex gap-2 w-full">
             {!group.is_member ? (
-              <Button
+              <Button 
                 onClick={handleJoinClick}
                 className="flex-1"
                 size="sm"
@@ -75,17 +67,17 @@ export const GroupCard = ({ group, onJoin, onLeave, showManageButtons }: GroupCa
               <>
                 {showManageButtons && group.role === 'admin' ? (
                   <>
-                    <Button variant="outline" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); navigate(`/groups/${group.id}`); }}>
+                    <Button variant="outline" size="sm" className="flex-1">
                       <Settings className="h-4 w-4 mr-1" />
                       Manage
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); navigate(`/groups/${group.id}`); }}>
+                    <Button variant="outline" size="sm" className="flex-1">
                       <FileText className="h-4 w-4 mr-1" />
                       Post
                     </Button>
                   </>
                 ) : (
-                  <Button
+                  <Button 
                     onClick={handleLeaveClick}
                     variant="outline"
                     size="sm"

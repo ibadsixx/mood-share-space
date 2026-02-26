@@ -31,16 +31,6 @@ export const FloatingIM: React.FC = () => {
 
   const currentUserId = user?.id;
 
-  // Listen for external "open-im-chat" events (e.g. from MessageButton)
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as ChatContact;
-      if (detail) openChat(detail);
-    };
-    window.addEventListener('open-im-chat', handler);
-    return () => window.removeEventListener('open-im-chat', handler);
-  }, [contacts]); // re-bind when contacts change so openChat closure is fresh
-
   // Fetch friends + conversation contacts
   useEffect(() => {
     if (!currentUserId) return;
