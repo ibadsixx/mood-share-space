@@ -192,6 +192,7 @@ const PasswordAndSecurity: React.FC = () => {
   const { toast } = useToast();
   const [subView, setSubView] = useState<SubView>('main');
   const [showAccountPicker, setShowAccountPicker] = useState(false);
+  const [showRecentEmails, setShowRecentEmails] = useState(false);
 
   const [passwordData, setPasswordData] = useState<PasswordData>({
     currentPassword: '', newPassword: '', confirmPassword: '',
