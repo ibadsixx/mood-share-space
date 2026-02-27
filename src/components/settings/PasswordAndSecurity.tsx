@@ -412,35 +412,7 @@ const PasswordAndSecurity: React.FC = () => {
   }
 
   if (subView === 'login-alerts') {
-    return (
-      <div className="space-y-6">
-        <SubHeader title="Login alerts" description="Manage how you'd like to be notified about unrecognized logins to your accounts." onBack={() => setSubView('main')} />
-        <Card className="border-border/50 overflow-hidden">
-          <CardContent className="p-0">
-            <button
-              className="w-full flex items-center gap-3 px-4 py-4 hover:bg-accent/50 transition-colors text-left"
-              onClick={() => {
-                toast({ title: 'Login alerts', description: 'Notification preferences updated.' });
-              }}
-            >
-              <div className="relative flex-shrink-0">
-                <Avatar className="w-12 h-12">
-                  <AvatarImage src={profile?.profile_pic || ''} alt={profile?.display_name || 'User'} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                    {(profile?.display_name || 'U').charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground text-sm">{profile?.display_name || user?.email || 'User'}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">In-app notifications, Email</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-            </button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <LoginAlertsView profile={profile} user={user} onBack={() => setSubView('main')} />;
   }
 
   if (subView === 'recent-emails' || subView === 'security-checkup') {
