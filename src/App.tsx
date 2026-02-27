@@ -16,6 +16,7 @@ import Messages from "@/pages/Messages";
 import ConversationPage from "@/pages/ConversationPage";
 import Search from "@/pages/Search";
 import Groups from "@/pages/Groups";
+import GroupDetail from "@/pages/GroupDetail";
 import Pages from "@/pages/Pages";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="messages/:conversationId" element={<ConversationPage />} />
                 <Route path="search" element={<Search />} />
                 <Route path="groups" element={<Groups />} />
+                <Route path="groups/:id" element={<GroupDetail />} />
                 <Route path="pages" element={<Pages />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="saved" element={<Saved />} />

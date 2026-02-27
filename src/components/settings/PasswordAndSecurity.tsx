@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
@@ -55,144 +54,12 @@ type TOTPData = {
   enabled: boolean;
 };
 
-// Login Alerts sub-view component
-const LoginAlertsView: React.FC<{
-  profile: any;
-  user: any;
-  onBack: () => void;
-}> = ({ profile, user, onBack }) => {
-  const [alertDetail, setAlertDetail] = useState(false);
-  const [inApp, setInApp] = useState(true);
-  const [email, setEmail] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (!user) return;
-    const load = async () => {
-      try {
-        const { data } = await supabase
-          .from('privacy_settings')
-          .select('setting_name, setting_value')
-          .eq('user_id', user.id)
-          .in('setting_name', ['login_alerts_inapp', 'login_alerts_email']);
-
-        data?.forEach((row: any) => {
-          if (row.setting_name === 'login_alerts_inapp') setInApp(row.setting_value !== 'false');
-          if (row.setting_name === 'login_alerts_email') setEmail(row.setting_value !== 'false');
-        });
-      } catch (e) {
-        console.error('Error loading login alert settings:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [user]);
-
-  const saveSetting = useCallback(async (name: string, value: boolean) => {
-    if (!user) return;
-    try {
-      const { error } = await supabase
-        .from('privacy_settings')
-        .upsert({ user_id: user.id, setting_name: name, setting_value: value ? 'true' : 'false' }, { onConflict: 'user_id,setting_name' });
-      if (error) throw error;
-    } catch (e) {
-      console.error('Error saving login alert setting:', e);
-      toast({ title: 'Error', description: 'Failed to save setting', variant: 'destructive' });
-    }
-  }, [user, toast]);
-
-  const summaryText = [inApp && 'In-app notifications', email && 'Email'].filter(Boolean).join(', ') || 'None';
-
-  const SubHeader = ({ title, description, onBackFn }: { title: string; description: string; onBackFn: () => void }) => (
-    <div className="flex items-center gap-3 mb-6">
-      <Button variant="ghost" size="icon" onClick={onBackFn}>
-        <ArrowLeft className="w-5 h-5" />
-      </Button>
-      <div>
-        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-
-  if (alertDetail) {
-    return (
-      <div className="space-y-6">
-        <SubHeader title="Login alerts" description="Choose how to get alerts about unrecognized logins." onBackFn={() => setAlertDetail(false)} />
-        <Card className="border-border/50">
-          <CardContent className="p-0 divide-y divide-border">
-            <div className="flex items-center justify-between px-4 py-4">
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">In-app notifications</p>
-                  <p className="text-xs text-muted-foreground">Get notified inside the app</p>
-                </div>
-              </div>
-              <Switch
-                checked={inApp}
-                disabled={loading}
-                onCheckedChange={(v) => { setInApp(v); saveSetting('login_alerts_inapp', v); toast({ title: v ? 'In-app alerts enabled' : 'In-app alerts disabled' }); }}
-              />
-            </div>
-            <div className="flex items-center justify-between px-4 py-4">
-              <div className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">Email</p>
-                  <p className="text-xs text-muted-foreground">Send alerts to {user?.email || 'your email'}</p>
-                </div>
-              </div>
-              <Switch
-                checked={email}
-                disabled={loading}
-                onCheckedChange={(v) => { setEmail(v); saveSetting('login_alerts_email', v); toast({ title: v ? 'Email alerts enabled' : 'Email alerts disabled' }); }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <SubHeader title="Login alerts" description="Manage how you'd like to be notified about unrecognized logins to your accounts." onBackFn={onBack} />
-      <Card className="border-border/50 overflow-hidden">
-        <CardContent className="p-0">
-          <button
-            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-accent/50 transition-colors text-left"
-            onClick={() => setAlertDetail(true)}
-          >
-            <div className="relative flex-shrink-0">
-              <Avatar className="w-12 h-12">
-                <AvatarImage src={profile?.profile_pic || ''} alt={profile?.display_name || 'User'} />
-                <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                  {(profile?.display_name || 'U').charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-foreground text-sm">{profile?.display_name || user?.email || 'User'}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{loading ? 'Loading...' : summaryText}</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-          </button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
 const PasswordAndSecurity: React.FC = () => {
   const { user } = useAuth();
   const { profile } = useProfile(user?.id);
   const { toast } = useToast();
   const [subView, setSubView] = useState<SubView>('main');
   const [showAccountPicker, setShowAccountPicker] = useState(false);
-  const [showRecentEmails, setShowRecentEmails] = useState(false);
 
   const [passwordData, setPasswordData] = useState<PasswordData>({
     currentPassword: '', newPassword: '', confirmPassword: '',
@@ -466,92 +333,34 @@ const PasswordAndSecurity: React.FC = () => {
   }
 
   if (subView === 'where-logged-in') {
-    const ua = navigator.userAgent;
-    
-    // Detect device type
-    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-    const isTablet = /iPad|Android(?!.*Mobi)/i.test(ua);
-    const deviceType = isTablet ? 'Tablet' : isMobile ? 'Mobile' : 'Computer';
-    
-    // Detect OS with version
-    let osName = 'Unknown OS';
-    const winMatch = ua.match(/Windows NT ([\d.]+)/);
-    const macMatch = ua.match(/Mac OS X ([\d_.]+)/);
-    const androidMatch = ua.match(/Android ([\d.]+)/);
-    const iosMatch = ua.match(/(?:iPhone|iPad|iPod) OS ([\d_]+)/);
-    const crosMatch = ua.match(/CrOS \S+ ([\d.]+)/);
-
-    if (winMatch) {
-      const ntVer = winMatch[1];
-      const winVersions: Record<string, string> = { '10.0': '10/11', '6.3': '8.1', '6.2': '8', '6.1': '7', '6.0': 'Vista' };
-      osName = `Windows ${winVersions[ntVer] || ntVer}`;
-    } else if (macMatch) {
-      osName = `macOS ${macMatch[1].replace(/_/g, '.')}`;
-    } else if (/Linux/i.test(ua) && !androidMatch) {
-      osName = 'Linux';
-    } else if (androidMatch) {
-      osName = `Android ${androidMatch[1]}`;
-    } else if (iosMatch) {
-      osName = `iOS ${iosMatch[1].replace(/_/g, '.')}`;
-    } else if (crosMatch) {
-      osName = `Chrome OS ${crosMatch[1]}`;
-    }
-    
-    // Detect browser
-    let browserName = 'Unknown Browser';
-    if (/Edg\//i.test(ua)) browserName = 'Microsoft Edge';
-    else if (/OPR\//i.test(ua) || /Opera/i.test(ua)) browserName = 'Opera';
-    else if (/Chrome/i.test(ua)) browserName = 'Google Chrome';
-    else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browserName = 'Safari';
-    else if (/Firefox/i.test(ua)) browserName = 'Firefox';
-    
-    const DeviceIcon = isMobile || isTablet ? Smartphone : Monitor;
-
     return (
       <div className="space-y-6">
         <SubHeader title="Where you're logged in" description="Review your active sessions across devices." onBack={() => setSubView('main')} />
-        
         <Card className="border-border/50">
-          <CardContent className="p-0">
-            <div className="px-4 py-3 border-b border-border/50">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">This device</p>
-            </div>
-            <div className="flex items-start gap-4 px-4 py-4">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <DeviceIcon className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-foreground text-sm">{browserName}</p>
-                  <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-                    Active now
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{deviceType} · {osName}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · Near your current location
-                </p>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <Monitor className="w-5 h-5 text-muted-foreground" />
+              <div>
+                <p className="font-medium text-foreground text-sm">Current session</p>
+                <p className="text-xs text-muted-foreground">This device · Active now</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        <Button variant="outline" className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30">
-          Log out of all other devices
-        </Button>
       </div>
     );
   }
 
-  if (subView === 'login-alerts') {
-    return <LoginAlertsView profile={profile} user={user} onBack={() => setSubView('main')} />;
-  }
-
-  if (subView === 'security-checkup') {
+  if (subView === 'login-alerts' || subView === 'recent-emails' || subView === 'security-checkup') {
+    const titles: Record<string, { title: string; desc: string }> = {
+      'login-alerts': { title: 'Login alerts', desc: 'Get notified about unrecognized logins.' },
+      'recent-emails': { title: 'Recent emails', desc: 'Review recent security emails sent to you.' },
+      'security-checkup': { title: 'Security Checkup', desc: 'Run a security check across your account.' },
+    };
+    const info = titles[subView];
     return (
       <div className="space-y-6">
-        <SubHeader title="Security Checkup" description="Run a security check across your account." onBack={() => setSubView('main')} />
+        <SubHeader title={info.title} description={info.desc} onBack={() => setSubView('main')} />
         <Card className="border-border/50">
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">This feature is coming soon.</p>
@@ -644,49 +453,12 @@ const PasswordAndSecurity: React.FC = () => {
             <Separator />
             <MenuItem icon={Bell} label="Login alerts" onClick={() => setSubView('login-alerts')} />
             <Separator />
-            <MenuItem icon={Mail} label="Recent emails" onClick={() => setShowRecentEmails(true)} />
+            <MenuItem icon={Mail} label="Recent emails" onClick={() => setSubView('recent-emails')} />
             <Separator />
             <MenuItem icon={ShieldCheck} label="Security Checkup" onClick={() => setSubView('security-checkup')} />
           </CardContent>
         </Card>
       </div>
-
-      {/* Recent Emails Dialog */}
-      <Dialog open={showRecentEmails} onOpenChange={setShowRecentEmails}>
-        <DialogContent className="sm:max-w-lg p-0 gap-0">
-          <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="text-xl font-bold text-foreground">Recent emails</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              Select the account for which you want to see recent emails.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-6">
-            <Card className="border-border/50 overflow-hidden">
-              <CardContent className="p-0">
-                <button
-                  className="w-full flex items-center gap-3 px-4 py-4 hover:bg-accent/50 transition-colors text-left"
-                  onClick={() => {
-                    setShowRecentEmails(false);
-                    toast({ title: 'Recent emails', description: 'No recent security emails found for this account.' });
-                  }}
-                >
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={profile?.profile_pic || ''} alt={profile?.display_name || 'User'} />
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {(profile?.display_name || 'U').charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-foreground">{profile?.display_name || user?.email || 'User'}</p>
-                    <p className="text-xs text-muted-foreground">{profile?.username ? `@${profile.username}` : user?.email}</p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                </button>
-              </CardContent>
-            </Card>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

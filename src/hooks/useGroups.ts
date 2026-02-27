@@ -126,13 +126,13 @@ export const useGroups = () => {
     }
   };
 
-  const createGroup = async (name: string, description: string) => {
+  const createGroup = async (name: string, description: string, privacy?: string, inviteFollowers?: boolean) => {
     if (!user) return;
 
     try {
       const { data: newGroup, error: createError } = await supabase
         .from('groups')
-        .insert({ name, description })
+        .insert({ name, description, privacy: privacy || 'public', invite_followers: inviteFollowers ?? true, created_by: user.id })
         .select()
         .single();
 

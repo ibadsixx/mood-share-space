@@ -257,6 +257,7 @@ const ProfileHeader = ({
                     targetUserId={profile.id}
                     targetUsername={profile.username}
                     targetDisplayName={profile.display_name}
+                    targetProfilePic={profile.profile_pic}
                     disabled={blockStatus.isBlocked || blockStatus.isBlockedBy}
                   />
                 )}
