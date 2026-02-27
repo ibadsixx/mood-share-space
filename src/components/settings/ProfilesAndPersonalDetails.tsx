@@ -189,6 +189,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
     <>
     {profileDetailDialog}
     <EditNameDialog open={editNameOpen} onOpenChange={setEditNameOpen} />
+    <EditUsernameDialog open={editUsernameOpen} onOpenChange={setEditUsernameOpen} />
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">Profiles and personal details</h2>
