@@ -547,15 +547,10 @@ const PasswordAndSecurity: React.FC = () => {
     return <LoginAlertsView profile={profile} user={user} onBack={() => setSubView('main')} />;
   }
 
-  if (subView === 'recent-emails' || subView === 'security-checkup') {
-    const titles: Record<string, { title: string; desc: string }> = {
-      'recent-emails': { title: 'Recent emails', desc: 'Review recent security emails sent to you.' },
-      'security-checkup': { title: 'Security Checkup', desc: 'Run a security check across your account.' },
-    };
-    const info = titles[subView];
+  if (subView === 'security-checkup') {
     return (
       <div className="space-y-6">
-        <SubHeader title={info.title} description={info.desc} onBack={() => setSubView('main')} />
+        <SubHeader title="Security Checkup" description="Run a security check across your account." onBack={() => setSubView('main')} />
         <Card className="border-border/50">
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">This feature is coming soon.</p>
