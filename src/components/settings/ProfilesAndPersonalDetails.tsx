@@ -12,6 +12,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import EditNameDialog from './EditNameDialog';
+import EditUsernameDialog from './EditUsernameDialog';
 
 type SubView = 'main' | 'contact' | 'birthday' | 'profile-detail';
 
@@ -25,6 +26,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [birthday, setBirthday] = useState('');
   const [editNameOpen, setEditNameOpen] = useState(false);
+  const [editUsernameOpen, setEditUsernameOpen] = useState(false);
 
   useEffect(() => {
     if (user) setEmail(user.email || '');
@@ -98,7 +100,11 @@ const ProfilesAndPersonalDetails: React.FC = () => {
           ].map((item, idx, arr) => (
             <React.Fragment key={item.label}>
               <button
-                onClick={item.label === 'Display name' ? () => { setSubView('main'); setEditNameOpen(true); } : undefined}
+                onClick={
+                  item.label === 'Display name' ? () => { setSubView('main'); setEditNameOpen(true); } :
+                  item.label === 'Username' ? () => { setSubView('main'); setEditUsernameOpen(true); } :
+                  undefined
+                }
                 className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors text-left"
               >
                 <span className="font-medium text-foreground text-sm">{item.label}</span>
@@ -183,6 +189,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
     <>
     {profileDetailDialog}
     <EditNameDialog open={editNameOpen} onOpenChange={setEditNameOpen} />
+    <EditUsernameDialog open={editUsernameOpen} onOpenChange={setEditUsernameOpen} />
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">Profiles and personal details</h2>
