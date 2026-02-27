@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import EditNameDialog from './EditNameDialog';
 import EditUsernameDialog from './EditUsernameDialog';
+import ContactInfoDialog from './ContactInfoDialog';
 
 type SubView = 'main' | 'contact' | 'birthday' | 'profile-detail';
 
@@ -27,6 +28,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
   const [birthday, setBirthday] = useState('');
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [editUsernameOpen, setEditUsernameOpen] = useState(false);
+  const [contactInfoOpen, setContactInfoOpen] = useState(false);
 
   useEffect(() => {
     if (user) setEmail(user.email || '');
@@ -190,6 +192,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
     {profileDetailDialog}
     <EditNameDialog open={editNameOpen} onOpenChange={setEditNameOpen} />
     <EditUsernameDialog open={editUsernameOpen} onOpenChange={setEditUsernameOpen} />
+    <ContactInfoDialog open={contactInfoOpen} onOpenChange={setContactInfoOpen} />
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">Profiles and personal details</h2>
@@ -236,7 +239,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
         <Card className="border-border/50 overflow-hidden">
           <CardContent className="p-0">
             <button
-              onClick={() => setSubView('contact')}
+              onClick={() => setContactInfoOpen(true)}
               className="w-full flex items-center justify-between px-4 py-4 hover:bg-accent/50 transition-colors text-left"
             >
               <div>
