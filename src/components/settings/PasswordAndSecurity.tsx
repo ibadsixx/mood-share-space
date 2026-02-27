@@ -55,6 +55,137 @@ type TOTPData = {
   enabled: boolean;
 };
 
+// Login Alerts sub-view component
+const LoginAlertsView: React.FC<{
+  profile: any;
+  user: any;
+  onBack: () => void;
+}> = ({ profile, user, onBack }) => {
+  const [alertDetail, setAlertDetail] = useState(false);
+  const [inApp, setInApp] = useState(true);
+  const [email, setEmail] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      try {
+        const { data } = await supabase
+          .from('privacy_settings')
+          .select('setting_name, setting_value')
+          .eq('user_id', user.id)
+          .in('setting_name', ['login_alerts_inapp', 'login_alerts_email']);
+
+        data?.forEach((row: any) => {
+          if (row.setting_name === 'login_alerts_inapp') setInApp(row.setting_value !== 'false');
+          if (row.setting_name === 'login_alerts_email') setEmail(row.setting_value !== 'false');
+        });
+      } catch (e) {
+        console.error('Error loading login alert settings:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [user]);
+
+  const saveSetting = useCallback(async (name: string, value: boolean) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('privacy_settings')
+        .upsert({ user_id: user.id, setting_name: name, setting_value: value ? 'true' : 'false' }, { onConflict: 'user_id,setting_name' });
+      if (error) throw error;
+    } catch (e) {
+      console.error('Error saving login alert setting:', e);
+      toast({ title: 'Error', description: 'Failed to save setting', variant: 'destructive' });
+    }
+  }, [user, toast]);
+
+  const summaryText = [inApp && 'In-app notifications', email && 'Email'].filter(Boolean).join(', ') || 'None';
+
+  const SubHeader = ({ title, description, onBackFn }: { title: string; description: string; onBackFn: () => void }) => (
+    <div className="flex items-center gap-3 mb-6">
+      <Button variant="ghost" size="icon" onClick={onBackFn}>
+        <ArrowLeft className="w-5 h-5" />
+      </Button>
+      <div>
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+
+  if (alertDetail) {
+    return (
+      <div className="space-y-6">
+        <SubHeader title="Login alerts" description="Choose how to get alerts about unrecognized logins." onBackFn={() => setAlertDetail(false)} />
+        <Card className="border-border/50">
+          <CardContent className="p-0 divide-y divide-border">
+            <div className="flex items-center justify-between px-4 py-4">
+              <div className="flex items-center gap-3">
+                <Bell className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">In-app notifications</p>
+                  <p className="text-xs text-muted-foreground">Get notified inside the app</p>
+                </div>
+              </div>
+              <Switch
+                checked={inApp}
+                disabled={loading}
+                onCheckedChange={(v) => { setInApp(v); saveSetting('login_alerts_inapp', v); toast({ title: v ? 'In-app alerts enabled' : 'In-app alerts disabled' }); }}
+              />
+            </div>
+            <div className="flex items-center justify-between px-4 py-4">
+              <div className="flex items-center gap-3">
+                <Mail className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Email</p>
+                  <p className="text-xs text-muted-foreground">Send alerts to {user?.email || 'your email'}</p>
+                </div>
+              </div>
+              <Switch
+                checked={email}
+                disabled={loading}
+                onCheckedChange={(v) => { setEmail(v); saveSetting('login_alerts_email', v); toast({ title: v ? 'Email alerts enabled' : 'Email alerts disabled' }); }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <SubHeader title="Login alerts" description="Manage how you'd like to be notified about unrecognized logins to your accounts." onBackFn={onBack} />
+      <Card className="border-border/50 overflow-hidden">
+        <CardContent className="p-0">
+          <button
+            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-accent/50 transition-colors text-left"
+            onClick={() => setAlertDetail(true)}
+          >
+            <div className="relative flex-shrink-0">
+              <Avatar className="w-12 h-12">
+                <AvatarImage src={profile?.profile_pic || ''} alt={profile?.display_name || 'User'} />
+                <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                  {(profile?.display_name || 'U').charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-foreground text-sm">{profile?.display_name || user?.email || 'User'}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{loading ? 'Loading...' : summaryText}</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          </button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 const PasswordAndSecurity: React.FC = () => {
   const { user } = useAuth();
   const { profile } = useProfile(user?.id);
