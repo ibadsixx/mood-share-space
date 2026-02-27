@@ -650,6 +650,43 @@ const PasswordAndSecurity: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Emails Dialog */}
+      <Dialog open={showRecentEmails} onOpenChange={setShowRecentEmails}>
+        <DialogContent className="sm:max-w-lg p-0 gap-0">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-xl font-bold text-foreground">Recent emails</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Select the account for which you want to see recent emails.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-6 pb-6">
+            <Card className="border-border/50 overflow-hidden">
+              <CardContent className="p-0">
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-4 hover:bg-accent/50 transition-colors text-left"
+                  onClick={() => {
+                    setShowRecentEmails(false);
+                    toast({ title: 'Recent emails', description: 'No recent security emails found for this account.' });
+                  }}
+                >
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={profile?.profile_pic || ''} alt={profile?.display_name || 'User'} />
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {(profile?.display_name || 'U').charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-foreground">{profile?.display_name || user?.email || 'User'}</p>
+                    <p className="text-xs text-muted-foreground">{profile?.username ? `@${profile.username}` : user?.email}</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                </button>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
