@@ -192,6 +192,7 @@ const PasswordAndSecurity: React.FC = () => {
   const { toast } = useToast();
   const [subView, setSubView] = useState<SubView>('main');
   const [showAccountPicker, setShowAccountPicker] = useState(false);
+  const [showRecentEmails, setShowRecentEmails] = useState(false);
 
   const [passwordData, setPasswordData] = useState<PasswordData>({
     currentPassword: '', newPassword: '', confirmPassword: '',
@@ -547,15 +548,10 @@ const PasswordAndSecurity: React.FC = () => {
     return <LoginAlertsView profile={profile} user={user} onBack={() => setSubView('main')} />;
   }
 
-  if (subView === 'recent-emails' || subView === 'security-checkup') {
-    const titles: Record<string, { title: string; desc: string }> = {
-      'recent-emails': { title: 'Recent emails', desc: 'Review recent security emails sent to you.' },
-      'security-checkup': { title: 'Security Checkup', desc: 'Run a security check across your account.' },
-    };
-    const info = titles[subView];
+  if (subView === 'security-checkup') {
     return (
       <div className="space-y-6">
-        <SubHeader title={info.title} description={info.desc} onBack={() => setSubView('main')} />
+        <SubHeader title="Security Checkup" description="Run a security check across your account." onBack={() => setSubView('main')} />
         <Card className="border-border/50">
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">This feature is coming soon.</p>
@@ -648,12 +644,49 @@ const PasswordAndSecurity: React.FC = () => {
             <Separator />
             <MenuItem icon={Bell} label="Login alerts" onClick={() => setSubView('login-alerts')} />
             <Separator />
-            <MenuItem icon={Mail} label="Recent emails" onClick={() => setSubView('recent-emails')} />
+            <MenuItem icon={Mail} label="Recent emails" onClick={() => setShowRecentEmails(true)} />
             <Separator />
             <MenuItem icon={ShieldCheck} label="Security Checkup" onClick={() => setSubView('security-checkup')} />
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Emails Dialog */}
+      <Dialog open={showRecentEmails} onOpenChange={setShowRecentEmails}>
+        <DialogContent className="sm:max-w-lg p-0 gap-0">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-xl font-bold text-foreground">Recent emails</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Select the account for which you want to see recent emails.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-6 pb-6">
+            <Card className="border-border/50 overflow-hidden">
+              <CardContent className="p-0">
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-4 hover:bg-accent/50 transition-colors text-left"
+                  onClick={() => {
+                    setShowRecentEmails(false);
+                    toast({ title: 'Recent emails', description: 'No recent security emails found for this account.' });
+                  }}
+                >
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={profile?.profile_pic || ''} alt={profile?.display_name || 'User'} />
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {(profile?.display_name || 'U').charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-foreground">{profile?.display_name || user?.email || 'User'}</p>
+                    <p className="text-xs text-muted-foreground">{profile?.username ? `@${profile.username}` : user?.email}</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                </button>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
