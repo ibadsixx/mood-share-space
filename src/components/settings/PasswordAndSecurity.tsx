@@ -643,7 +643,7 @@ const PasswordAndSecurity: React.FC = () => {
             <Separator />
             <MenuItem icon={Bell} label="Login alerts" onClick={() => setSubView('login-alerts')} />
             <Separator />
-            <MenuItem icon={Mail} label="Recent emails" onClick={() => setSubView('recent-emails')} />
+            <MenuItem icon={Mail} label="Recent emails" onClick={() => setShowRecentEmails(true)} />
             <Separator />
             <MenuItem icon={ShieldCheck} label="Security Checkup" onClick={() => setSubView('security-checkup')} />
           </CardContent>
