@@ -28,6 +28,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
   const [birthday, setBirthday] = useState('');
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [editUsernameOpen, setEditUsernameOpen] = useState(false);
+  const [contactInfoOpen, setContactInfoOpen] = useState(false);
 
   useEffect(() => {
     if (user) setEmail(user.email || '');
