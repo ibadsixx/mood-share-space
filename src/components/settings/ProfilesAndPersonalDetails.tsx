@@ -97,7 +97,10 @@ const ProfilesAndPersonalDetails: React.FC = () => {
             { label: 'Bio' },
           ].map((item, idx, arr) => (
             <React.Fragment key={item.label}>
-              <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors text-left">
+              <button
+                onClick={item.label === 'Display name' ? () => { setSubView('main'); setEditNameOpen(true); } : undefined}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors text-left"
+              >
                 <span className="font-medium text-foreground text-sm">{item.label}</span>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
