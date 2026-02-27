@@ -239,7 +239,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
         <Card className="border-border/50 overflow-hidden">
           <CardContent className="p-0">
             <button
-              onClick={() => setSubView('contact')}
+              onClick={() => setContactInfoOpen(true)}
               className="w-full flex items-center justify-between px-4 py-4 hover:bg-accent/50 transition-colors text-left"
             >
               <div>
