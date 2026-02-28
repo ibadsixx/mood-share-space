@@ -105,6 +105,57 @@ const YourInformationAndPermissions: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Search History Dialog */}
+      <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Lookup history</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground pt-2">
+              Browse and manage your lookup history across Tone. Only you can view what you've searched for.{' '}
+              <span className="text-primary cursor-pointer hover:underline">
+                Discover how we handle your data in our Privacy Policy.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-2">
+            <p className="text-sm font-semibold text-foreground mb-3">Your accounts &amp; profiles</p>
+            <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/50">
+              <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/40 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                      {user?.email?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-foreground">{user?.email?.split('@')[0] || 'User'}</p>
+                    <p className="text-xs text-muted-foreground">Tone</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <div className="rounded-xl border border-border/50 overflow-hidden">
+              <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/40 transition-colors">
+                <span className="text-sm font-medium text-foreground">Retain searches for</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-muted-foreground">Default</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <Button className="w-full mt-3" size="lg">
+            Erase all searches
+          </Button>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <h2 className="text-2xl font-semibold text-foreground">Your information and permissions</h2>
 
