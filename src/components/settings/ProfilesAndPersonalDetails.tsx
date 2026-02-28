@@ -148,7 +148,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
     </Dialog>
   );
 
-
+  const profileDetailDialog = (
     <Dialog open={subView === 'profile-detail'} onOpenChange={(open) => !open && setSubView('main')}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
