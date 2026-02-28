@@ -12,7 +12,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-type SubView = 'main' | 'contact' | 'birthday' | 'profile-detail';
+type SubView = 'main' | 'contact' | 'birthday' | 'profile-detail' | 'display-name';
 
 const ProfilesAndPersonalDetails: React.FC = () => {
   const { user } = useAuth();
@@ -23,10 +23,19 @@ const ProfilesAndPersonalDetails: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [birthday, setBirthday] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [lastName, setLastName] = useState('');
 
   useEffect(() => {
     if (user) setEmail(user.email || '');
-    if (profile) setBirthday(profile.birthday || '');
+    if (profile) {
+      setBirthday(profile.birthday || '');
+      const parts = (profile.display_name || '').split(' ');
+      setFirstName(parts[0] || '');
+      setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
+      setMiddleName(parts.length > 2 ? parts.slice(1, -1).join(' ') : '');
+    }
   }, [user, profile]);
 
   const handleSaveContact = async () => {
@@ -69,6 +78,76 @@ const ProfilesAndPersonalDetails: React.FC = () => {
     }
   };
 
+  const handleSaveDisplayName = async () => {
+    if (!user?.id) return;
+    try {
+      const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
+      const { error } = await supabase
+        .from('profiles')
+        .update({ display_name: fullName })
+        .eq('id', user.id);
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Name updated.' });
+      setSubView('profile-detail');
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const displayNameDialog = (
+    <Dialog open={subView === 'display-name'} onOpenChange={(open) => !open && setSubView('profile-detail')}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <button onClick={() => setSubView('profile-detail')} className="hover:bg-accent rounded-full p-1 transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            Name
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-0 border rounded-lg border-border/50 overflow-hidden">
+          <div className="px-4 pt-3 pb-1">
+            <Label className="text-xs text-muted-foreground">First name</Label>
+            <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="border-0 px-0 focus-visible:ring-0 shadow-none text-foreground" />
+          </div>
+          <Separator />
+          <div className="px-4 pt-3 pb-1">
+            <Label className="text-xs text-muted-foreground">Middle name</Label>
+            <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder="Middle name" className="border-0 px-0 focus-visible:ring-0 shadow-none text-foreground" />
+          </div>
+          <Separator />
+          <div className="px-4 pt-3 pb-1">
+            <Label className="text-xs text-muted-foreground">Last name</Label>
+            <Input value={lastName} onChange={(e) => setLastName(e.target.value)} className="border-0 px-0 focus-visible:ring-0 shadow-none text-foreground" />
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          If you change your name, you can't change it again for 60 days. Don't add any unusual capitalization, punctuation, characters or random words.{' '}
+          <button className="text-primary hover:underline">Learn more</button>
+        </p>
+
+        <div>
+          <h4 className="font-semibold text-foreground text-sm">Other names</h4>
+          <p className="text-xs text-muted-foreground mt-1">Other names are always public and help people find you on Tone.</p>
+        </div>
+
+        <div className="border rounded-lg border-border/50 overflow-hidden">
+          <button className="w-full flex items-center px-4 py-3 hover:bg-accent/50 transition-colors text-left">
+            <span className="font-medium text-foreground text-sm">Manage other names</span>
+          </button>
+          <Separator />
+          <button className="w-full flex items-center px-4 py-3 hover:bg-accent/50 transition-colors text-left">
+            <span className="font-medium text-foreground text-sm">Manage language-specific names</span>
+          </button>
+        </div>
+
+        <Button className="w-full" onClick={handleSaveDisplayName}>Review change</Button>
+      </DialogContent>
+    </Dialog>
+  );
+
   const profileDetailDialog = (
     <Dialog open={subView === 'profile-detail'} onOpenChange={(open) => !open && setSubView('main')}>
       <DialogContent className="sm:max-w-md">
@@ -95,7 +174,10 @@ const ProfilesAndPersonalDetails: React.FC = () => {
             { label: 'Bio' },
           ].map((item, idx, arr) => (
             <React.Fragment key={item.label}>
-              <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors text-left">
+              <button
+                onClick={() => item.label === 'Display name' ? setSubView('display-name') : undefined}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors text-left"
+              >
                 <span className="font-medium text-foreground text-sm">{item.label}</span>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
@@ -206,6 +288,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
 
   return (
     <>
+    {displayNameDialog}
     {profileDetailDialog}
     {contactInfoDialog}
     {birthdayDialog}
