@@ -151,38 +151,64 @@ const ProfilesAndPersonalDetails: React.FC = () => {
     </Dialog>
   );
 
-  if (subView === 'birthday') {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setSubView('main')}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h2 className="text-2xl font-semibold text-foreground">Birthday</h2>
-            <p className="text-muted-foreground text-sm">Manage your date of birth.</p>
+  const [editingBirthday, setEditingBirthday] = useState(false);
+
+  const birthdayDialog = (
+    <Dialog open={subView === 'birthday'} onOpenChange={(open) => !open && setSubView('main')}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Birthday</DialogTitle>
+        </DialogHeader>
+
+        <p className="text-sm text-muted-foreground">
+          Providing your birthday helps make sure you get the right experience for your age.
+        </p>
+
+        <div className="border rounded-lg border-border/50 overflow-hidden">
+          {/* Birthday row */}
+          <div className="flex items-center justify-between px-4 py-3">
+            {editingBirthday ? (
+              <div className="flex items-center gap-2 flex-1">
+                <Input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="flex-1" />
+                <Button size="sm" onClick={() => { handleSaveBirthday(); setEditingBirthday(false); }}>Save</Button>
+              </div>
+            ) : (
+              <>
+                <span className="font-medium text-foreground text-sm">{formatBirthday(birthday || null)}</span>
+                <Button variant="outline" size="sm" onClick={() => setEditingBirthday(true)}>Edit</Button>
+              </>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Profile row */}
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Avatar className="w-9 h-9">
+              <AvatarImage src={profile?.profile_pic || ''} />
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                {profile?.display_name?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-medium text-foreground text-sm">{profile?.display_name || 'User'}</p>
+              <p className="text-xs text-muted-foreground">Tone</p>
+            </div>
           </div>
         </div>
-        <Card className="border-border/50">
-          <CardContent className="p-6 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="birthday">Date of birth</Label>
-              <Input id="birthday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
-            </div>
-            <Button onClick={handleSaveBirthday}>
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+
+        <button className="text-sm font-medium text-primary hover:underline px-1 text-left">
+          Who can see your birthday on Tone
+        </button>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <>
     {profileDetailDialog}
     {contactInfoDialog}
+    {birthdayDialog}
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">Profiles and personal details</h2>
