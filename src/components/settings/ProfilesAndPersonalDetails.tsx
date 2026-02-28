@@ -26,11 +26,13 @@ const ProfilesAndPersonalDetails: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
 
   useEffect(() => {
     if (user) setEmail(user.email || '');
     if (profile) {
       setBirthday(profile.birthday || '');
+      setUsername(profile.username || '');
       const parts = (profile.display_name || '').split(' ');
       setFirstName(parts[0] || '');
       setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
