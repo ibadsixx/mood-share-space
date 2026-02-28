@@ -17,6 +17,7 @@ import YourInformationAndPermissions from '@/components/YourInformationAndPermis
 import ProfilesAndPersonalDetails from '@/components/settings/ProfilesAndPersonalDetails';
 import AdPreferences from '@/components/AdPreferences';
 import PrivacyCheckup from '@/components/PrivacyCheckup';
+import PasswordAndSecurity from '@/components/settings/PasswordAndSecurity';
 import QRCode from 'qrcode';
 import { 
   User, 
