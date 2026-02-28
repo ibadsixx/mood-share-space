@@ -12,7 +12,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-type SubView = 'main' | 'contact' | 'birthday' | 'profile-detail';
+type SubView = 'main' | 'contact' | 'birthday' | 'profile-detail' | 'display-name';
 
 const ProfilesAndPersonalDetails: React.FC = () => {
   const { user } = useAuth();
