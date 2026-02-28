@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
 import { ChevronRight, Instagram, Facebook } from 'lucide-react';
 import YourActivity from './YourActivity';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type SubPage = 'main' | 'export' | 'access' | 'search' | 'activity' | 'connections' | 'contacts' | 'identity';
 
 const YourInformationAndPermissions: React.FC = () => {
   const [subPage, setSubPage] = useState<SubPage>('main');
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportTab, setExportTab] = useState('current');
 
   if (subPage === 'activity') {
     return (
