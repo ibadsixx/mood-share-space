@@ -11,9 +11,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import EditNameDialog from './EditNameDialog';
-import EditUsernameDialog from './EditUsernameDialog';
-import ContactInfoDialog from './ContactInfoDialog';
 
 type SubView = 'main' | 'contact' | 'birthday' | 'profile-detail';
 
@@ -26,9 +23,6 @@ const ProfilesAndPersonalDetails: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [birthday, setBirthday] = useState('');
-  const [editNameOpen, setEditNameOpen] = useState(false);
-  const [editUsernameOpen, setEditUsernameOpen] = useState(false);
-  const [contactInfoOpen, setContactInfoOpen] = useState(false);
 
   useEffect(() => {
     if (user) setEmail(user.email || '');
@@ -101,14 +95,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
             { label: 'Bio' },
           ].map((item, idx, arr) => (
             <React.Fragment key={item.label}>
-              <button
-                onClick={
-                  item.label === 'Display name' ? () => { setSubView('main'); setEditNameOpen(true); } :
-                  item.label === 'Username' ? () => { setSubView('main'); setEditUsernameOpen(true); } :
-                  undefined
-                }
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors text-left"
-              >
+              <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors text-left">
                 <span className="font-medium text-foreground text-sm">{item.label}</span>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
@@ -190,9 +177,6 @@ const ProfilesAndPersonalDetails: React.FC = () => {
   return (
     <>
     {profileDetailDialog}
-    <EditNameDialog open={editNameOpen} onOpenChange={setEditNameOpen} />
-    <EditUsernameDialog open={editUsernameOpen} onOpenChange={setEditUsernameOpen} />
-    <ContactInfoDialog open={contactInfoOpen} onOpenChange={setContactInfoOpen} />
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">Profiles and personal details</h2>
@@ -239,7 +223,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
         <Card className="border-border/50 overflow-hidden">
           <CardContent className="p-0">
             <button
-              onClick={() => setContactInfoOpen(true)}
+              onClick={() => setSubView('contact')}
               className="w-full flex items-center justify-between px-4 py-4 hover:bg-accent/50 transition-colors text-left"
             >
               <div>
