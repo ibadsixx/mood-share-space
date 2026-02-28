@@ -335,7 +335,58 @@ const PasswordAndSecurity: React.FC = () => {
     <>
       {changePasswordDialog}
       {twoFactorDialog}
-      {placeholderDialog('saved-login', 'Saved login', 'Manage your saved login information for quick access.')}
+      {/* Saved Login Dialog */}
+      <Dialog open={subView === 'saved-login'} onOpenChange={(open) => !open && setSubView('main')}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <button onClick={() => setSubView('main')} className="hover:bg-accent rounded-full p-1 transition-colors">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              Save your login info
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="border rounded-lg border-border/50 overflow-hidden">
+            <div className="px-4 py-3 bg-muted/30">
+              <p className="text-sm text-muted-foreground">To return to password and security, close this tab.</p>
+            </div>
+          </div>
+
+          {/* This Browser */}
+          <div className="space-y-0">
+            <p className="text-xs font-semibold text-primary tracking-wide uppercase px-1 mb-1">This browser</p>
+            <div className="border rounded-lg border-border/50 overflow-hidden divide-y divide-border/50">
+              <button className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors">
+                <p className="font-medium text-foreground text-sm">Save your login info</p>
+                <p className="text-xs text-muted-foreground">You won't need to enter your password the next time you log in on this browser.</p>
+              </button>
+              <button className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors">
+                <p className="font-medium text-foreground text-sm">Remove account</p>
+                <p className="text-xs text-muted-foreground">You'll need to enter your email or phone number the next time you log in.</p>
+              </button>
+            </div>
+          </div>
+
+          {/* Other Devices & Browsers */}
+          <div className="space-y-0">
+            <p className="text-xs font-semibold text-primary tracking-wide uppercase px-1 mb-1">Other devices & browsers</p>
+            <div className="border rounded-lg border-border/50 overflow-hidden divide-y divide-border/50">
+              {[
+                { browser: 'Chrome', os: 'Windows 10' },
+                { browser: 'Chrome', os: 'Windows 10' },
+                { browser: 'Chrome', os: 'Android 10' },
+                { browser: 'FBLite', os: 'Android 10' },
+              ].map((device, i) => (
+                <button key={i} className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors">
+                  <p className="font-medium text-foreground text-sm">Remove saved login info from {device.browser} on {device.os}</p>
+                  <p className="text-xs text-muted-foreground">No passcode</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       {placeholderDialog('passkey', 'Passkey', 'Set up passkeys for a faster, more secure way to sign in.')}
       {placeholderDialog('where-logged-in', "Where you're logged in", 'Review active sessions across your devices.')}
       {placeholderDialog('login-alerts', 'Login alerts', 'Get notified about unrecognized logins to your account.')}
