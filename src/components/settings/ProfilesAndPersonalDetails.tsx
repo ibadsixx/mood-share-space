@@ -288,6 +288,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
 
   return (
     <>
+    {displayNameDialog}
     {profileDetailDialog}
     {contactInfoDialog}
     {birthdayDialog}
