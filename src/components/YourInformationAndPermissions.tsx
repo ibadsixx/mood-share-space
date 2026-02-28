@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/hooks/useAuth';
 
 type SubPage = 'main' | 'export' | 'access' | 'search' | 'activity' | 'connections' | 'contacts' | 'identity';
 
