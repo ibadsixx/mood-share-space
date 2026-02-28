@@ -411,7 +411,48 @@ const PasswordAndSecurity: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-      {placeholderDialog('where-logged-in', "Where you're logged in", 'Review active sessions across your devices.')}
+      {/* Where You're Logged In Dialog */}
+      <Dialog open={subView === 'where-logged-in'} onOpenChange={(open) => !open && setSubView('main')}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <button onClick={() => setSubView('main')} className="hover:bg-accent rounded-full p-1 transition-colors">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              Where you're logged in
+            </DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-muted-foreground">
+            See what devices are used to log in to your accounts.
+          </p>
+
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20">
+            <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
+            <p className="text-sm text-foreground">
+              We detected unrecognized logins.{' '}
+              <a href="#" className="text-primary hover:underline font-medium">Review devices</a>
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-foreground px-1">Accounts</p>
+            <div className="border rounded-lg border-border/50 overflow-hidden divide-y divide-border/50">
+              <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent/50 transition-colors text-left">
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <Smartphone className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground text-sm">{user?.email?.split('@')[0] || 'User'}</p>
+                  <p className="text-xs text-muted-foreground">Windows PC</p>
+                  <p className="text-xs text-muted-foreground">+ 3 more</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       {placeholderDialog('login-alerts', 'Login alerts', 'Get notified about unrecognized logins to your account.')}
       {placeholderDialog('recent-emails', 'Recent emails', 'Review emails recently sent to your account.')}
       {placeholderDialog('security-checkup', 'Security Checkup', 'Run a comprehensive security check on your account.')}
