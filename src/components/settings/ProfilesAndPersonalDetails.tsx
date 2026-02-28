@@ -114,37 +114,42 @@ const ProfilesAndPersonalDetails: React.FC = () => {
     </Dialog>
   );
 
-  if (subView === 'contact') {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setSubView('main')}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h2 className="text-2xl font-semibold text-foreground">Contact info</h2>
-            <p className="text-muted-foreground text-sm">Manage your email and phone number.</p>
-          </div>
+  const contactInfoDialog = (
+    <Dialog open={subView === 'contact'} onOpenChange={(open) => !open && setSubView('main')}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Contact information</DialogTitle>
+        </DialogHeader>
+
+        <p className="text-sm text-muted-foreground">
+          Manage your email addresses and phone numbers, and control who can see your contact info. Use any of them to access your profiles or devices in this app.
+        </p>
+
+        <div className="border rounded-lg border-border/50 overflow-hidden">
+          {/* Email row */}
+          <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent/50 transition-colors text-left">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            <span className="font-medium text-foreground text-sm flex-1 truncate">{email || 'No email set'}</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          </button>
+
+          <Separator />
+
+          {/* Phone row */}
+          <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent/50 transition-colors text-left">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <span className="font-medium text-foreground text-sm flex-1 truncate">{phone || 'Add phone number'}</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          </button>
         </div>
-        <Card className="border-border/50">
-          <CardContent className="p-6 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone number</Label>
-              <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Add phone number" />
-            </div>
-            <Button onClick={handleSaveContact}>
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+
+        <button className="text-sm font-medium text-primary hover:underline flex items-center gap-1 px-1">
+          <Plus className="w-4 h-4" />
+          Add new contact
+        </button>
+      </DialogContent>
+    </Dialog>
+  );
 
   if (subView === 'birthday') {
     return (
@@ -177,6 +182,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
   return (
     <>
     {profileDetailDialog}
+    {contactInfoDialog}
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">Profiles and personal details</h2>
