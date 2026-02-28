@@ -182,6 +182,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
   return (
     <>
     {profileDetailDialog}
+    {contactInfoDialog}
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">Profiles and personal details</h2>
