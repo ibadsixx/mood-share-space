@@ -16,7 +16,7 @@ import Messages from "@/pages/Messages";
 import ConversationPage from "@/pages/ConversationPage";
 import Search from "@/pages/Search";
 import Groups from "@/pages/Groups";
-import GroupDetail from "@/pages/GroupDetail";
+import GroupDetail from "@/pages/GroupDetail.tsx";
 import Pages from "@/pages/Pages";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
