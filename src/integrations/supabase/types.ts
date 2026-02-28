@@ -913,21 +913,30 @@ export type Database = {
       groups: {
         Row: {
           created_at: string
+          created_by: string | null
           description: string | null
           id: string
+          invite_followers: boolean
           name: string
+          privacy: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
+          invite_followers?: boolean
           name: string
+          privacy?: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
+          invite_followers?: boolean
           name?: string
+          privacy?: string
         }
         Relationships: []
       }
@@ -2310,6 +2319,7 @@ export type Database = {
           display_name: string
           email: string | null
           email_visibility: string | null
+          first_name: string | null
           following_visibility: boolean | null
           friends_visibility: string | null
           function: string | null
@@ -2320,6 +2330,9 @@ export type Database = {
           high_school_id: string | null
           high_school_visibility: string | null
           id: string
+          last_name: string | null
+          middle_name: string | null
+          name_changed_at: string | null
           name_pronunciation: string | null
           name_pronunciation_visibility: string | null
           phone_country_code: string | null
@@ -2357,6 +2370,7 @@ export type Database = {
           display_name: string
           email?: string | null
           email_visibility?: string | null
+          first_name?: string | null
           following_visibility?: boolean | null
           friends_visibility?: string | null
           function?: string | null
@@ -2367,6 +2381,9 @@ export type Database = {
           high_school_id?: string | null
           high_school_visibility?: string | null
           id: string
+          last_name?: string | null
+          middle_name?: string | null
+          name_changed_at?: string | null
           name_pronunciation?: string | null
           name_pronunciation_visibility?: string | null
           phone_country_code?: string | null
@@ -2404,6 +2421,7 @@ export type Database = {
           display_name?: string
           email?: string | null
           email_visibility?: string | null
+          first_name?: string | null
           following_visibility?: boolean | null
           friends_visibility?: string | null
           function?: string | null
@@ -2414,6 +2432,9 @@ export type Database = {
           high_school_id?: string | null
           high_school_visibility?: string | null
           id?: string
+          last_name?: string | null
+          middle_name?: string | null
+          name_changed_at?: string | null
           name_pronunciation?: string | null
           name_pronunciation_visibility?: string | null
           phone_country_code?: string | null
