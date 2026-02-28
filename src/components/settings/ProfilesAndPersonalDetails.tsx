@@ -6,13 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ChevronRight, Plus, ArrowLeft, Save } from 'lucide-react';
+import { ChevronRight, Plus, ArrowLeft, Save, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-type SubView = 'main' | 'contact' | 'birthday' | 'profile-detail' | 'display-name';
+type SubView = 'main' | 'contact' | 'birthday' | 'profile-detail' | 'display-name' | 'username';
 
 const ProfilesAndPersonalDetails: React.FC = () => {
   const { user } = useAuth();
@@ -26,11 +26,13 @@ const ProfilesAndPersonalDetails: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
 
   useEffect(() => {
     if (user) setEmail(user.email || '');
     if (profile) {
       setBirthday(profile.birthday || '');
+      setUsername(profile.username || '');
       const parts = (profile.display_name || '').split(' ');
       setFirstName(parts[0] || '');
       setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
@@ -93,6 +95,60 @@ const ProfilesAndPersonalDetails: React.FC = () => {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     }
   };
+
+  const handleSaveUsername = async () => {
+    if (!user?.id) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ username })
+        .eq('id', user.id);
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Username updated.' });
+      setSubView('profile-detail');
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const usernameDialog = (
+    <Dialog open={subView === 'username'} onOpenChange={(open) => !open && setSubView('profile-detail')}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <button onClick={() => setSubView('profile-detail')} className="hover:bg-accent rounded-full p-1 transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            Username
+          </DialogTitle>
+        </DialogHeader>
+
+        <p className="text-sm text-muted-foreground">
+          Changing your username will also change your Tone profile URL at tone.app/{username}.
+        </p>
+
+        <div className="border rounded-lg border-border/50 overflow-hidden">
+          <div className="px-4 pt-3 pb-1">
+            <Label className="text-xs text-muted-foreground">Username</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="border-0 px-0 focus-visible:ring-0 shadow-none text-foreground flex-1"
+              />
+              {username && (
+                <button onClick={() => setUsername('')} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <Button className="w-full" onClick={handleSaveUsername}>Done</Button>
+      </DialogContent>
+    </Dialog>
+  );
 
   const displayNameDialog = (
     <Dialog open={subView === 'display-name'} onOpenChange={(open) => !open && setSubView('profile-detail')}>
@@ -175,7 +231,10 @@ const ProfilesAndPersonalDetails: React.FC = () => {
           ].map((item, idx, arr) => (
             <React.Fragment key={item.label}>
               <button
-                onClick={() => item.label === 'Display name' ? setSubView('display-name') : undefined}
+                onClick={() => {
+                  if (item.label === 'Display name') setSubView('display-name');
+                  else if (item.label === 'Username') setSubView('username');
+                }}
                 className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors text-left"
               >
                 <span className="font-medium text-foreground text-sm">{item.label}</span>
@@ -288,6 +347,7 @@ const ProfilesAndPersonalDetails: React.FC = () => {
 
   return (
     <>
+    {usernameDialog}
     {displayNameDialog}
     {profileDetailDialog}
     {contactInfoDialog}
