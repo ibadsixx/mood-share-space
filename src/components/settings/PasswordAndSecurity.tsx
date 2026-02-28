@@ -387,7 +387,30 @@ const PasswordAndSecurity: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-      {placeholderDialog('passkey', 'Passkey', 'Set up passkeys for a faster, more secure way to sign in.')}
+      {/* Passkey Dialog */}
+      <Dialog open={subView === 'passkey'} onOpenChange={(open) => !open && setSubView('main')}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <button onClick={() => setSubView('main')} className="hover:bg-accent rounded-full p-1 transition-colors">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              Passkey
+            </DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-muted-foreground">
+            Use a passkey as a secure and easy alternative to passwords on Facebook and Messenger.{' '}
+            <a href="#" className="text-primary hover:underline">Learn more about passkeys</a>
+          </p>
+
+          <div className="border rounded-lg border-border/50 overflow-hidden">
+            <button className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors">
+              <p className="font-medium text-primary text-sm">Create passkey</p>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {placeholderDialog('where-logged-in', "Where you're logged in", 'Review active sessions across your devices.')}
       {placeholderDialog('login-alerts', 'Login alerts', 'Get notified about unrecognized logins to your account.')}
       {placeholderDialog('recent-emails', 'Recent emails', 'Review emails recently sent to your account.')}
