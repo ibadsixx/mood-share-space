@@ -61,6 +61,8 @@ const YourInformationAndPermissions: React.FC = () => {
   const handleTopItemClick = (item: typeof topItems[0]) => {
     if (item.isDialog && item.id === 'export') {
       setShowExportDialog(true);
+    } else if (item.isDialog && item.id === 'search') {
+      setShowSearchDialog(true);
     } else {
       setSubPage(item.id);
     }
