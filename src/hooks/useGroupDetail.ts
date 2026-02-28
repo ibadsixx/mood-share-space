@@ -94,7 +94,7 @@ export const useGroupDetail = (groupId: string | undefined) => {
     } finally {
       setLoading(false);
     }
-  }, [groupId, user]);
+  }, [groupId, user, toast]);
 
   const fetchMembers = useCallback(async () => {
     if (!groupId) return;
@@ -103,7 +103,7 @@ export const useGroupDetail = (groupId: string | undefined) => {
       .select('user_id, role, created_at')
       .eq('group_id', groupId);
 
-    if (error) return;
+    if (error || !data) return;
 
     // Fetch profiles for members
     const userIds = data.map((m: any) => m.user_id);
@@ -132,7 +132,7 @@ export const useGroupDetail = (groupId: string | undefined) => {
       .eq('group_id', groupId)
       .order('created_at', { ascending: false });
 
-    if (error) return;
+    if (error || !data) return;
 
     // Fetch author profiles
     const authorIds = [...new Set(data.map((p: any) => p.shared_by))];
@@ -249,7 +249,7 @@ export const useGroupDetail = (groupId: string | undefined) => {
       fetchMembers();
       fetchPosts();
     }
-  }, [groupId, user]);
+  }, [groupId, user, fetchGroup, fetchMembers, fetchPosts]);
 
   return {
     group, members, posts, loading,
