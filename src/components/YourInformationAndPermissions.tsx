@@ -55,7 +55,7 @@ const YourInformationAndPermissions: React.FC = () => {
   const topItems = [
     { id: 'export' as SubPage, label: 'Download your data', isDialog: true },
     { id: 'access' as SubPage, label: 'View your data', isDialog: false },
-    { id: 'search' as SubPage, label: 'Search history' },
+    { id: 'search' as SubPage, label: 'Search history', isDialog: true },
   ];
 
   const handleTopItemClick = (item: typeof topItems[0]) => {
