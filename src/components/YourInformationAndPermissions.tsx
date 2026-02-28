@@ -18,7 +18,9 @@ type SubPage = 'main' | 'export' | 'access' | 'search' | 'activity' | 'connectio
 const YourInformationAndPermissions: React.FC = () => {
   const [subPage, setSubPage] = useState<SubPage>('main');
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [exportTab, setExportTab] = useState('current');
+  const { user } = useAuth();
 
   if (subPage === 'activity') {
     return (
