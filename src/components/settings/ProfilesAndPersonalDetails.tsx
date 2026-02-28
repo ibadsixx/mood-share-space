@@ -96,6 +96,60 @@ const ProfilesAndPersonalDetails: React.FC = () => {
     }
   };
 
+  const handleSaveUsername = async () => {
+    if (!user?.id) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ username })
+        .eq('id', user.id);
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Username updated.' });
+      setSubView('profile-detail');
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const usernameDialog = (
+    <Dialog open={subView === 'username'} onOpenChange={(open) => !open && setSubView('profile-detail')}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <button onClick={() => setSubView('profile-detail')} className="hover:bg-accent rounded-full p-1 transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            Username
+          </DialogTitle>
+        </DialogHeader>
+
+        <p className="text-sm text-muted-foreground">
+          Changing your username will also change your Tone profile URL at tone.app/{username}.
+        </p>
+
+        <div className="border rounded-lg border-border/50 overflow-hidden">
+          <div className="px-4 pt-3 pb-1">
+            <Label className="text-xs text-muted-foreground">Username</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="border-0 px-0 focus-visible:ring-0 shadow-none text-foreground flex-1"
+              />
+              {username && (
+                <button onClick={() => setUsername('')} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <Button className="w-full" onClick={handleSaveUsername}>Done</Button>
+      </DialogContent>
+    </Dialog>
+  );
+
   const displayNameDialog = (
     <Dialog open={subView === 'display-name'} onOpenChange={(open) => !open && setSubView('profile-detail')}>
       <DialogContent className="sm:max-w-md">
