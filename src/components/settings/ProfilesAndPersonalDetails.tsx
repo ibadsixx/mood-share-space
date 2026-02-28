@@ -29,7 +29,13 @@ const ProfilesAndPersonalDetails: React.FC = () => {
 
   useEffect(() => {
     if (user) setEmail(user.email || '');
-    if (profile) setBirthday(profile.birthday || '');
+    if (profile) {
+      setBirthday(profile.birthday || '');
+      const parts = (profile.display_name || '').split(' ');
+      setFirstName(parts[0] || '');
+      setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
+      setMiddleName(parts.length > 2 ? parts.slice(1, -1).join(' ') : '');
+    }
   }, [user, profile]);
 
   const handleSaveContact = async () => {
