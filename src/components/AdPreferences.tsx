@@ -1,293 +1,313 @@
 import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronRight, Loader2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
-import { useAdPreferences } from '@/hooks/useAdPreferences';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Activity, 
+  Bookmark, 
+  Eye, 
+  Target, 
+  Database, 
+  Shield, 
+  Users, 
+  Building2,
+  Info
+} from 'lucide-react';
+
+// Types for the ad preferences options
+type AdOption = {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+};
 
 const AdPreferences = () => {
+  // State for active tab
   const [activeTab, setActiveTab] = useState('customize');
-  const {
-    adActivity,
-    savedAds,
-    advertisers,
-    adTopics,
-    adSettings,
-    loading,
-    updateSettings,
-  } = useAdPreferences();
+  
+  // State for selected option within each tab
+  const [selectedCustomizeOption, setSelectedCustomizeOption] = useState('activity');
+  const [selectedManageOption, setSelectedManageOption] = useState('categories');
 
-  const SectionHeader = ({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) => (
-    <div className="flex items-center justify-between mb-3">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      {onSeeAll && (
-        <button className="text-xs font-medium text-primary hover:underline">View all</button>
-      )}
-    </div>
-  );
+  // Customize ads options
+  const customizeOptions: AdOption[] = [
+    {
+      id: 'activity',
+      title: 'Ad activity',
+      description: 'See and manage your ad activity, including ads you\'ve clicked on and interacted with.',
+      icon: Activity
+    },
+    {
+      id: 'saved',
+      title: 'Ads you saved',
+      description: 'View and manage the advertisements you\'ve saved for later reference.',
+      icon: Bookmark
+    },
+    {
+      id: 'advertisers',
+      title: 'Advertisers you saw ads from',
+      description: 'See a list of advertisers whose ads have been shown to you recently.',
+      icon: Eye
+    },
+    {
+      id: 'topics',
+      title: 'Ad topics',
+      description: 'Manage the topics and categories used to show you relevant advertisements.',
+      icon: Target
+    }
+  ];
 
-  const ListItem = ({ name, icon }: { name: string; icon: string }) => (
-    <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
-      <div className="flex items-center gap-3">
-        <span className="text-lg">{icon}</span>
-        <span className="text-sm text-foreground">{name}</span>
-      </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-    </div>
-  );
+  // Manage info options
+  const manageOptions: AdOption[] = [
+    {
+      id: 'categories',
+      title: 'Categories used to reach you',
+      description: 'See what categories advertisers use to target ads to you based on your activity.',
+      icon: Target
+    },
+    {
+      id: 'partner-activity',
+      title: 'Activity information from ad partners',
+      description: 'Manage how information from our advertising partners is used to show you ads.',
+      icon: Database
+    },
+    {
+      id: 'audience-based',
+      title: 'Audience-based advertising',
+      description: 'Control how you\'re included in advertising audiences based on your interests.',
+      icon: Users
+    },
+    {
+      id: 'partner-ads',
+      title: 'Ads from ad partners',
+      description: 'Manage advertisements shown to you from our trusted advertising partners.',
+      icon: Building2
+    },
+    {
+      id: 'meta-ads',
+      title: 'Ads about Meta',
+      description: 'Control advertisements about Meta products and services shown to you.',
+      icon: Info
+    },
+    {
+      id: 'social-interactions',
+      title: 'Social interactions',
+      description: 'Manage how your social interactions influence the advertisements you see.',
+      icon: Shield
+    }
+  ];
 
-  const EmptyState = ({ message }: { message: string }) => (
-    <div className="rounded-lg border border-border/50 p-6 text-center">
-      <p className="text-xs text-muted-foreground">{message}</p>
-    </div>
-  );
+  // Handle tab change and reset sub-option selection
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (value === 'customize') {
+      setSelectedCustomizeOption('activity');
+    } else {
+      setSelectedManageOption('categories');
+    }
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  // Get current selected option based on active tab
+  const getCurrentOption = () => {
+    if (activeTab === 'customize') {
+      return customizeOptions.find(opt => opt.id === selectedCustomizeOption);
+    } else {
+      return manageOptions.find(opt => opt.id === selectedManageOption);
+    }
+  };
+
+  // Get current options list based on active tab
+  const getCurrentOptions = () => {
+    return activeTab === 'customize' ? customizeOptions : manageOptions;
+  };
+
+  // Get current selected option ID
+  const getCurrentSelectedOption = () => {
+    return activeTab === 'customize' ? selectedCustomizeOption : selectedManageOption;
+  };
+
+  // Handle option selection
+  const handleOptionSelect = (optionId: string) => {
+    if (activeTab === 'customize') {
+      setSelectedCustomizeOption(optionId);
+    } else {
+      setSelectedManageOption(optionId);
+    }
+  };
+
+  const currentOption = getCurrentOption();
+  const currentOptions = getCurrentOptions();
+  const currentSelectedOption = getCurrentSelectedOption();
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">Ad Preferences</h2>
-        <p className="text-sm text-muted-foreground">
-          Take charge of your advertising experience and the data used to display ads to you.
+        <p className="text-muted-foreground">
+          Manage your advertising preferences and control how ads are personalized for you.
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-transparent border-b border-border rounded-none w-auto gap-4 h-auto p-0">
-          <TabsTrigger
-            value="customize"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
-          >
-            Tailor ads
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        {/* Tab Navigation */}
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="customize" className="text-sm font-medium">
+            Customize ads
           </TabsTrigger>
-          <TabsTrigger
-            value="manage"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium text-muted-foreground"
-          >
-            Handle info
+          <TabsTrigger value="manage" className="text-sm font-medium">
+            Manage info
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="customize" className="mt-6 space-y-6">
-          {/* Ad activity */}
-          <div>
-            <SectionHeader title="Ad interactions" onSeeAll={adActivity.length > 0 ? () => {} : undefined} />
-            {adActivity.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
-                {adActivity.map((ad) => (
-                  <div key={ad.id} className="rounded-lg overflow-hidden border border-border/50 bg-muted/20">
-                    <div className="aspect-video bg-muted/50 relative">
-                      <img src={ad.image_url} alt={ad.title} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="p-2">
-                      <p className="text-xs text-muted-foreground truncate">{ad.advertiser}</p>
-                      <button className="w-full mt-1.5 text-xs font-medium text-primary-foreground bg-primary rounded-md py-1.5 hover:bg-primary/90 transition-colors">
-                        Ad info
+        {/* Tab Content */}
+        <TabsContent value="customize" className="space-y-0">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Sidebar - Options List */}
+            <Card className="lg:col-span-1 border-border/50">
+              <CardHeader>
+                <CardTitle className="text-lg">Customize Options</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="space-y-1">
+                  {currentOptions.map((option) => {
+                    const Icon = option.icon;
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => handleOptionSelect(option.id)}
+                        className={`w-full text-left p-4 rounded-none border-none transition-colors ${
+                          currentSelectedOption === option.id
+                            ? 'bg-primary/10 text-primary border-r-2 border-primary'
+                            : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Icon className="w-4 h-4 flex-shrink-0" />
+                          <span className="font-medium text-sm">{option.title}</span>
+                        </div>
                       </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Right Content Area */}
+            <Card className="lg:col-span-2 border-border/50">
+              <CardHeader>
+                <div className="flex items-center space-x-3">
+                  {currentOption && (
+                    <>
+                      <currentOption.icon className="w-5 h-5 text-primary" />
+                      <CardTitle className="text-xl">{currentOption.title}</CardTitle>
+                    </>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {currentOption && (
+                  <>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {currentOption.description}
+                    </p>
+                    
+                    {/* Placeholder content area */}
+                    <div className="space-y-4 pt-4">
+                      <div className="p-6 bg-muted/30 rounded-lg border border-dashed border-border">
+                        <div className="text-center space-y-2">
+                          <div className="w-12 h-12 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                            <currentOption.icon className="w-6 h-6 text-primary" />
+                          </div>
+                          <h3 className="font-medium text-foreground">Content Area</h3>
+                          <p className="text-sm text-muted-foreground">
+                            This section will display {currentOption.title.toLowerCase()} settings and options.
+                          </p>
+                          <Badge variant="secondary" className="mt-2">
+                            Coming Soon
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState message="No ad interactions recorded yet." />
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Saved ads */}
-          <div>
-            <SectionHeader title="Bookmarked ads" onSeeAll={savedAds.length > 0 ? () => {} : undefined} />
-            {savedAds.length > 0 ? (
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {savedAds.map((ad) => (
-                  <div key={ad.id} className="flex-shrink-0 w-20">
-                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted/50 border border-border/50">
-                      <img src={ad.image_url} alt={ad.title} className="w-full h-full object-cover" />
-                    </div>
-                    <p className="text-[10px] text-foreground mt-1 truncate">{ad.title}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{ad.subtitle}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState message="No bookmarked ads yet." />
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Advertisers */}
-          <div>
-            <SectionHeader title="Brands that showed you ads" onSeeAll={advertisers.length > 0 ? () => {} : undefined} />
-            {advertisers.length > 0 ? (
-              <div className="rounded-lg border border-border/50 overflow-hidden">
-                {advertisers.map((adv, i) => (
-                  <React.Fragment key={adv.id}>
-                    <ListItem name={adv.name} icon={adv.icon} />
-                    {i < advertisers.length - 1 && <Separator />}
-                  </React.Fragment>
-                ))}
-              </div>
-            ) : (
-              <EmptyState message="No advertisers to display yet." />
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Ad topics */}
-          <div>
-            <SectionHeader title="Ad subjects" onSeeAll={adTopics.length > 0 ? () => {} : undefined} />
-            <div className="rounded-xl overflow-hidden bg-accent/30 border border-border/50 mb-3 p-6 flex items-center justify-center">
-              <p className="text-xs text-muted-foreground">Browse ad subjects and explore what you'd like to see more of.</p>
-            </div>
-            {adTopics.length > 0 ? (
-              <div className="rounded-lg border border-border/50 overflow-hidden">
-                {adTopics.map((topic, i) => (
-                  <React.Fragment key={topic.id}>
-                    <ListItem name={topic.name} icon={topic.icon} />
-                    {i < adTopics.length - 1 && <Separator />}
-                  </React.Fragment>
-                ))}
-              </div>
-            ) : (
-              <EmptyState message="No ad subjects recorded yet." />
-            )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="manage" className="mt-6 space-y-6">
-          {/* Data used to display ads */}
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3">Data utilized to present ads</h3>
-            <div className="rounded-lg border border-border/50 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Segments applied to find you</p>
-                  <p className="text-xs text-muted-foreground">Details you share on your profile or other segments applied to find you.</p>
+        <TabsContent value="manage" className="space-y-0">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Sidebar - Options List */}
+            <Card className="lg:col-span-1 border-border/50">
+              <CardHeader>
+                <CardTitle className="text-lg">Manage Options</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="space-y-1">
+                  {currentOptions.map((option) => {
+                    const Icon = option.icon;
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => handleOptionSelect(option.id)}
+                        className={`w-full text-left p-4 rounded-none border-none transition-colors ${
+                          currentSelectedOption === option.id
+                            ? 'bg-primary/10 text-primary border-r-2 border-primary'
+                            : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Icon className="w-4 h-4 flex-shrink-0" />
+                          <span className="font-medium text-sm">{option.title}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
-              </div>
-              <Separator />
-              <div
-                className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
-                onClick={() => updateSettings({ use_partner_data: !adSettings.use_partner_data })}
-              >
-                <div>
-                  <p className="text-sm font-medium text-foreground">Engagement data from ad collaborators</p>
-                  <p className="text-xs text-muted-foreground">Decide whether we leverage this to present ads that are more aligned to you.</p>
-                  <p className="text-xs text-primary font-medium mt-0.5">
-                    {adSettings.use_partner_data ? 'Leveraging this data' : 'Not leveraging this data'}
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Interest-driven promotion</p>
-                  <p className="text-xs text-muted-foreground">Promoters leveraging your engagement or details</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
-              </div>
-            </div>
-          </div>
+              </CardContent>
+            </Card>
 
-          <Separator />
-
-          {/* Ads beyond the platform */}
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3">Ads beyond the platform</h3>
-            <div className="rounded-lg border border-border/50 overflow-hidden">
-              <div
-                className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
-                onClick={() => updateSettings({ show_ads_in_external_apps: !adSettings.show_ads_in_external_apps })}
-              >
-                <div>
-                  <p className="text-sm font-medium text-foreground">Ads in external apps</p>
-                  <p className="text-xs text-muted-foreground">Decide whether you view ads from the Audience Network in external apps.</p>
-                  <p className="text-xs text-primary font-medium mt-0.5">
-                    {adSettings.show_ads_in_external_apps ? 'Displaying ads in external apps' : 'Not displaying ads in external apps'}
-                  </p>
+            {/* Right Content Area */}
+            <Card className="lg:col-span-2 border-border/50">
+              <CardHeader>
+                <div className="flex items-center space-x-3">
+                  {currentOption && (
+                    <>
+                      <currentOption.icon className="w-5 h-5 text-primary" />
+                      <CardTitle className="text-xl">{currentOption.title}</CardTitle>
+                    </>
+                  )}
                 </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
-              </div>
-              <Separator />
-              <div
-                className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
-                onClick={() => updateSettings({ use_activity_for_external_ads: !adSettings.use_activity_for_external_ads })}
-              >
-                <div>
-                  <p className="text-sm font-medium text-foreground">Ads regarding the platform</p>
-                  <p className="text-xs text-muted-foreground">Decide whether we leverage your engagement to display ads about the platform on other services.</p>
-                  <p className="text-xs text-primary font-medium mt-0.5">
-                    {adSettings.use_activity_for_external_ads ? 'Leveraging this data' : 'Not leveraging this data'}
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Other settings */}
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3">Additional preferences</h3>
-            <div className="rounded-lg border border-border/50 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Social engagements</p>
-                  <p className="text-xs text-muted-foreground">Decide who can view your social engagements alongside ads.</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Learn more */}
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-1">Discover more about ads privacy</h3>
-            <p className="text-xs text-muted-foreground mb-3">Explore what data is leveraged to present ads, and how you can manage your privacy.</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-border/50 p-4 flex flex-col justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">What data is leveraged to present ads?</p>
-                  <p className="text-xs text-muted-foreground mt-1">We present ads based on your details and engagement. You have the ability to manage these preferences.</p>
-                </div>
-                <button className="w-full mt-3 text-xs font-medium text-primary-foreground bg-primary rounded-md py-2 hover:bg-primary/90 transition-colors">
-                  More details
-                </button>
-              </div>
-              <div className="rounded-lg border border-border/50 p-4 flex flex-col justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Do we sell your data?</p>
-                  <p className="text-xs text-muted-foreground mt-1">No. We never sell your personal data.</p>
-                </div>
-                <button className="w-full mt-3 text-xs font-medium text-primary-foreground bg-primary rounded-md py-2 hover:bg-primary/90 transition-colors">
-                  More details
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer links */}
-          <div className="space-y-2">
-            <button className="w-full text-xs font-medium text-muted-foreground border border-border/50 rounded-lg py-2.5 hover:bg-muted/40 transition-colors">
-              Discover more in Privacy Center
-            </button>
-            <button className="w-full text-xs font-medium text-muted-foreground border border-border/50 rounded-lg py-2.5 hover:bg-muted/40 transition-colors">
-              Discover more about Platform Ads
-            </button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {currentOption && (
+                  <>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {currentOption.description}
+                    </p>
+                    
+                    {/* Placeholder content area */}
+                    <div className="space-y-4 pt-4">
+                      <div className="p-6 bg-muted/30 rounded-lg border border-dashed border-border">
+                        <div className="text-center space-y-2">
+                          <div className="w-12 h-12 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                            <currentOption.icon className="w-6 h-6 text-primary" />
+                          </div>
+                          <h3 className="font-medium text-foreground">Content Area</h3>
+                          <p className="text-sm text-muted-foreground">
+                            This section will display {currentOption.title.toLowerCase()} settings and options.
+                          </p>
+                          <Badge variant="secondary" className="mt-2">
+                            Coming Soon
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
