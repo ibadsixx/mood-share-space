@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { ChevronRight, ArrowLeft, Instagram, Facebook } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import YourActivity from './YourActivity';
+import { useProfile } from '@/hooks/useProfile';
 
 type SubView = null | 'download' | 'view-data' | 'search-history' | 'activity-outside' | 'app-connections' | 'manage-contacts' | 'identity-verification';
 
 const YourInformationAndPermissions: React.FC = () => {
   const [subView, setSubView] = useState<SubView>(null);
+  const { profile } = useProfile();
 
   const topItems = [
     { id: 'download' as SubView, label: 'Download your data' },
@@ -73,11 +75,50 @@ const YourInformationAndPermissions: React.FC = () => {
         );
       case 'search-history':
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Review and manage your search history on Tone.</p>
-            <div className="text-center py-8">
-              <p className="text-sm text-muted-foreground">No recent searches</p>
+          <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              Review and manage your search history across Tone. Only you can see what you've searched.{' '}
+              <span className="text-primary cursor-pointer hover:underline">Learn how we process your information in our Privacy Policy.</span>
+            </p>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3">Your accounts & profiles</h3>
+              <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+                {profile ? (
+                  <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
+                        {profile.profile_pic ? (
+                          <img src={profile.profile_pic} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm font-semibold">
+                            {profile.display_name?.[0] || '?'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-foreground">{profile.display_name || profile.username}</p>
+                        <p className="text-xs text-muted-foreground">Tone</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                ) : (
+                  <div className="px-4 py-3 text-sm text-muted-foreground">No accounts linked</div>
+                )}
+              </div>
             </div>
+            <div className="border border-border rounded-lg overflow-hidden">
+              <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors">
+                <span className="text-sm text-foreground">Keep searches for</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-muted-foreground">Default</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </div>
+              </button>
+            </div>
+            <button className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors">
+              Clear all searches
+            </button>
           </div>
         );
       case 'activity-outside':
