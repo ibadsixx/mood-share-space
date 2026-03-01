@@ -1,223 +1,151 @@
 import React, { useState } from 'react';
-import { ChevronRight, Instagram, Facebook } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Instagram, Facebook } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import YourActivity from './YourActivity';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useAuth } from '@/hooks/useAuth';
 
-type SubPage = 'main' | 'export' | 'access' | 'search' | 'activity' | 'connections' | 'contacts' | 'identity';
+type SubView = null | 'download' | 'view-data' | 'search-history' | 'activity-outside' | 'app-connections' | 'manage-contacts' | 'identity-verification';
 
 const YourInformationAndPermissions: React.FC = () => {
-  const [subPage, setSubPage] = useState<SubPage>('main');
-  const [showExportDialog, setShowExportDialog] = useState(false);
-  const [showSearchDialog, setShowSearchDialog] = useState(false);
-  const [exportTab, setExportTab] = useState('current');
-  const { user } = useAuth();
-
-  if (subPage === 'activity') {
-    return (
-      <div className="space-y-4">
-        <button
-          onClick={() => setSubPage('main')}
-          className="text-sm text-primary hover:underline"
-        >
-          ← Back
-        </button>
-        <YourActivity />
-      </div>
-    );
-  }
-
-  if (subPage !== 'main') {
-    return (
-      <div className="space-y-4">
-        <button
-          onClick={() => setSubPage('main')}
-          className="text-sm text-primary hover:underline"
-        >
-          ← Back
-        </button>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Coming soon</p>
-        </div>
-      </div>
-    );
-  }
+  const [subView, setSubView] = useState<SubView>(null);
 
   const topItems = [
-    { id: 'export' as SubPage, label: 'Download your data', isDialog: true },
-    { id: 'access' as SubPage, label: 'View your data', isDialog: false },
-    { id: 'search' as SubPage, label: 'Search history', isDialog: true },
+    { id: 'download' as SubView, label: 'Download your data' },
+    { id: 'view-data' as SubView, label: 'View your data' },
+    { id: 'search-history' as SubView, label: 'Search history' },
   ];
 
-  const handleTopItemClick = (item: typeof topItems[0]) => {
-    if (item.isDialog && item.id === 'export') {
-      setShowExportDialog(true);
-    } else if (item.isDialog && item.id === 'search') {
-      setShowSearchDialog(true);
-    } else {
-      setSubPage(item.id);
+  const middleItems = [
+    { id: 'activity-outside' as SubView, label: 'Your activity outside Tone', icon: null },
+    { id: 'app-connections' as SubView, label: 'App connections', icon: null },
+    { id: 'manage-contacts' as SubView, label: 'Manage contacts', rightIcon: Instagram },
+    { id: 'identity-verification' as SubView, label: 'Identity verification', rightIcon: Facebook },
+  ];
+
+  const renderListItem = (item: { id: SubView; label: string; icon?: any; rightIcon?: any }) => (
+    <button
+      key={item.id}
+      onClick={() => setSubView(item.id)}
+      className="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-accent/50 transition-colors"
+    >
+      <span className="text-sm text-foreground">{item.label}</span>
+      <div className="flex items-center gap-2">
+        {item.rightIcon && <item.rightIcon className="w-4 h-4 text-muted-foreground" />}
+        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+      </div>
+    </button>
+  );
+
+  const renderSubViewContent = () => {
+    switch (subView) {
+      case 'download':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Request a download of your Tone data. We'll compile your information and notify you when it's ready.</p>
+            <button className="w-full text-left px-4 py-3 border border-border rounded-lg hover:bg-accent/50 transition-colors">
+              <p className="text-sm font-medium">Request download</p>
+              <p className="text-xs text-muted-foreground mt-1">This may take up to 48 hours</p>
+            </button>
+          </div>
+        );
+      case 'view-data':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">View the information associated with your Tone account.</p>
+            <div className="space-y-2">
+              {['Profile information', 'Posts & content', 'Messages', 'Activity log'].map(item => (
+                <button key={item} className="w-full flex items-center justify-between px-4 py-3 border border-border rounded-lg hover:bg-accent/50 transition-colors">
+                  <span className="text-sm">{item}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      case 'search-history':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Review and manage your search history on Tone.</p>
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">No recent searches</p>
+            </div>
+          </div>
+        );
+      case 'activity-outside':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Manage what data Tone can use from your activity on other websites and apps to personalize your experience.</p>
+          </div>
+        );
+      case 'app-connections':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Manage apps and websites connected to your Tone account.</p>
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">No connected apps</p>
+            </div>
+          </div>
+        );
+      case 'manage-contacts':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Control how Tone uses your contacts and manages your connections.</p>
+          </div>
+        );
+      case 'identity-verification':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Verify your identity to access additional features on Tone.</p>
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
-  const bottomItems = [
-    { id: 'activity' as SubPage, label: 'Your activity outside Tone', icon: null },
-    { id: 'connections' as SubPage, label: 'App connections', icon: null },
-    { id: 'contacts' as SubPage, label: 'Manage contacts', icon: <Instagram className="w-4 h-4 text-muted-foreground" /> },
-    { id: 'identity' as SubPage, label: 'Identity verification', icon: <Facebook className="w-4 h-4 text-muted-foreground" /> },
-  ];
+  const getSubViewTitle = () => {
+    const titles: Record<string, string> = {
+      'download': 'Download your data',
+      'view-data': 'View your data',
+      'search-history': 'Search history',
+      'activity-outside': 'Your activity outside Tone',
+      'app-connections': 'App connections',
+      'manage-contacts': 'Manage contacts',
+      'identity-verification': 'Identity verification',
+    };
+    return subView ? titles[subView] : '';
+  };
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      {/* Export Dialog */}
-      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">Export your information</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground pt-2">
-              You can save a copy of your information to a third-party service, or transfer it to your device. Accessible information covers content and details you've posted, your usage history, and data we gather.
-            </DialogDescription>
-          </DialogHeader>
-
-          <Button className="w-full mt-2" size="lg">
-            Generate export
-          </Button>
-
-          <Tabs value={exportTab} onValueChange={setExportTab} className="mt-2">
-            <TabsList className="w-full grid grid-cols-2">
-              <TabsTrigger value="current">Current activity</TabsTrigger>
-              <TabsTrigger value="past">Past activity</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <p className="text-xs text-muted-foreground mt-2">
-            Your export will not contain information that another person shared, like someone else's photos where you're mentioned.{' '}
-            <span className="text-primary cursor-pointer hover:underline">Learn more</span>
-          </p>
-        </DialogContent>
-      </Dialog>
-
-      {/* Search History Dialog */}
-      <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">Lookup history</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground pt-2">
-              Browse and manage your lookup history across Tone. Only you can view what you've searched for.{' '}
-              <span className="text-primary cursor-pointer hover:underline">
-                Discover how we handle your data in our Privacy Policy.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="mt-2">
-            <p className="text-sm font-semibold text-foreground mb-3">Your accounts &amp; profiles</p>
-            <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/50">
-              <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/40 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                      {user?.email?.charAt(0).toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-foreground">{user?.email?.split('@')[0] || 'User'}</p>
-                    <p className="text-xs text-muted-foreground">Tone</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-2">
-            <div className="rounded-xl border border-border/50 overflow-hidden">
-              <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/40 transition-colors">
-                <span className="text-sm font-medium text-foreground">Retain searches for</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm text-muted-foreground">Default</span>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <Button className="w-full mt-3" size="lg">
-            Erase all searches
-          </Button>
-        </DialogContent>
-      </Dialog>
-
-      {/* Header */}
-      <h2 className="text-2xl font-semibold text-foreground">Your information and permissions</h2>
-
-      {/* Info banner */}
-      <div className="rounded-xl bg-muted/60 px-5 py-4">
-        <p className="text-sm text-muted-foreground">
-          To download or transfer a copy of your data, go to Download your data.
-        </p>
-      </div>
-
+    <div className="space-y-6">
       {/* Top group */}
-      <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/50">
-        {topItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleTopItemClick(item)}
-            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-accent/40 transition-colors"
-          >
-            <span className="text-sm font-medium text-foreground">{item.label}</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        ))}
+      <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+        {topItems.map(renderListItem)}
       </div>
 
-      {/* Bottom group */}
-      <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/50">
-        {bottomItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setSubPage(item.id)}
-            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-accent/40 transition-colors"
-          >
-            <span className="text-sm font-medium text-foreground">{item.label}</span>
-            <div className="flex items-center gap-2">
-              {item.icon}
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </div>
-          </button>
-        ))}
+      {/* Middle group */}
+      <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+        {middleItems.map(renderListItem)}
       </div>
 
-      {/* Bottom group */}
-      <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/50">
-        {bottomItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setSubPage(item.id)}
-            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-accent/40 transition-colors"
-          >
-            <span className="text-sm font-medium text-foreground">{item.label}</span>
-            <div className="flex items-center gap-2">
-              {item.icon}
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {/* Footer note */}
+      {/* Footer text */}
       <p className="text-xs text-muted-foreground">
         Manage what data Tone can use to personalize your experience.
       </p>
+
+      {/* Sub-view dialog */}
+      <Dialog open={subView !== null} onOpenChange={(open) => !open && setSubView(null)}>
+        <DialogContent className="sm:max-w-[500px] p-0 gap-0">
+          <div className="flex items-center gap-3 p-4 border-b border-border">
+            <button onClick={() => setSubView(null)} className="hover:bg-accent/50 rounded-full p-1 transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-semibold">{getSubViewTitle()}</h2>
+          </div>
+          <div className="p-4">
+            {renderSubViewContent()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

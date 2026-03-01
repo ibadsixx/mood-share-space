@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ChevronRight, ArrowLeft, Shield, Key, Smartphone, LogIn, Bell, Mail, ShieldCheck, Loader2, Eye, EyeOff, Check, Copy, AlertCircle, Save } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -46,30 +45,9 @@ const PasswordAndSecurity: React.FC = () => {
   const [totpLoading, setTotpLoading] = useState(false);
   const [totpSetupLoading, setTotpSetupLoading] = useState(false);
 
-  // Profile state
-  const [profileData, setProfileData] = useState<{ display_name: string; profile_pic: string | null }>({ display_name: '', profile_pic: null });
-
   useEffect(() => {
-    if (user) {
-      checkExistingMFA();
-      loadProfile();
-    }
+    if (user) checkExistingMFA();
   }, [user]);
-
-  const loadProfile = async () => {
-    if (!user?.id) return;
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('display_name, profile_pic')
-        .eq('id', user.id)
-        .single();
-      if (error) throw error;
-      if (data) setProfileData({ display_name: data.display_name || '', profile_pic: data.profile_pic });
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    }
-  };
 
   const checkExistingMFA = async () => {
     try {
@@ -461,12 +439,11 @@ const PasswordAndSecurity: React.FC = () => {
             <p className="text-sm font-semibold text-foreground px-1">Accounts</p>
             <div className="border rounded-lg border-border/50 overflow-hidden divide-y divide-border/50">
               <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent/50 transition-colors text-left">
-                <Avatar className="w-10 h-10 shrink-0">
-                  <AvatarImage src={profileData.profile_pic || '/default-avatar.png'} alt={profileData.display_name} />
-                  <AvatarFallback>{profileData.display_name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
-                </Avatar>
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <Smartphone className="w-5 h-5 text-muted-foreground" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground text-sm">{profileData.display_name || user?.email?.split('@')[0] || 'User'}</p>
+                  <p className="font-medium text-foreground text-sm">{user?.email?.split('@')[0] || 'User'}</p>
                   <p className="text-xs text-muted-foreground">Windows PC</p>
                   <p className="text-xs text-muted-foreground">+ 3 more</p>
                 </div>
@@ -476,154 +453,9 @@ const PasswordAndSecurity: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-      {/* Login Alerts Dialog */}
-      <Dialog open={subView === 'login-alerts'} onOpenChange={(open) => !open && setSubView('main')}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <button onClick={() => setSubView('main')} className="hover:bg-accent rounded-full p-1 transition-colors">
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              Sign-in notifications
-            </DialogTitle>
-          </DialogHeader>
-
-          <p className="text-sm text-muted-foreground">
-            Choose how you'd like to be informed about unfamiliar sign-ins to your accounts.
-          </p>
-
-          <div className="border rounded-lg border-border/50 overflow-hidden divide-y divide-border/50">
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
-              <Avatar className="w-10 h-10 shrink-0">
-                <AvatarImage src={profileData.profile_pic || '/default-avatar.png'} alt={profileData.display_name} />
-                <AvatarFallback>{profileData.display_name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm">{profileData.display_name || user?.email?.split('@')[0] || 'User'}</p>
-                <p className="text-xs text-muted-foreground">Tone</p>
-                <p className="text-xs text-muted-foreground">In-app alerts, Email</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      {/* Recent Emails Dialog */}
-      <Dialog open={subView === 'recent-emails'} onOpenChange={(open) => !open && setSubView('main')}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <button onClick={() => setSubView('main')} className="hover:bg-accent rounded-full p-1 transition-colors">
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              Recent emails
-            </DialogTitle>
-          </DialogHeader>
-
-          <p className="text-sm text-muted-foreground">
-            Select the account for which you want to see recent emails.
-          </p>
-
-          <div className="border rounded-lg border-border/50 overflow-hidden divide-y divide-border/50">
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
-              <Avatar className="w-10 h-10 shrink-0">
-                <AvatarImage src={profileData.profile_pic || '/default-avatar.png'} alt={profileData.display_name} />
-                <AvatarFallback>{profileData.display_name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm">{profileData.display_name || user?.email?.split('@')[0] || 'User'}</p>
-                <p className="text-xs text-muted-foreground">Tone</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      {/* Security Checkup Dialog */}
-      <Dialog open={subView === 'security-checkup'} onOpenChange={(open) => !open && setSubView('main')}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center text-lg font-semibold">Security Checkup</DialogTitle>
-          </DialogHeader>
-
-          {/* Shield icon */}
-          <div className="flex justify-center py-2">
-            <div className="relative">
-              <Shield className="w-16 h-16 text-primary" />
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center">
-                <AlertCircle className="w-4 h-4 text-white" />
-              </div>
-            </div>
-          </div>
-
-          <p className="text-center font-semibold text-foreground text-lg">You have 1 recommended action</p>
-
-          {/* Recommended action */}
-          <div className="border rounded-lg border-primary/30 bg-primary/5 overflow-hidden">
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-primary/10 transition-colors text-left">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                <AlertCircle className="w-4 h-4 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground text-sm">Create a passkey</p>
-                <p className="text-xs text-muted-foreground">Securely log in with your fingerprint or face scan instead of a password.</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </button>
-          </div>
-
-          {/* Reviewed items */}
-          <div className="border rounded-lg border-border/50 overflow-hidden divide-y divide-border/50">
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
-              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                <Check className="w-4 h-4 text-green-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground text-sm">Contact info</p>
-                <p className="text-xs text-muted-foreground">Reviewed just now</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
-              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                <Check className="w-4 h-4 text-green-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground text-sm">Password</p>
-                <p className="text-xs text-muted-foreground">Updated recently</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
-              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                <Check className="w-4 h-4 text-green-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground text-sm">Where you're logged in</p>
-                <p className="text-xs text-muted-foreground">Reviewed just now</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </button>
-          </div>
-
-          {/* Additional security steps */}
-          <div className="space-y-2">
-            <p className="font-semibold text-foreground text-sm px-1">Additional security steps</p>
-            <div className="border rounded-lg border-border/50 overflow-hidden">
-              <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                  <Shield className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground text-sm">Two-factor authentication</p>
-                  <p className="text-xs text-muted-foreground">Manage your extra login step.</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {placeholderDialog('login-alerts', 'Login alerts', 'Get notified about unrecognized logins to your account.')}
+      {placeholderDialog('recent-emails', 'Recent emails', 'Review emails recently sent to your account.')}
+      {placeholderDialog('security-checkup', 'Security Checkup', 'Run a comprehensive security check on your account.')}
 
       <div className="space-y-8">
         <div>
