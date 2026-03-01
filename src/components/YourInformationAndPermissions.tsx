@@ -123,8 +123,38 @@ const YourInformationAndPermissions: React.FC = () => {
         );
       case 'activity-outside':
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Manage what data Tone can use from your activity on other websites and apps to personalize your experience.</p>
+          <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              Your activity off Tone technologies includes information that businesses and organizations share with us about your interactions with them such as visiting their apps or websites.
+            </p>
+            <div className="border border-border rounded-lg overflow-hidden">
+              <button className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors">
+                <span className="text-sm text-foreground">Learn more about activity off Tone technologies</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-1">What you can do</h3>
+              <p className="text-xs text-muted-foreground mb-3">You can control or disconnect the information businesses send to Tone.</p>
+              <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+                <button className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors">
+                  <span className="text-sm text-foreground">Recent activity</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors">
+                  <span className="text-sm text-foreground">Disconnect specific activity</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors">
+                  <span className="text-sm text-foreground">Clear previous activity</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors">
+                  <span className="text-sm text-foreground">Manage future activity</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
           </div>
         );
       case 'app-connections':
