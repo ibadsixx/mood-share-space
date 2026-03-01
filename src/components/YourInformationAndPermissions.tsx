@@ -117,6 +117,12 @@ const YourInformationAndPermissions: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-semibold text-foreground mb-1">Your information and permissions</h2>
+        <p className="text-sm text-muted-foreground">To download or transfer a copy of your data, go to Download your data.</p>
+      </div>
+
       {/* Top group */}
       <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
         {topItems.map(renderListItem)}
