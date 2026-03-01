@@ -46,9 +46,30 @@ const PasswordAndSecurity: React.FC = () => {
   const [totpLoading, setTotpLoading] = useState(false);
   const [totpSetupLoading, setTotpSetupLoading] = useState(false);
 
+  // Profile state
+  const [profileData, setProfileData] = useState<{ display_name: string; profile_pic: string | null }>({ display_name: '', profile_pic: null });
+
   useEffect(() => {
-    if (user) checkExistingMFA();
+    if (user) {
+      checkExistingMFA();
+      loadProfile();
+    }
   }, [user]);
+
+  const loadProfile = async () => {
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name, profile_pic')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      if (data) setProfileData({ display_name: data.display_name || '', profile_pic: data.profile_pic });
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
 
   const checkExistingMFA = async () => {
     try {
