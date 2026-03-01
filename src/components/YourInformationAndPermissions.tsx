@@ -114,7 +114,7 @@ const YourInformationAndPermissions: React.FC = () => {
 
   const getSubViewTitle = () => {
     const titles: Record<string, string> = {
-      'download': 'Download your data',
+      'download': 'Export your information',
       'view-data': 'View your data',
       'search-history': 'Search history',
       'activity-outside': 'Your activity outside Tone',
