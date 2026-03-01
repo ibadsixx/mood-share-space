@@ -1,455 +1,151 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { 
-  Download, 
-  Eye, 
-  Search, 
-  Users, 
-  UserPlus,
-  FileDown,
-  Clock,
-  Globe,
-  Shield,
-  Database
-} from 'lucide-react';
+import { ChevronRight, ArrowLeft, Instagram, Facebook } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import YourActivity from './YourActivity';
 
-/**
- * Menu options for the Your Information and Permissions section
- */
-type MenuOption = {
-  id: string;
-  title: string;
-  icon: React.ElementType;
-};
+type SubView = null | 'download' | 'view-data' | 'search-history' | 'activity-outside' | 'app-connections' | 'manage-contacts' | 'identity-verification';
 
-/**
- * Your Information and Permissions Component
- * 
- * Features:
- * - Left-side menu with navigation options
- * - Right-side content that updates based on selected menu option
- * - State management using React hooks
- * - Responsive design with TailwindCSS
- */
 const YourInformationAndPermissions: React.FC = () => {
-  // State to track the currently selected menu option
-  const [selectedOption, setSelectedOption] = useState<string>('export');
+  const [subView, setSubView] = useState<SubView>(null);
 
-  // Menu options configuration
-  const menuOptions: MenuOption[] = [
-    { id: 'export', title: 'Export your information', icon: Download },
-    { id: 'access', title: 'Access your information', icon: Eye },
-    { id: 'search', title: 'Search history', icon: Search },
-    { id: 'activity', title: 'Your activity', icon: Clock },
-    { id: 'partners', title: 'Specific ad partners', icon: Users },
-    { id: 'contacts', title: 'Manage contacts', icon: UserPlus }
+  const topItems = [
+    { id: 'download' as SubView, label: 'Download your data' },
+    { id: 'view-data' as SubView, label: 'View your data' },
+    { id: 'search-history' as SubView, label: 'Search history' },
   ];
 
-  /**
-   * Renders the content for the right side based on the selected menu option
-   */
-  const renderRightContent = () => {
-    switch (selectedOption) {
-      case 'export':
+  const middleItems = [
+    { id: 'activity-outside' as SubView, label: 'Your activity outside Tone', icon: null },
+    { id: 'app-connections' as SubView, label: 'App connections', icon: null },
+    { id: 'manage-contacts' as SubView, label: 'Manage contacts', rightIcon: Instagram },
+    { id: 'identity-verification' as SubView, label: 'Identity verification', rightIcon: Facebook },
+  ];
+
+  const renderListItem = (item: { id: SubView; label: string; icon?: any; rightIcon?: any }) => (
+    <button
+      key={item.id}
+      onClick={() => setSubView(item.id)}
+      className="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-accent/50 transition-colors"
+    >
+      <span className="text-sm text-foreground">{item.label}</span>
+      <div className="flex items-center gap-2">
+        {item.rightIcon && <item.rightIcon className="w-4 h-4 text-muted-foreground" />}
+        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+      </div>
+    </button>
+  );
+
+  const renderSubViewContent = () => {
+    switch (subView) {
+      case 'download':
         return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground mb-2">Export Your Information</h2>
-              <p className="text-muted-foreground">
-                Download a copy of your information from Tone. This includes your profile data, posts, messages, and activity history.
-              </p>
-            </div>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileDown className="w-5 h-5" />
-                  Data Export Options
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Complete Data Archive</p>
-                      <p className="text-sm text-muted-foreground">All your data including posts, messages, and media files</p>
-                    </div>
-                    <Button variant="outline">Export All</Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Profile Information Only</p>
-                      <p className="text-sm text-muted-foreground">Basic profile details and account information</p>
-                    </div>
-                    <Button variant="outline">Export Profile</Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Posts and Media</p>
-                      <p className="text-sm text-muted-foreground">Your posts, photos, and shared content</p>
-                    </div>
-                    <Button variant="outline">Export Posts</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50 bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
-              <CardContent className="p-4">
-                <div className="flex items-start space-x-3">
-                  <Clock className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-blue-800 dark:text-blue-200">Export Timeline</p>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Data exports typically take 24-48 hours to prepare. You'll receive an email when your download is ready.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Request a download of your Tone data. We'll compile your information and notify you when it's ready.</p>
+            <button className="w-full text-left px-4 py-3 border border-border rounded-lg hover:bg-accent/50 transition-colors">
+              <p className="text-sm font-medium">Request download</p>
+              <p className="text-xs text-muted-foreground mt-1">This may take up to 48 hours</p>
+            </button>
           </div>
         );
-
-      case 'access':
+      case 'view-data':
         return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground mb-2">Access Your Information</h2>
-              <p className="text-muted-foreground">
-                View and manage the information associated with your Tone account.
-              </p>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">View the information associated with your Tone account.</p>
+            <div className="space-y-2">
+              {['Profile information', 'Posts & content', 'Messages', 'Activity log'].map(item => (
+                <button key={item} className="w-full flex items-center justify-between px-4 py-3 border border-border rounded-lg hover:bg-accent/50 transition-colors">
+                  <span className="text-sm">{item}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+              ))}
             </div>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="w-5 h-5" />
-                  Your Data Categories
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer">
-                    <h3 className="font-medium mb-2">Profile Information</h3>
-                    <p className="text-sm text-muted-foreground mb-3">Your name, bio, profile picture, and account details</p>
-                    <div className="text-xs text-muted-foreground">Last updated: 2 days ago</div>
-                  </div>
-                  
-                  <div className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer">
-                    <h3 className="font-medium mb-2">Posts & Content</h3>
-                    <p className="text-sm text-muted-foreground mb-3">All your posts, comments, and shared content</p>
-                    <div className="text-xs text-muted-foreground">Last updated: 1 hour ago</div>
-                  </div>
-                  
-                  <div className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer">
-                    <h3 className="font-medium mb-2">Messages</h3>
-                    <p className="text-sm text-muted-foreground mb-3">Your private messages and conversations</p>
-                    <div className="text-xs text-muted-foreground">Last updated: 30 minutes ago</div>
-                  </div>
-                  
-                  <div className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer">
-                    <h3 className="font-medium mb-2">Activity Log</h3>
-                    <p className="text-sm text-muted-foreground mb-3">Your likes, shares, and interactions</p>
-                    <div className="text-xs text-muted-foreground">Last updated: 5 minutes ago</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         );
-
-      case 'search':
+      case 'search-history':
         return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground mb-2">Search History</h2>
-              <p className="text-muted-foreground">
-                Review and manage your search history on Tone.
-              </p>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Review and manage your search history on Tone.</p>
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">No recent searches</p>
             </div>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Search className="w-5 h-5" />
-                  Recent Searches
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium">"photography tips"</p>
-                      <p className="text-xs text-muted-foreground">2 hours ago</p>
-                    </div>
-                    <Button variant="ghost" size="sm">Remove</Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium">"travel destinations"</p>
-                      <p className="text-xs text-muted-foreground">1 day ago</p>
-                    </div>
-                    <Button variant="ghost" size="sm">Remove</Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium">"@john_doe"</p>
-                      <p className="text-xs text-muted-foreground">3 days ago</p>
-                    </div>
-                    <Button variant="ghost" size="sm">Remove</Button>
-                  </div>
-                </div>
-                
-                <div className="pt-4 border-t">
-                  <Button variant="outline" className="w-full">
-                    Clear All Search History
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle>Search Settings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Save Search History</p>
-                      <p className="text-sm text-muted-foreground">Allow Tone to save your searches</p>
-                    </div>
-                    <Button variant="outline" size="sm">Enabled</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         );
-
-      case 'partners':
+      case 'activity-outside':
         return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground mb-2">Specific Ad Partners</h2>
-              <p className="text-muted-foreground">
-                Manage which advertising partners can show you personalized ads.
-              </p>
-            </div>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="w-5 h-5" />
-                  Active Ad Partners
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                        <Globe className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Global Ads Network</p>
-                        <p className="text-sm text-muted-foreground">Personalized ads based on your interests</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">Manage</Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                        <Shield className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Privacy-First Ads</p>
-                        <p className="text-sm text-muted-foreground">Non-tracking advertisement service</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">Manage</Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                        <Users className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Social Commerce</p>
-                        <p className="text-sm text-muted-foreground">Ads from brands you follow</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">Manage</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle>Partner Preferences</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Button variant="outline" className="w-full">
-                    View All Ad Partners
-                  </Button>
-                  <Button variant="outline" className="w-full">
-                    Opt Out of All Personalized Ads
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Manage what data Tone can use from your activity on other websites and apps to personalize your experience.</p>
           </div>
         );
-
-      case 'activity':
-        return <YourActivity />;
-
-      case 'contacts':
+      case 'app-connections':
         return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground mb-2">Manage Contacts</h2>
-              <p className="text-muted-foreground">
-                Control how Tone uses your contacts and manages your connections.
-              </p>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Manage apps and websites connected to your Tone account.</p>
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">No connected apps</p>
             </div>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="w-5 h-5" />
-                  Contact Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Contact Upload</p>
-                      <p className="text-sm text-muted-foreground">Allow Tone to access your device contacts</p>
-                    </div>
-                    <Button variant="outline" size="sm">Disabled</Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Friend Suggestions</p>
-                      <p className="text-sm text-muted-foreground">Get suggestions based on mutual connections</p>
-                    </div>
-                    <Button variant="outline" size="sm">Enabled</Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Contact Sync</p>
-                      <p className="text-sm text-muted-foreground">Sync contacts across your devices</p>
-                    </div>
-                    <Button variant="outline" size="sm">Enabled</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle>Uploaded Contacts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <UserPlus className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">No contacts have been uploaded</p>
-                  <Button variant="outline">Upload Contacts</Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle>Contact Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <Button variant="outline" className="w-full">
-                    Download Contact Data
-                  </Button>
-                  <Button variant="outline" className="w-full text-destructive">
-                    Delete All Uploaded Contacts
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         );
-
+      case 'manage-contacts':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Control how Tone uses your contacts and manages your connections.</p>
+          </div>
+        );
+      case 'identity-verification':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Verify your identity to access additional features on Tone.</p>
+          </div>
+        );
       default:
-        return (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-muted-foreground">Select an option from the menu</p>
-          </div>
-        );
+        return null;
     }
+  };
+
+  const getSubViewTitle = () => {
+    const titles: Record<string, string> = {
+      'download': 'Download your data',
+      'view-data': 'View your data',
+      'search-history': 'Search history',
+      'activity-outside': 'Your activity outside Tone',
+      'app-connections': 'App connections',
+      'manage-contacts': 'Manage contacts',
+      'identity-verification': 'Identity verification',
+    };
+    return subView ? titles[subView] : '';
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground mb-2">Your Information and Permissions</h2>
-        <p className="text-muted-foreground">Control how your data is used and manage your privacy settings.</p>
+      {/* Top group */}
+      <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+        {topItems.map(renderListItem)}
       </div>
 
-      {/* Main content with left menu and right content */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Left Menu */}
-        <div className="lg:col-span-1">
-          <Card className="border-border/50">
-            <CardHeader>
-              <CardTitle className="text-lg">Options</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <nav className="space-y-1">
-                {menuOptions.map((option) => {
-                  const Icon = option.icon;
-                  const isActive = selectedOption === option.id;
-                  
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() => setSelectedOption(option.id)}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 text-left text-sm font-medium transition-all duration-200 rounded-none first:rounded-t-none last:rounded-b-lg ${
-                        isActive
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span>{option.title}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Middle group */}
+      <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+        {middleItems.map(renderListItem)}
+      </div>
 
-        {/* Right Content */}
-        <div className="lg:col-span-3">
-          <div className="transition-all duration-300 ease-in-out">
-            {renderRightContent()}
+      {/* Footer text */}
+      <p className="text-xs text-muted-foreground">
+        Manage what data Tone can use to personalize your experience.
+      </p>
+
+      {/* Sub-view dialog */}
+      <Dialog open={subView !== null} onOpenChange={(open) => !open && setSubView(null)}>
+        <DialogContent className="sm:max-w-[500px] p-0 gap-0">
+          <div className="flex items-center gap-3 p-4 border-b border-border">
+            <button onClick={() => setSubView(null)} className="hover:bg-accent/50 rounded-full p-1 transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-semibold">{getSubViewTitle()}</h2>
           </div>
-        </div>
-      </div>
+          <div className="p-4">
+            {renderSubViewContent()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
