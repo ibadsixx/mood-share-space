@@ -453,7 +453,39 @@ const PasswordAndSecurity: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-      {placeholderDialog('login-alerts', 'Login alerts', 'Get notified about unrecognized logins to your account.')}
+      {/* Login Alerts Dialog */}
+      <Dialog open={subView === 'login-alerts'} onOpenChange={(open) => !open && setSubView('main')}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <button onClick={() => setSubView('main')} className="hover:bg-accent rounded-full p-1 transition-colors">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              Sign-in notifications
+            </DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-muted-foreground">
+            Choose how you'd like to be informed about unfamiliar sign-ins to your accounts.
+          </p>
+
+          <div className="border rounded-lg border-border/50 overflow-hidden divide-y divide-border/50">
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0 relative">
+                <span className="text-sm font-semibold text-foreground">
+                  {user?.email?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground text-sm">{user?.email?.split('@')[0] || 'User'}</p>
+                <p className="text-xs text-muted-foreground">Tone</p>
+                <p className="text-xs text-muted-foreground">In-app alerts, Email</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {placeholderDialog('recent-emails', 'Recent emails', 'Review emails recently sent to your account.')}
       {placeholderDialog('security-checkup', 'Security Checkup', 'Run a comprehensive security check on your account.')}
 
