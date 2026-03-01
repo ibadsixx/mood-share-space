@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronRight, ArrowLeft, Instagram, Facebook } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import YourActivity from './YourActivity';
+import { useProfile } from '@/hooks/useProfile';
 
 type SubView = null | 'download' | 'view-data' | 'search-history' | 'activity-outside' | 'app-connections' | 'manage-contacts' | 'identity-verification';
 
