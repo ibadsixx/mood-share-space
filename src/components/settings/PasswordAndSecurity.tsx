@@ -539,7 +539,91 @@ const PasswordAndSecurity: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-      {placeholderDialog('security-checkup', 'Security Checkup', 'Run a comprehensive security check on your account.')}
+      {/* Security Checkup Dialog */}
+      <Dialog open={subView === 'security-checkup'} onOpenChange={(open) => !open && setSubView('main')}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-semibold">Security Checkup</DialogTitle>
+          </DialogHeader>
+
+          {/* Shield icon */}
+          <div className="flex justify-center py-2">
+            <div className="relative">
+              <Shield className="w-16 h-16 text-primary" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center">
+                <AlertCircle className="w-4 h-4 text-white" />
+              </div>
+            </div>
+          </div>
+
+          <p className="text-center font-semibold text-foreground text-lg">You have 1 recommended action</p>
+
+          {/* Recommended action */}
+          <div className="border rounded-lg border-primary/30 bg-primary/5 overflow-hidden">
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-primary/10 transition-colors text-left">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-sm">Create a passkey</p>
+                <p className="text-xs text-muted-foreground">Securely log in with your fingerprint or face scan instead of a password.</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
+          </div>
+
+          {/* Reviewed items */}
+          <div className="border rounded-lg border-border/50 overflow-hidden divide-y divide-border/50">
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
+              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                <Check className="w-4 h-4 text-green-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-sm">Contact info</p>
+                <p className="text-xs text-muted-foreground">Reviewed just now</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
+              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                <Check className="w-4 h-4 text-green-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-sm">Password</p>
+                <p className="text-xs text-muted-foreground">Updated recently</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
+              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                <Check className="w-4 h-4 text-green-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-sm">Where you're logged in</p>
+                <p className="text-xs text-muted-foreground">Reviewed just now</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
+          </div>
+
+          {/* Additional security steps */}
+          <div className="space-y-2">
+            <p className="font-semibold text-foreground text-sm px-1">Additional security steps</p>
+            <div className="border rounded-lg border-border/50 overflow-hidden">
+              <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <Shield className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground text-sm">Two-factor authentication</p>
+                  <p className="text-xs text-muted-foreground">Manage your extra login step.</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="space-y-8">
         <div>
