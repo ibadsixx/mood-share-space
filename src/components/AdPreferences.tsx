@@ -1,313 +1,216 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Activity, 
-  Bookmark, 
-  Eye, 
-  Target, 
-  Database, 
-  Shield, 
-  Users, 
-  Building2,
-  Info
-} from 'lucide-react';
-
-// Types for the ad preferences options
-type AdOption = {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ElementType;
-};
+import { ChevronRight } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const AdPreferences = () => {
-  // State for active tab
   const [activeTab, setActiveTab] = useState('customize');
-  
-  // State for selected option within each tab
-  const [selectedCustomizeOption, setSelectedCustomizeOption] = useState('activity');
-  const [selectedManageOption, setSelectedManageOption] = useState('categories');
 
-  // Customize ads options
-  const customizeOptions: AdOption[] = [
-    {
-      id: 'activity',
-      title: 'Ad activity',
-      description: 'See and manage your ad activity, including ads you\'ve clicked on and interacted with.',
-      icon: Activity
-    },
-    {
-      id: 'saved',
-      title: 'Ads you saved',
-      description: 'View and manage the advertisements you\'ve saved for later reference.',
-      icon: Bookmark
-    },
-    {
-      id: 'advertisers',
-      title: 'Advertisers you saw ads from',
-      description: 'See a list of advertisers whose ads have been shown to you recently.',
-      icon: Eye
-    },
-    {
-      id: 'topics',
-      title: 'Ad topics',
-      description: 'Manage the topics and categories used to show you relevant advertisements.',
-      icon: Target
-    }
+  // Mock ad activity data
+  const adActivity = [
+    { id: '1', title: 'Summer Collection', advertiser: 'StyleHub', image: '/placeholder.svg' },
+    { id: '2', title: 'New Arrivals', advertiser: 'TrendWear', image: '/placeholder.svg' },
   ];
 
-  // Manage info options
-  const manageOptions: AdOption[] = [
-    {
-      id: 'categories',
-      title: 'Categories used to reach you',
-      description: 'See what categories advertisers use to target ads to you based on your activity.',
-      icon: Target
-    },
-    {
-      id: 'partner-activity',
-      title: 'Activity information from ad partners',
-      description: 'Manage how information from our advertising partners is used to show you ads.',
-      icon: Database
-    },
-    {
-      id: 'audience-based',
-      title: 'Audience-based advertising',
-      description: 'Control how you\'re included in advertising audiences based on your interests.',
-      icon: Users
-    },
-    {
-      id: 'partner-ads',
-      title: 'Ads from ad partners',
-      description: 'Manage advertisements shown to you from our trusted advertising partners.',
-      icon: Building2
-    },
-    {
-      id: 'meta-ads',
-      title: 'Ads about Meta',
-      description: 'Control advertisements about Meta products and services shown to you.',
-      icon: Info
-    },
-    {
-      id: 'social-interactions',
-      title: 'Social interactions',
-      description: 'Manage how your social interactions influence the advertisements you see.',
-      icon: Shield
-    }
+  // Mock saved ads
+  const savedAds = [
+    { id: '1', title: 'Premium Deals', subtitle: 'Best Offers', image: '/placeholder.svg' },
+    { id: '2', title: 'Premium Deals', subtitle: 'Best Offers', image: '/placeholder.svg' },
+    { id: '3', title: 'Creative Studio', subtitle: 'Design Pro', image: '/placeholder.svg' },
+    { id: '4', title: 'Fresh Brands', subtitle: 'Fresh Brands', image: '/placeholder.svg' },
+    { id: '5', title: 'Art Corner', subtitle: 'Art Corner', image: '/placeholder.svg' },
   ];
 
-  // Handle tab change and reset sub-option selection
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    if (value === 'customize') {
-      setSelectedCustomizeOption('activity');
-    } else {
-      setSelectedManageOption('categories');
-    }
-  };
+  // Mock advertisers
+  const advertisers = [
+    { id: '1', name: 'Duolingo', icon: '🟢' },
+    { id: '2', name: 'Canva', icon: '🟣' },
+    { id: '3', name: 'Figma', icon: '🔵' },
+  ];
 
-  // Get current selected option based on active tab
-  const getCurrentOption = () => {
-    if (activeTab === 'customize') {
-      return customizeOptions.find(opt => opt.id === selectedCustomizeOption);
-    } else {
-      return manageOptions.find(opt => opt.id === selectedManageOption);
-    }
-  };
+  // Mock ad topics
+  const adTopics = [
+    { id: '1', name: 'Smartphones', icon: '📱' },
+    { id: '2', name: 'Fitness & gym gear', icon: '💪' },
+    { id: '3', name: 'Apparel', icon: '👕' },
+  ];
 
-  // Get current options list based on active tab
-  const getCurrentOptions = () => {
-    return activeTab === 'customize' ? customizeOptions : manageOptions;
-  };
+  // Mock categories for manage info
+  const reachCategories = [
+    { id: '1', name: 'Shopping habits', icon: '🛒' },
+    { id: '2', name: 'Travel interests', icon: '✈️' },
+    { id: '3', name: 'Tech enthusiast', icon: '💻' },
+  ];
 
-  // Get current selected option ID
-  const getCurrentSelectedOption = () => {
-    return activeTab === 'customize' ? selectedCustomizeOption : selectedManageOption;
-  };
+  const partnerActivity = [
+    { id: '1', name: 'Analytics providers', icon: '📊' },
+    { id: '2', name: 'Marketing platforms', icon: '📢' },
+  ];
 
-  // Handle option selection
-  const handleOptionSelect = (optionId: string) => {
-    if (activeTab === 'customize') {
-      setSelectedCustomizeOption(optionId);
-    } else {
-      setSelectedManageOption(optionId);
-    }
-  };
+  const audienceBased = [
+    { id: '1', name: 'Interest groups', icon: '🎯' },
+    { id: '2', name: 'Behavioral segments', icon: '📈' },
+  ];
 
-  const currentOption = getCurrentOption();
-  const currentOptions = getCurrentOptions();
-  const currentSelectedOption = getCurrentSelectedOption();
+  const SectionHeader = ({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) => (
+    <div className="flex items-center justify-between mb-3">
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      {onSeeAll && (
+        <button className="text-xs font-medium text-primary hover:underline">View all</button>
+      )}
+    </div>
+  );
+
+  const ListItem = ({ name, icon }: { name: string; icon: string }) => (
+    <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+      <div className="flex items-center gap-3">
+        <span className="text-lg">{icon}</span>
+        <span className="text-sm text-foreground">{name}</span>
+      </div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">Ad Preferences</h2>
-        <p className="text-muted-foreground">
-          Manage your advertising preferences and control how ads are personalized for you.
+        <p className="text-sm text-muted-foreground">
+          Take charge of your advertising experience and the data used to display ads to you.
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        {/* Tab Navigation */}
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="customize" className="text-sm font-medium">
-            Customize ads
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="bg-transparent border-b border-border rounded-none w-auto gap-4 h-auto p-0">
+          <TabsTrigger
+            value="customize"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Tailor ads
           </TabsTrigger>
-          <TabsTrigger value="manage" className="text-sm font-medium">
-            Manage info
+          <TabsTrigger
+            value="manage"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium text-muted-foreground"
+          >
+            Handle info
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab Content */}
-        <TabsContent value="customize" className="space-y-0">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Sidebar - Options List */}
-            <Card className="lg:col-span-1 border-border/50">
-              <CardHeader>
-                <CardTitle className="text-lg">Customize Options</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="space-y-1">
-                  {currentOptions.map((option) => {
-                    const Icon = option.icon;
-                    return (
-                      <button
-                        key={option.id}
-                        onClick={() => handleOptionSelect(option.id)}
-                        className={`w-full text-left p-4 rounded-none border-none transition-colors ${
-                          currentSelectedOption === option.id
-                            ? 'bg-primary/10 text-primary border-r-2 border-primary'
-                            : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <Icon className="w-4 h-4 flex-shrink-0" />
-                          <span className="font-medium text-sm">{option.title}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
+        <TabsContent value="customize" className="mt-6 space-y-6">
+          {/* Ad activity */}
+          <div>
+            <SectionHeader title="Ad interactions" onSeeAll={() => {}} />
+            <div className="grid grid-cols-2 gap-3">
+              {adActivity.map((ad) => (
+                <div key={ad.id} className="rounded-lg overflow-hidden border border-border/50 bg-muted/20">
+                  <div className="aspect-video bg-muted/50 relative">
+                    <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-2">
+                    <p className="text-xs text-muted-foreground truncate">{ad.advertiser}</p>
+                    <button className="w-full mt-1.5 text-xs font-medium text-primary-foreground bg-primary rounded-md py-1.5 hover:bg-primary/90 transition-colors">
+                      Ad info
+                    </button>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
+          </div>
 
-            {/* Right Content Area */}
-            <Card className="lg:col-span-2 border-border/50">
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  {currentOption && (
-                    <>
-                      <currentOption.icon className="w-5 h-5 text-primary" />
-                      <CardTitle className="text-xl">{currentOption.title}</CardTitle>
-                    </>
-                  )}
+          <Separator />
+
+          {/* Saved ads */}
+          <div>
+            <SectionHeader title="Bookmarked ads" onSeeAll={() => {}} />
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {savedAds.map((ad) => (
+                <div key={ad.id} className="flex-shrink-0 w-20">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted/50 border border-border/50">
+                    <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
+                  </div>
+                  <p className="text-[10px] text-foreground mt-1 truncate">{ad.title}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{ad.subtitle}</p>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {currentOption && (
-                  <>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {currentOption.description}
-                    </p>
-                    
-                    {/* Placeholder content area */}
-                    <div className="space-y-4 pt-4">
-                      <div className="p-6 bg-muted/30 rounded-lg border border-dashed border-border">
-                        <div className="text-center space-y-2">
-                          <div className="w-12 h-12 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                            <currentOption.icon className="w-6 h-6 text-primary" />
-                          </div>
-                          <h3 className="font-medium text-foreground">Content Area</h3>
-                          <p className="text-sm text-muted-foreground">
-                            This section will display {currentOption.title.toLowerCase()} settings and options.
-                          </p>
-                          <Badge variant="secondary" className="mt-2">
-                            Coming Soon
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Advertisers */}
+          <div>
+            <SectionHeader title="Brands that showed you ads" onSeeAll={() => {}} />
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+              {advertisers.map((adv, i) => (
+                <React.Fragment key={adv.id}>
+                  <ListItem name={adv.name} icon={adv.icon} />
+                  {i < advertisers.length - 1 && <Separator />}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Ad topics */}
+          <div>
+            <SectionHeader title="Ad subjects" onSeeAll={() => {}} />
+            <div className="rounded-xl overflow-hidden bg-accent/30 border border-border/50 mb-3 p-6 flex items-center justify-center">
+              <p className="text-xs text-muted-foreground">Browse ad subjects and explore what you'd like to see more of.</p>
+            </div>
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+              {adTopics.map((topic, i) => (
+                <React.Fragment key={topic.id}>
+                  <ListItem name={topic.name} icon={topic.icon} />
+                  {i < adTopics.length - 1 && <Separator />}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="manage" className="space-y-0">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Sidebar - Options List */}
-            <Card className="lg:col-span-1 border-border/50">
-              <CardHeader>
-                <CardTitle className="text-lg">Manage Options</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="space-y-1">
-                  {currentOptions.map((option) => {
-                    const Icon = option.icon;
-                    return (
-                      <button
-                        key={option.id}
-                        onClick={() => handleOptionSelect(option.id)}
-                        className={`w-full text-left p-4 rounded-none border-none transition-colors ${
-                          currentSelectedOption === option.id
-                            ? 'bg-primary/10 text-primary border-r-2 border-primary'
-                            : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <Icon className="w-4 h-4 flex-shrink-0" />
-                          <span className="font-medium text-sm">{option.title}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+        <TabsContent value="manage" className="mt-6 space-y-6">
+          {/* Categories */}
+          <div>
+            <SectionHeader title="Segments used to target you" onSeeAll={() => {}} />
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+              {reachCategories.map((cat, i) => (
+                <React.Fragment key={cat.id}>
+                  <ListItem name={cat.name} icon={cat.icon} />
+                  {i < reachCategories.length - 1 && <Separator />}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
 
-            {/* Right Content Area */}
-            <Card className="lg:col-span-2 border-border/50">
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  {currentOption && (
-                    <>
-                      <currentOption.icon className="w-5 h-5 text-primary" />
-                      <CardTitle className="text-xl">{currentOption.title}</CardTitle>
-                    </>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {currentOption && (
-                  <>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {currentOption.description}
-                    </p>
-                    
-                    {/* Placeholder content area */}
-                    <div className="space-y-4 pt-4">
-                      <div className="p-6 bg-muted/30 rounded-lg border border-dashed border-border">
-                        <div className="text-center space-y-2">
-                          <div className="w-12 h-12 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                            <currentOption.icon className="w-6 h-6 text-primary" />
-                          </div>
-                          <h3 className="font-medium text-foreground">Content Area</h3>
-                          <p className="text-sm text-muted-foreground">
-                            This section will display {currentOption.title.toLowerCase()} settings and options.
-                          </p>
-                          <Badge variant="secondary" className="mt-2">
-                            Coming Soon
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+          <Separator />
+
+          {/* Partner activity */}
+          <div>
+            <SectionHeader title="Data from advertising partners" onSeeAll={() => {}} />
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+              {partnerActivity.map((item, i) => (
+                <React.Fragment key={item.id}>
+                  <ListItem name={item.name} icon={item.icon} />
+                  {i < partnerActivity.length - 1 && <Separator />}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Audience-based */}
+          <div>
+            <SectionHeader title="Interest-driven advertising" onSeeAll={() => {}} />
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+              {audienceBased.map((item, i) => (
+                <React.Fragment key={item.id}>
+                  <ListItem name={item.name} icon={item.icon} />
+                  {i < audienceBased.length - 1 && <Separator />}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
         </TabsContent>
       </Tabs>
