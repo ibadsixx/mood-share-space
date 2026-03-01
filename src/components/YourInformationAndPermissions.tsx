@@ -39,12 +39,22 @@ const YourInformationAndPermissions: React.FC = () => {
     switch (subView) {
       case 'download':
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Request a download of your Tone data. We'll compile your information and notify you when it's ready.</p>
-            <button className="w-full text-left px-4 py-3 border border-border rounded-lg hover:bg-accent/50 transition-colors">
-              <p className="text-sm font-medium">Request download</p>
-              <p className="text-xs text-muted-foreground mt-1">This may take up to 48 hours</p>
+          <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              You can export a copy of your information to an external service, or export it to your device. Available information includes content and info you've shared, your activity and info we collect.
+            </p>
+            <button className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors">
+              Create export
             </button>
+            <div className="border-b border-border">
+              <div className="flex">
+                <button className="flex-1 pb-2 text-sm font-semibold border-b-2 border-primary text-foreground">Current activity</button>
+                <button className="flex-1 pb-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Past activity</button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Your export won't include information that someone else shared, such as another person's photos you're tagged in. <span className="text-primary cursor-pointer hover:underline">Learn more</span>
+            </p>
           </div>
         );
       case 'view-data':
@@ -104,7 +114,7 @@ const YourInformationAndPermissions: React.FC = () => {
 
   const getSubViewTitle = () => {
     const titles: Record<string, string> = {
-      'download': 'Download your data',
+      'download': 'Export your information',
       'view-data': 'View your data',
       'search-history': 'Search history',
       'activity-outside': 'Your activity outside Tone',
