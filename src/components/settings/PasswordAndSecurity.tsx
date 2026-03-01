@@ -461,11 +461,12 @@ const PasswordAndSecurity: React.FC = () => {
             <p className="text-sm font-semibold text-foreground px-1">Accounts</p>
             <div className="border rounded-lg border-border/50 overflow-hidden divide-y divide-border/50">
               <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent/50 transition-colors text-left">
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                  <Smartphone className="w-5 h-5 text-muted-foreground" />
-                </div>
+                <Avatar className="w-10 h-10 shrink-0">
+                  <AvatarImage src={profileData.profile_pic || '/default-avatar.png'} alt={profileData.display_name} />
+                  <AvatarFallback>{profileData.display_name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground text-sm">{user?.email?.split('@')[0] || 'User'}</p>
+                  <p className="font-medium text-foreground text-sm">{profileData.display_name || user?.email?.split('@')[0] || 'User'}</p>
                   <p className="text-xs text-muted-foreground">Windows PC</p>
                   <p className="text-xs text-muted-foreground">+ 3 more</p>
                 </div>
