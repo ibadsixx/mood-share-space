@@ -523,73 +523,7 @@ const Settings = () => {
         return <PrivacyCheckup />;
 
       case 'activity':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground mb-2">Your Activity</h2>
-              <p className="text-muted-foreground">View and manage your recent activity on Tone.</p>
-            </div>
-            
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="text-lg">Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Posted a new update</p>
-                      <p className="text-xs text-muted-foreground">2 hours ago</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
-                    <Check className="w-4 h-4 text-blue-500" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Liked Sarah's photo</p>
-                      <p className="text-xs text-muted-foreground">4 hours ago</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
-                    <Check className="w-4 h-4 text-purple-500" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Updated profile information</p>
-                      <p className="text-xs text-muted-foreground">1 day ago</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
-                    <Check className="w-4 h-4 text-orange-500" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Joined the Photography group</p>
-                      <p className="text-xs text-muted-foreground">3 days ago</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <Button variant="outline" className="w-full">
-                  Load More Activity
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="text-lg">Activity Controls</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button variant="outline" className="w-full">
-                  Download Activity Data
-                </Button>
-                <Button variant="outline" className="w-full text-destructive">
-                  Clear Activity History
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        );
+        return <YourActivity />;
 
       case 'blocked':
         return <BlockedUsersManager />;
