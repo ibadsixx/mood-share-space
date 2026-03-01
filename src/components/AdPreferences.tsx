@@ -170,47 +170,115 @@ const AdPreferences = () => {
         </TabsContent>
 
         <TabsContent value="manage" className="mt-6 space-y-6">
-          {/* Categories */}
+          {/* Data used to display ads */}
           <div>
-            <SectionHeader title="Segments used to target you" onSeeAll={() => {}} />
+            <h3 className="text-sm font-semibold text-foreground mb-3">Data utilized to present ads</h3>
             <div className="rounded-lg border border-border/50 overflow-hidden">
-              {reachCategories.map((cat, i) => (
-                <React.Fragment key={cat.id}>
-                  <ListItem name={cat.name} icon={cat.icon} />
-                  {i < reachCategories.length - 1 && <Separator />}
-                </React.Fragment>
-              ))}
+              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Segments applied to find you</p>
+                  <p className="text-xs text-muted-foreground">Details you share on your profile or other segments applied to find you.</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Engagement data from ad collaborators</p>
+                  <p className="text-xs text-muted-foreground">Decide whether we leverage this to present ads that are more aligned to you.</p>
+                  <p className="text-xs text-primary font-medium mt-0.5">Leveraging this data</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Interest-driven promotion</p>
+                  <p className="text-xs text-muted-foreground">Promoters leveraging your engagement or details</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
+              </div>
             </div>
           </div>
 
           <Separator />
 
-          {/* Partner activity */}
+          {/* Ads beyond the platform */}
           <div>
-            <SectionHeader title="Data from advertising partners" onSeeAll={() => {}} />
+            <h3 className="text-sm font-semibold text-foreground mb-3">Ads beyond the platform</h3>
             <div className="rounded-lg border border-border/50 overflow-hidden">
-              {partnerActivity.map((item, i) => (
-                <React.Fragment key={item.id}>
-                  <ListItem name={item.name} icon={item.icon} />
-                  {i < partnerActivity.length - 1 && <Separator />}
-                </React.Fragment>
-              ))}
+              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Ads in external apps</p>
+                  <p className="text-xs text-muted-foreground">Decide whether you view ads from the Audience Network in external apps.</p>
+                  <p className="text-xs text-primary font-medium mt-0.5">Displaying ads in external apps</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Ads regarding the platform</p>
+                  <p className="text-xs text-muted-foreground">Decide whether we leverage your engagement to display ads about the platform on other services.</p>
+                  <p className="text-xs text-primary font-medium mt-0.5">Leveraging this data</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
+              </div>
             </div>
           </div>
 
           <Separator />
 
-          {/* Audience-based */}
+          {/* Other settings */}
           <div>
-            <SectionHeader title="Interest-driven advertising" onSeeAll={() => {}} />
+            <h3 className="text-sm font-semibold text-foreground mb-3">Additional preferences</h3>
             <div className="rounded-lg border border-border/50 overflow-hidden">
-              {audienceBased.map((item, i) => (
-                <React.Fragment key={item.id}>
-                  <ListItem name={item.name} icon={item.icon} />
-                  {i < audienceBased.length - 1 && <Separator />}
-                </React.Fragment>
-              ))}
+              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Social engagements</p>
+                  <p className="text-xs text-muted-foreground">Decide who can view your social engagements alongside ads.</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
+              </div>
             </div>
+          </div>
+
+          <Separator />
+
+          {/* Learn more about ads privacy */}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-1">Discover more about ads privacy</h3>
+            <p className="text-xs text-muted-foreground mb-3">Explore what data is leveraged to present ads, and how you can manage your privacy.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-border/50 p-4 flex flex-col justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">What data is leveraged to present ads?</p>
+                  <p className="text-xs text-muted-foreground mt-1">We present ads based on your details and engagement. You have the ability to manage these preferences.</p>
+                </div>
+                <button className="w-full mt-3 text-xs font-medium text-primary-foreground bg-primary rounded-md py-2 hover:bg-primary/90 transition-colors">
+                  More details
+                </button>
+              </div>
+              <div className="rounded-lg border border-border/50 p-4 flex flex-col justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Do we sell your data?</p>
+                  <p className="text-xs text-muted-foreground mt-1">No. We never sell your personal data.</p>
+                </div>
+                <button className="w-full mt-3 text-xs font-medium text-primary-foreground bg-primary rounded-md py-2 hover:bg-primary/90 transition-colors">
+                  More details
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer links */}
+          <div className="space-y-2">
+            <button className="w-full text-xs font-medium text-muted-foreground border border-border/50 rounded-lg py-2.5 hover:bg-muted/40 transition-colors">
+              Discover more in Privacy Center
+            </button>
+            <button className="w-full text-xs font-medium text-muted-foreground border border-border/50 rounded-lg py-2.5 hover:bg-muted/40 transition-colors">
+              Discover more about Platform Ads
+            </button>
           </div>
         </TabsContent>
       </Tabs>
