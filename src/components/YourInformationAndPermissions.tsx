@@ -8,6 +8,7 @@ type SubView = null | 'download' | 'view-data' | 'search-history' | 'activity-ou
 
 const YourInformationAndPermissions: React.FC = () => {
   const [subView, setSubView] = useState<SubView>(null);
+  const { profile } = useProfile();
 
   const topItems = [
     { id: 'download' as SubView, label: 'Download your data' },
