@@ -159,10 +159,27 @@ const YourInformationAndPermissions: React.FC = () => {
         );
       case 'app-connections':
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Manage apps and websites connected to your Tone account.</p>
-            <div className="text-center py-8">
-              <p className="text-sm text-muted-foreground">No connected apps</p>
+          <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              App connections allow you to do things across Tone products and other businesses.
+            </p>
+            <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+              {[
+                { name: 'Google Calendar', icon: '📅' },
+                { name: 'Outlook.com Calendar', icon: '📆' },
+                { name: 'Outlook.com Mail', icon: '📧' },
+                { name: 'Gmail', icon: '✉️' },
+              ].map((app) => (
+                <div key={app.name} className="flex items-center justify-between px-4 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">{app.icon}</span>
+                    <span className="text-sm text-foreground">{app.name}</span>
+                  </div>
+                  <button className="px-4 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
+                    Connect
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         );
