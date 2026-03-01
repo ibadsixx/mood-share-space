@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ChevronRight, ArrowLeft, Shield, Key, Smartphone, LogIn, Bell, Mail, ShieldCheck, Loader2, Eye, EyeOff, Check, Copy, AlertCircle, Save } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -45,9 +46,30 @@ const PasswordAndSecurity: React.FC = () => {
   const [totpLoading, setTotpLoading] = useState(false);
   const [totpSetupLoading, setTotpSetupLoading] = useState(false);
 
+  // Profile state
+  const [profileData, setProfileData] = useState<{ display_name: string; profile_pic: string | null }>({ display_name: '', profile_pic: null });
+
   useEffect(() => {
-    if (user) checkExistingMFA();
+    if (user) {
+      checkExistingMFA();
+      loadProfile();
+    }
   }, [user]);
+
+  const loadProfile = async () => {
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name, profile_pic')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      if (data) setProfileData({ display_name: data.display_name || '', profile_pic: data.profile_pic });
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
 
   const checkExistingMFA = async () => {
     try {
@@ -471,13 +493,12 @@ const PasswordAndSecurity: React.FC = () => {
 
           <div className="border rounded-lg border-border/50 overflow-hidden divide-y divide-border/50">
             <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-accent/50 transition-colors text-left">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0 relative">
-                <span className="text-sm font-semibold text-foreground">
-                  {user?.email?.charAt(0).toUpperCase() || 'U'}
-                </span>
-              </div>
+              <Avatar className="w-10 h-10 shrink-0">
+                <AvatarImage src={profileData.profile_pic || '/default-avatar.png'} alt={profileData.display_name} />
+                <AvatarFallback>{profileData.display_name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+              </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm">{user?.email?.split('@')[0] || 'User'}</p>
+                <p className="font-medium text-foreground text-sm">{profileData.display_name || user?.email?.split('@')[0] || 'User'}</p>
                 <p className="text-xs text-muted-foreground">Tone</p>
                 <p className="text-xs text-muted-foreground">In-app alerts, Email</p>
               </div>
