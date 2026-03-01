@@ -44,6 +44,7 @@ import BlockedUsersManager from '@/components/BlockedUsersManager';
 import { AdminReportsManager } from '@/components/AdminReportsManager';
 import { useHashtagNotificationSettings } from '@/hooks/useHashtagNotificationSettings';
 import NotificationSettings from '@/components/NotificationSettings';
+import YourActivity from '@/components/YourActivity';
 
 // Define types for the sidebar menu and form data
 type SidebarOption = {
