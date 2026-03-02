@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { UserX, Users } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -20,17 +20,62 @@ interface BlockedUser {
   };
 }
 
+interface BlockingSection {
+  id: string;
+  title: string;
+  description: string;
+}
+
+const blockingSections: BlockingSection[] = [
+  {
+    id: 'restricted',
+    title: 'Restricted roster',
+    description:
+      'When you place someone\'s account on your Restricted roster, they won\'t view publications you share exclusively with Companions. They might still glimpse items you share as Public or on a mutual companion\'s profile, and posts where their account is tagged. You won\'t alert your companions when you place them on your Restricted roster.',
+  },
+  {
+    id: 'block-profiles',
+    title: 'Restrict profiles and Pages',
+    description:
+      'Once you restrict a profile or Page, you can no longer engage with each other\'s profiles, publications, remarks, or correspondence. This doesn\'t encompass applications, games, or communities you both participate in. If you\'re currently linked to that profile or Page, restricting it will remove the connection, unlike, and unfollow it.',
+  },
+  {
+    id: 'blocked-aliases',
+    title: 'Restricted aliases',
+    description:
+      'They can\'t tag you or engage with your content. In some situations, they may still be able to view your content. Restricting may not prevent all communications or engagements.',
+  },
+  {
+    id: 'block-messages',
+    title: 'Restrict correspondence',
+    description:
+      'If you restrict someone\'s profile, they won\'t be able to reach you in Messenger either. Unless you restrict someone\'s profile and any others they may establish, they may be able to publish on your timeline, tag you, and remark on your publications or remarks.',
+  },
+  {
+    id: 'block-app-invites',
+    title: 'Restrict application invitations',
+    description:
+      'Once you restrict application invitations from someone\'s profile, you\'ll automatically disregard future application requests from that individual\'s profile. To restrict invitations from a specific companion\'s profile, click the "Disregard All Invitations From This Profile" link under your latest request.',
+  },
+  {
+    id: 'block-event-invites',
+    title: 'Restrict occasion invitations',
+    description:
+      'Once you restrict occasion invitations from someone\'s profile, you\'ll automatically disregard future occasion requests from that profile.',
+  },
+];
+
 const BlockedUsersManager = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   const fetchBlockedUsers = async () => {
     if (!user?.id) return;
 
     try {
-      // First get the blocks
       const { data: blocks, error: blocksError } = await supabase
         .from('blocks')
         .select('id, blocked_id, created_at')
@@ -44,7 +89,6 @@ const BlockedUsersManager = () => {
         return;
       }
 
-      // Then get the profile information for blocked users
       const blockedIds = blocks.map(block => block.blocked_id);
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
@@ -53,7 +97,6 @@ const BlockedUsersManager = () => {
 
       if (profilesError) throw profilesError;
 
-      // Combine the data
       const combinedData = blocks.map(block => {
         const profile = profiles?.find(p => p.id === block.blocked_id);
         return {
@@ -62,8 +105,8 @@ const BlockedUsersManager = () => {
             id: block.blocked_id,
             username: 'unknown',
             display_name: 'Unknown User',
-            profile_pic: null
-          }
+            profile_pic: null,
+          },
         };
       });
 
@@ -72,8 +115,8 @@ const BlockedUsersManager = () => {
       console.error('Error fetching blocked users:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load blocked users',
-        variant: 'destructive'
+        description: 'Failed to load restricted users',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -90,15 +133,15 @@ const BlockedUsersManager = () => {
       if (error) throw error;
 
       setBlockedUsers(prev => prev.filter(block => block.id !== blockId));
-      
+
       toast({
-        title: 'User unblocked',
-        description: `@${username} has been unblocked successfully.`,
+        title: 'User unrestricted',
+        description: `@${username} has been unrestricted successfully.`,
       });
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to unblock user.',
+        description: 'Failed to unrestrict user.',
         variant: 'destructive',
       });
     }
@@ -108,93 +151,103 @@ const BlockedUsersManager = () => {
     fetchBlockedUsers();
   }, [user?.id]);
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserX className="h-5 w-5" />
-            Blocked Users
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-4 text-muted-foreground">
-            Loading blocked users...
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const toggleSection = (sectionId: string) => {
+    setExpandedSection(prev => (prev === sectionId ? null : sectionId));
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserX className="h-5 w-5 text-destructive" />
-          Blocked Users
-        </CardTitle>
-        <CardDescription>
-          Manage users you have blocked. Blocked users cannot see your profile, posts, or interact with you.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {blockedUsers.length === 0 ? (
-          <div className="text-center py-8">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">No blocked users</h3>
-            <p className="text-muted-foreground">You haven't blocked anyone yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <AnimatePresence>
-              {blockedUsers.map((block) => (
-                <motion.div
-                  key={block.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex items-center justify-between p-4 border border-border rounded-lg bg-card/50"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={block.blocked_user.profile_pic || undefined} />
-                      <AvatarFallback className="bg-muted">
-                        {block.blocked_user.display_name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {block.blocked_user.display_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        @{block.blocked_user.username}
-                      </p>
-                    </div>
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold text-foreground">Blocking</h2>
+
+      <Card className="border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-foreground">
+            Manage Blocking
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {blockingSections.map((section, index) => (
+            <div key={section.id}>
+              {index > 0 && <Separator />}
+              <div className="px-6 py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-foreground mb-1">
+                      {section.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {section.description}
+                      {(section.id === 'restricted' || section.id === 'block-messages') && (
+                        <span className="text-primary hover:underline cursor-pointer ml-1">
+                          Learn more
+                        </span>
+                      )}
+                    </p>
+
+                    {/* Show blocked users list for the block-profiles section */}
+                    {section.id === 'block-profiles' && expandedSection === 'block-profiles' && (
+                      <div className="mt-3 space-y-2">
+                        {loading ? (
+                          <p className="text-xs text-muted-foreground">Loading restricted users...</p>
+                        ) : blockedUsers.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">You haven't restricted anyone yet.</p>
+                        ) : (
+                          <AnimatePresence>
+                            {blockedUsers.map(block => (
+                              <motion.div
+                                key={block.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2 }}
+                                className="flex items-center justify-between py-2"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage src={block.blocked_user.profile_pic || undefined} />
+                                    <AvatarFallback className="bg-muted text-xs">
+                                      {block.blocked_user.display_name.charAt(0).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="text-sm font-medium text-foreground">
+                                      {block.blocked_user.display_name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      @{block.blocked_user.username}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => unblockUser(block.id, block.blocked_user.username)}
+                                  className="text-xs hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
+                                >
+                                  Unrestrict
+                                </Button>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">
-                        Blocked {new Date(block.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => unblockUser(block.id, block.blocked_user.username)}
-                      className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
-                    >
-                      Unblock
-                    </Button>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0 text-xs font-medium"
+                    onClick={() => toggleSection(section.id)}
+                  >
+                    Edit
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
