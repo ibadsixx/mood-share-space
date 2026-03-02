@@ -1,70 +1,55 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChevronRight, Bell, MessageCircle, Users, Heart, Share2, AtSign, Hash, Video, Image, Calendar, Shield, Volume2, Mail } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { useHashtagNotificationSettings } from '@/hooks/useHashtagNotificationSettings';
-import { Hash, Bell } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+
+const notificationItems = [
+  { id: 'remarks', icon: <MessageCircle className="h-5 w-5" />, label: 'Remarks on your posts' },
+  { id: 'tags', icon: <AtSign className="h-5 w-5" />, label: 'Tags and references' },
+  { id: 'responses', icon: <MessageCircle className="h-5 w-5" />, label: 'Responses to your remarks' },
+  { id: 'companions', icon: <Users className="h-5 w-5" />, label: 'Companion requests and approvals' },
+  { id: 'appreciations', icon: <Heart className="h-5 w-5" />, label: 'Appreciations and reactions' },
+  { id: 'reshares', icon: <Share2 className="h-5 w-5" />, label: 'Reshares of your content' },
+  { id: 'broadcasts', icon: <Video className="h-5 w-5" />, label: 'Live broadcast alerts' },
+  { id: 'memories', icon: <Image className="h-5 w-5" />, label: 'Photo and memory reminders' },
+  { id: 'occasions', icon: <Calendar className="h-5 w-5" />, label: 'Upcoming occasions' },
+  { id: 'account-safety', icon: <Shield className="h-5 w-5" />, label: 'Account safety notices' },
+  { id: 'sounds', icon: <Volume2 className="h-5 w-5" />, label: 'In-application sounds' },
+  { id: 'electronic-mail', icon: <Mail className="h-5 w-5" />, label: 'Electronic mail notifications' },
+];
 
 export default function NotificationSettings() {
   const { enabled, loading, toggleNotifications } = useHashtagNotificationSettings();
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-semibold text-foreground mb-2">Notification Settings</h2>
-          <p className="text-muted-foreground">Control when and how you receive notifications.</p>
-        </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-48" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-10 w-full" />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground mb-2">Notification Settings</h2>
-        <p className="text-muted-foreground">Control when and how you receive notifications.</p>
+    <div className="space-y-4">
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold text-foreground mb-1">Alert Preferences</h2>
+        <p className="text-muted-foreground text-sm">Manage when and how you receive alerts and updates.</p>
       </div>
 
-      <Card className="border-border/50">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">General Notifications</CardTitle>
-          </div>
-          <CardDescription>
-            Manage your notification preferences for various activities
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between space-x-4 p-4 rounded-lg bg-muted/30">
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-2">
-                <Hash className="h-4 w-4 text-primary" />
-                <Label htmlFor="hashtag-notifications" className="font-medium cursor-pointer">
-                  Hashtag Notifications
-                </Label>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Get notified when someone uses a hashtag you're following
-              </p>
-            </div>
-            <Switch
-              id="hashtag-notifications"
-              checked={enabled}
-              onCheckedChange={toggleNotifications}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="divide-y divide-border rounded-xl overflow-hidden bg-card border border-border/50">
+        {/* Hashtag toggle row */}
+        <div className="flex items-center gap-4 px-4 py-3.5 hover:bg-muted/50 transition-colors">
+          <span className="text-primary"><Hash className="h-5 w-5" /></span>
+          <span className="flex-1 text-sm font-medium text-primary">Hashtag alerts</span>
+          <Switch
+            checked={enabled}
+            onCheckedChange={toggleNotifications}
+            disabled={loading}
+          />
+        </div>
+
+        {notificationItems.map((item) => (
+          <button
+            key={item.id}
+            className="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-muted/50 transition-colors"
+          >
+            <span className="text-primary">{item.icon}</span>
+            <span className="flex-1 text-sm font-medium text-primary">{item.label}</span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
