@@ -115,7 +115,7 @@ const BlockedUsersManager = () => {
       console.error('Error fetching blocked users:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load restricted users',
+        description: 'Failed to load blocked users',
         variant: 'destructive',
       });
     } finally {
@@ -135,13 +135,13 @@ const BlockedUsersManager = () => {
       setBlockedUsers(prev => prev.filter(block => block.id !== blockId));
 
       toast({
-        title: 'User unrestricted',
-        description: `@${username} has been unrestricted successfully.`,
+        title: 'User unblocked',
+        description: `@${username} has been unblocked successfully.`,
       });
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to unrestrict user.',
+        description: 'Failed to unblock user.',
         variant: 'destructive',
       });
     }
@@ -188,9 +188,9 @@ const BlockedUsersManager = () => {
                     {section.id === 'block-profiles' && expandedSection === 'block-profiles' && (
                       <div className="mt-3 space-y-2">
                         {loading ? (
-                          <p className="text-xs text-muted-foreground">Loading restricted users...</p>
+                          <p className="text-xs text-muted-foreground">Loading blocked users...</p>
                         ) : blockedUsers.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">You haven't restricted anyone yet.</p>
+                          <p className="text-xs text-muted-foreground">You haven't blocked anyone yet.</p>
                         ) : (
                           <AnimatePresence>
                             {blockedUsers.map(block => (
@@ -224,7 +224,7 @@ const BlockedUsersManager = () => {
                                   onClick={() => unblockUser(block.id, block.blocked_user.username)}
                                   className="text-xs hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
                                 >
-                                  Unrestrict
+                                  Unblock
                                 </Button>
                               </motion.div>
                             ))}
