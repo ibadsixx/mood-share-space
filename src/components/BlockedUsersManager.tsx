@@ -31,9 +31,9 @@ interface BlockingSection {
 const blockingSections: BlockingSection[] = [
   {
     id: 'restricted',
-    title: 'Blocked roster',
+    title: 'Restricted roster',
     description:
-      'When you place someone\'s account on your Blocked roster, they won\'t view publications you share exclusively with Companions. They might still glimpse items you share as Public or on a mutual companion\'s profile, and posts where their account is tagged. You won\'t alert your companions when you place them on your Blocked roster.',
+      'When you place someone\'s profile on your Restricted roster, they won\'t view publications you share exclusively with Companions. They might still glimpse items you share as Public or on a mutual companion\'s profile, and posts where their profile is tagged. You won\'t alert your companions when you place them on your Restricted roster.',
   },
   {
     id: 'block-profiles',
