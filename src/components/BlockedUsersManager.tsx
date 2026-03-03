@@ -241,7 +241,13 @@ const BlockedUsersManager = () => {
                     variant="secondary"
                     size="sm"
                     className="shrink-0 text-xs font-medium"
-                    onClick={() => toggleSection(section.id)}
+                    onClick={() => {
+                      if (section.id === 'restricted') {
+                        setRestrictedDialogOpen(true);
+                      } else {
+                        toggleSection(section.id);
+                      }
+                    }}
                   >
                     Edit
                   </Button>
@@ -251,6 +257,105 @@ const BlockedUsersManager = () => {
           ))}
         </CardContent>
       </Card>
+
+      {/* Restricted Roster Dialog */}
+      <Dialog open={restrictedDialogOpen} onOpenChange={(open) => {
+        setRestrictedDialogOpen(open);
+        if (!open) setShowRestrictedList(false);
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-semibold">
+              Restricted roster
+            </DialogTitle>
+          </DialogHeader>
+          
+          {!showRestrictedList ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                When you place someone's profile on your Restricted roster, they won't view publications you share exclusively with Companions. They might still glimpse items you share as Public or on a mutual companion's profile, and posts where their profile is tagged. You won't alert your companions when you place them on your Restricted roster.
+              </p>
+              
+              <div className="mt-4 space-y-1">
+                <button
+                  className="flex items-center gap-3 w-full px-3 py-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  onClick={() => {
+                    toast({
+                      title: 'Coming soon',
+                      description: 'Adding to the restricted roster will be available shortly.',
+                    });
+                  }}
+                >
+                  <PlusCircle className="h-6 w-6 text-primary" />
+                  <span className="text-sm font-medium text-primary">Append to restricted roster</span>
+                </button>
+                
+                <button
+                  className="flex items-center gap-3 w-full px-3 py-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  onClick={() => setShowRestrictedList(true)}
+                >
+                  <User className="h-6 w-6 text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground">View your restricted roster</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => setShowRestrictedList(false)}
+              >
+                ← Back
+              </Button>
+              {loading ? (
+                <p className="text-xs text-muted-foreground">Loading restricted roster...</p>
+              ) : blockedUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Your restricted roster is empty.</p>
+              ) : (
+                <AnimatePresence>
+                  {blockedUsers.map(block => (
+                    <motion.div
+                      key={block.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center justify-between py-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={block.blocked_user.profile_pic || undefined} />
+                          <AvatarFallback className="bg-muted text-xs">
+                            {block.blocked_user.display_name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {block.blocked_user.display_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            @{block.blocked_user.username}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => unblockUser(block.id, block.blocked_user.username)}
+                        className="text-xs hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
+                      >
+                        Remove
+                      </Button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
