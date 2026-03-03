@@ -37,6 +37,19 @@ const AdPreferences = () => {
     }
   };
 
+  const removeAssociatedCategory = async (categoryId: string) => {
+    const { error } = await supabase
+      .from('ad_associated_categories')
+      .delete()
+      .eq('id', categoryId);
+    if (error) {
+      toast.error('Failed to dismiss category');
+    } else {
+      toast.success('Category dismissed');
+      queryClient.invalidateQueries({ queryKey: ['ad-associated-categories'] });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
