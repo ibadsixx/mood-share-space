@@ -190,9 +190,10 @@ const AdPreferences = () => {
                 <h3 className="text-sm font-semibold text-primary">Information used to display your ads</h3>
                 <div className="border border-border rounded-lg divide-y divide-border">
                   <RowItem
-                    title="Categories used to reach you"
-                    description="Details you share on your profile or other classifications used to reach you."
+                    title="Categories utilized to target you"
+                    description="Information you provide on your profile or other classifications employed to target you."
                     titleColor="text-green-400"
+                    onClick={() => setShowCategoriesDialog(true)}
                   />
                   <RowItem
                     title="Activity data from ad partners"
