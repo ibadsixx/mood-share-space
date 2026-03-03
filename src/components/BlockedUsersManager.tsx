@@ -75,6 +75,8 @@ const BlockedUsersManager = () => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [restrictedDialogOpen, setRestrictedDialogOpen] = useState(false);
   const [showRestrictedList, setShowRestrictedList] = useState(false);
+  const [blockProfilesDialogOpen, setBlockProfilesDialogOpen] = useState(false);
+  const [showBlockedProfilesList, setShowBlockedProfilesList] = useState(false);
 
   const fetchBlockedUsers = async () => {
     if (!user?.id) return;
