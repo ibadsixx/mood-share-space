@@ -399,6 +399,7 @@ const RowItem = ({
   toggle,
   checked,
   onToggle,
+  onClick,
 }: {
   title: string;
   description: string;
@@ -407,8 +408,12 @@ const RowItem = ({
   toggle?: boolean;
   checked?: boolean;
   onToggle?: (val: boolean) => void;
+  onClick?: () => void;
 }) => (
-  <div className="flex items-start justify-between p-4 hover:bg-muted/50 transition-colors">
+  <div
+    className={`flex items-start justify-between p-4 hover:bg-muted/50 transition-colors ${onClick ? 'cursor-pointer' : ''}`}
+    onClick={!toggle ? onClick : undefined}
+  >
     <div className="flex-1 min-w-0 space-y-0.5">
       <p className={`text-sm font-medium ${titleColor || 'text-foreground'}`}>{title}</p>
       <p className="text-xs text-muted-foreground">{description}</p>
