@@ -43,9 +43,9 @@ const blockingSections: BlockingSection[] = [
   },
   {
     id: 'blocked-aliases',
-    title: 'Blocked aliases',
+    title: 'Blocked nicknames',
     description:
-      'They can\'t tag you or engage with your content. In some situations, they may still be able to view your content. Blocking may not prevent all communications or engagements.',
+      'They can\'t tag you or interact with your content. In some cases, they may still be able to see your content. Blocking may not prevent all communications or interactions.',
   },
   {
     id: 'block-messages',
@@ -77,6 +77,8 @@ const BlockedUsersManager = () => {
   const [showRestrictedList, setShowRestrictedList] = useState(false);
   const [blockProfilesDialogOpen, setBlockProfilesDialogOpen] = useState(false);
   const [showBlockedProfilesList, setShowBlockedProfilesList] = useState(false);
+  const [blockedAliasesDialogOpen, setBlockedAliasesDialogOpen] = useState(false);
+  const [showBlockedAliasesList, setShowBlockedAliasesList] = useState(false);
 
   const fetchBlockedUsers = async () => {
     if (!user?.id) return;
@@ -200,6 +202,8 @@ const BlockedUsersManager = () => {
                         setRestrictedDialogOpen(true);
                       } else if (section.id === 'block-profiles') {
                         setBlockProfilesDialogOpen(true);
+                      } else if (section.id === 'blocked-aliases') {
+                        setBlockedAliasesDialogOpen(true);
                       } else {
                         toggleSection(section.id);
                       }
