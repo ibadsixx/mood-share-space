@@ -70,3 +70,37 @@ export const useAdSettings = () => {
     enabled: !!user?.id,
   });
 };
+
+export const useAdProfileCategories = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['ad-profile-categories', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ad_profile_categories')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+};
+
+export const useAdAssociatedCategories = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['ad-associated-categories', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ad_associated_categories')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+};

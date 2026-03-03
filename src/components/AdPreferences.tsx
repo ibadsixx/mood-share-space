@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronRight, Target, Database, Users, Building2, Info, Shield, ExternalLink } from 'lucide-react';
-import { useAdActivity, useAdTopics, useAdAdvertisers, useAdSettings } from '@/hooks/useAdPreferences';
+import { ChevronRight, Target, Database, Users, Building2, Info, Shield, ExternalLink, X } from 'lucide-react';
+import { useAdActivity, useAdTopics, useAdAdvertisers, useAdSettings, useAdProfileCategories, useAdAssociatedCategories } from '@/hooks/useAdPreferences';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
