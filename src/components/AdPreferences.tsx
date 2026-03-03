@@ -285,6 +285,93 @@ const AdPreferences = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Categories Dialog */}
+      <Dialog open={showCategoriesDialog} onOpenChange={setShowCategoriesDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-foreground">Categories utilized to target you</DialogTitle>
+            <p className="text-xs text-muted-foreground">Employed for your account</p>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-2">
+            {/* Profile Information Section */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-foreground">Select profile information</h4>
+              <p className="text-xs text-muted-foreground">
+                Pick which profile details are employed to tailor your advertisements.
+              </p>
+
+              {loadingProfileCats ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
+                </div>
+              ) : profileCategories && profileCategories.length > 0 ? (
+                <div className="border border-border rounded-lg divide-y divide-border">
+                  {profileCategories.map((cat) => (
+                    <div key={cat.id} className="flex items-center justify-between p-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{cat.label}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{cat.category_type.replace('_', ' ')}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        {cat.is_used ? 'Employed' : 'Unused'} <ChevronRight className="w-3 h-3" />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">No profile classifications recorded yet.</p>
+              )}
+
+              <Button variant="outline" className="w-full text-sm mt-2">
+                Modify Tone profile
+              </Button>
+            </div>
+
+            {/* Associated Categories Section */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-foreground">Categories linked to you</h4>
+              <p className="text-xs text-muted-foreground">
+                Advertisers can target you based on additional categories we link to you. You may exclude yourself from any of these classifications.
+              </p>
+
+              {loadingAssocCats ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+                </div>
+              ) : associatedCategories && associatedCategories.length > 0 ? (
+                <div className="border border-border rounded-lg divide-y divide-border">
+                  {associatedCategories.map((cat) => (
+                    <div key={cat.id} className="flex items-center justify-between p-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground">{cat.title}</p>
+                        {cat.description && (
+                          <p className="text-xs text-muted-foreground">{cat.description}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs ml-3 flex-shrink-0"
+                        onClick={() => removeAssociatedCategory(cat.id)}
+                      >
+                        Dismiss
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">No linked categories found.</p>
+              )}
+
+              <Button variant="default" className="w-full text-sm mt-2">
+                Browse all
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
