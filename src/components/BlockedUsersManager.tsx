@@ -190,54 +190,6 @@ const BlockedUsersManager = () => {
                       )}
                     </p>
 
-                    {/* Show blocked users list for the block-profiles section */}
-                    {section.id === 'block-profiles' && expandedSection === 'block-profiles' && (
-                      <div className="mt-3 space-y-2">
-                        {loading ? (
-                          <p className="text-xs text-muted-foreground">Loading blocked users...</p>
-                        ) : blockedUsers.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">You haven't blocked anyone yet.</p>
-                        ) : (
-                          <AnimatePresence>
-                            {blockedUsers.map(block => (
-                              <motion.div
-                                key={block.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                                className="flex items-center justify-between py-2"
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarImage src={block.blocked_user.profile_pic || undefined} />
-                                    <AvatarFallback className="bg-muted text-xs">
-                                      {block.blocked_user.display_name.charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <p className="text-sm font-medium text-foreground">
-                                      {block.blocked_user.display_name}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      @{block.blocked_user.username}
-                                    </p>
-                                  </div>
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => unblockUser(block.id, block.blocked_user.username)}
-                                  className="text-xs hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
-                                >
-                                  Unblock
-                                </Button>
-                              </motion.div>
-                            ))}
-                          </AnimatePresence>
-                        )}
-                      </div>
-                    )}
                   </div>
                   <Button
                     variant="secondary"
@@ -246,6 +198,8 @@ const BlockedUsersManager = () => {
                     onClick={() => {
                       if (section.id === 'restricted') {
                         setRestrictedDialogOpen(true);
+                      } else if (section.id === 'block-profiles') {
+                        setBlockProfilesDialogOpen(true);
                       } else {
                         toggleSection(section.id);
                       }
