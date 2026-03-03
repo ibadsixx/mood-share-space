@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronRight, Target, Database, Users, Building2, Info, Shield, ExternalLink } from 'lucide-react';
-import { useAdActivity, useAdTopics, useAdAdvertisers, useAdSettings } from '@/hooks/useAdPreferences';
+import { ChevronRight, Target, Database, Users, Building2, Info, Shield, ExternalLink, X } from 'lucide-react';
+import { useAdActivity, useAdTopics, useAdAdvertisers, useAdSettings, useAdProfileCategories, useAdAssociatedCategories } from '@/hooks/useAdPreferences';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,10 +14,13 @@ import { toast } from 'sonner';
 
 const AdPreferences = () => {
   const [activeTab, setActiveTab] = useState('customize');
+  const [showCategoriesDialog, setShowCategoriesDialog] = useState(false);
   const { data: adActivity, isLoading: loadingActivity } = useAdActivity();
   const { data: adTopics, isLoading: loadingTopics } = useAdTopics();
   const { data: adAdvertisers, isLoading: loadingAdvertisers } = useAdAdvertisers();
   const { data: adSettings, isLoading: loadingSettings } = useAdSettings();
+  const { data: profileCategories, isLoading: loadingProfileCats } = useAdProfileCategories();
+  const { data: associatedCategories, isLoading: loadingAssocCats } = useAdAssociatedCategories();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -30,6 +34,19 @@ const AdPreferences = () => {
     } else {
       toast.success('Setting updated');
       queryClient.invalidateQueries({ queryKey: ['ad-settings'] });
+    }
+  };
+
+  const removeAssociatedCategory = async (categoryId: string) => {
+    const { error } = await supabase
+      .from('ad_associated_categories')
+      .delete()
+      .eq('id', categoryId);
+    if (error) {
+      toast.error('Failed to dismiss category');
+    } else {
+      toast.success('Category dismissed');
+      queryClient.invalidateQueries({ queryKey: ['ad-associated-categories'] });
     }
   };
 
@@ -173,9 +190,10 @@ const AdPreferences = () => {
                 <h3 className="text-sm font-semibold text-primary">Information used to display your ads</h3>
                 <div className="border border-border rounded-lg divide-y divide-border">
                   <RowItem
-                    title="Categories used to reach you"
-                    description="Details you share on your profile or other classifications used to reach you."
+                    title="Categories utilized to target you"
+                    description="Information you provide on your profile or other classifications employed to target you."
                     titleColor="text-green-400"
+                    onClick={() => setShowCategoriesDialog(true)}
                   />
                   <RowItem
                     title="Activity data from ad partners"
@@ -267,6 +285,93 @@ const AdPreferences = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Categories Dialog */}
+      <Dialog open={showCategoriesDialog} onOpenChange={setShowCategoriesDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-foreground">Categories utilized to target you</DialogTitle>
+            <p className="text-xs text-muted-foreground">Employed for your account</p>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-2">
+            {/* Profile Information Section */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-foreground">Select profile information</h4>
+              <p className="text-xs text-muted-foreground">
+                Pick which profile details are employed to tailor your advertisements.
+              </p>
+
+              {loadingProfileCats ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
+                </div>
+              ) : profileCategories && profileCategories.length > 0 ? (
+                <div className="border border-border rounded-lg divide-y divide-border">
+                  {profileCategories.map((cat) => (
+                    <div key={cat.id} className="flex items-center justify-between p-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{cat.label}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{cat.category_type.replace('_', ' ')}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        {cat.is_used ? 'Employed' : 'Unused'} <ChevronRight className="w-3 h-3" />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">No profile classifications recorded yet.</p>
+              )}
+
+              <Button variant="outline" className="w-full text-sm mt-2">
+                Modify Tone profile
+              </Button>
+            </div>
+
+            {/* Associated Categories Section */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-foreground">Categories linked to you</h4>
+              <p className="text-xs text-muted-foreground">
+                Advertisers can target you based on additional categories we link to you. You may exclude yourself from any of these classifications.
+              </p>
+
+              {loadingAssocCats ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+                </div>
+              ) : associatedCategories && associatedCategories.length > 0 ? (
+                <div className="border border-border rounded-lg divide-y divide-border">
+                  {associatedCategories.map((cat) => (
+                    <div key={cat.id} className="flex items-center justify-between p-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground">{cat.title}</p>
+                        {cat.description && (
+                          <p className="text-xs text-muted-foreground">{cat.description}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs ml-3 flex-shrink-0"
+                        onClick={() => removeAssociatedCategory(cat.id)}
+                      >
+                        Dismiss
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">No linked categories found.</p>
+              )}
+
+              <Button variant="default" className="w-full text-sm mt-2">
+                Browse all
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -294,6 +399,7 @@ const RowItem = ({
   toggle,
   checked,
   onToggle,
+  onClick,
 }: {
   title: string;
   description: string;
@@ -302,8 +408,12 @@ const RowItem = ({
   toggle?: boolean;
   checked?: boolean;
   onToggle?: (val: boolean) => void;
+  onClick?: () => void;
 }) => (
-  <div className="flex items-start justify-between p-4 hover:bg-muted/50 transition-colors">
+  <div
+    className={`flex items-start justify-between p-4 hover:bg-muted/50 transition-colors ${onClick ? 'cursor-pointer' : ''}`}
+    onClick={!toggle ? onClick : undefined}
+  >
     <div className="flex-1 min-w-0 space-y-0.5">
       <p className={`text-sm font-medium ${titleColor || 'text-foreground'}`}>{title}</p>
       <p className="text-xs text-muted-foreground">{description}</p>
