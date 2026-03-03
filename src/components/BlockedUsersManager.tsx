@@ -415,6 +415,92 @@ const BlockedUsersManager = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Blocked Nicknames Dialog */}
+      <Dialog open={blockedAliasesDialogOpen} onOpenChange={(open) => {
+        setBlockedAliasesDialogOpen(open);
+        if (!open) setShowBlockedAliasesList(false);
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-semibold">
+              Blocked nicknames
+            </DialogTitle>
+          </DialogHeader>
+          
+          {!showBlockedAliasesList ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                They can't tag you or interact with your content. In some cases, they may still be able to see your content. Blocking may not prevent all communications or interactions.
+              </p>
+              
+              <div className="mt-4 space-y-1">
+                <button
+                  className="flex items-center gap-3 w-full px-3 py-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  onClick={() => setShowBlockedAliasesList(true)}
+                >
+                  <User className="h-6 w-6 text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground">See your blocked list</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => setShowBlockedAliasesList(false)}
+              >
+                ← Back
+              </Button>
+              {loading ? (
+                <p className="text-xs text-muted-foreground">Loading blocked list...</p>
+              ) : blockedUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Your blocked list is empty.</p>
+              ) : (
+                <AnimatePresence>
+                  {blockedUsers.map(block => (
+                    <motion.div
+                      key={block.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center justify-between py-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={block.blocked_user.profile_pic || undefined} />
+                          <AvatarFallback className="bg-muted text-xs">
+                            {block.blocked_user.display_name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {block.blocked_user.display_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            @{block.blocked_user.username}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => unblockUser(block.id, block.blocked_user.username)}
+                        className="text-xs hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
+                      >
+                        Unblock
+                      </Button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
