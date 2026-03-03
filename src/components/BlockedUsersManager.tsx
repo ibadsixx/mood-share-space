@@ -73,6 +73,8 @@ const BlockedUsersManager = () => {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [restrictedDialogOpen, setRestrictedDialogOpen] = useState(false);
+  const [showRestrictedList, setShowRestrictedList] = useState(false);
 
   const fetchBlockedUsers = async () => {
     if (!user?.id) return;
