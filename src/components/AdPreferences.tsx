@@ -14,10 +14,13 @@ import { toast } from 'sonner';
 
 const AdPreferences = () => {
   const [activeTab, setActiveTab] = useState('customize');
+  const [showCategoriesDialog, setShowCategoriesDialog] = useState(false);
   const { data: adActivity, isLoading: loadingActivity } = useAdActivity();
   const { data: adTopics, isLoading: loadingTopics } = useAdTopics();
   const { data: adAdvertisers, isLoading: loadingAdvertisers } = useAdAdvertisers();
   const { data: adSettings, isLoading: loadingSettings } = useAdSettings();
+  const { data: profileCategories, isLoading: loadingProfileCats } = useAdProfileCategories();
+  const { data: associatedCategories, isLoading: loadingAssocCats } = useAdAssociatedCategories();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
