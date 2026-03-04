@@ -211,6 +211,20 @@ const BlockedUsersManager = () => {
                     className="overflow-hidden"
                   >
                     <div className="mt-4 space-y-3">
+                      {section.id === 'restricted' && (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Type a name"
+                            value={searchInputs[section.id] || ''}
+                            onChange={(e) => setSearchInputs(prev => ({ ...prev, [section.id]: e.target.value }))}
+                            className="flex-1"
+                          />
+                          <Button variant="default" size="sm">
+                            Submit
+                          </Button>
+                        </div>
+                      )}
+
                       {section.id === 'profiles' && (
                         <>
                           <div className="flex gap-2">
@@ -269,7 +283,7 @@ const BlockedUsersManager = () => {
                         </>
                       )}
 
-                      {section.id !== 'profiles' && (
+                      {section.id !== 'profiles' && section.id !== 'restricted' && (
                         <div className="flex gap-2">
                           <Input
                             placeholder={`Add a name to ${section.title.toLowerCase()}...`}
