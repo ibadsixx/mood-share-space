@@ -17,6 +17,7 @@ const AdPreferences = () => {
   const [activeTab, setActiveTab] = useState('customize');
   const [showCategoriesDialog, setShowCategoriesDialog] = useState(false);
   const [showPartnerDataDialog, setShowPartnerDataDialog] = useState(false);
+  const [showReviewSettingDialog, setShowReviewSettingDialog] = useState(false);
   const { data: adActivity, isLoading: loadingActivity } = useAdActivity();
   const { data: adTopics, isLoading: loadingTopics } = useAdTopics();
   const { data: adAdvertisers, isLoading: loadingAdvertisers } = useAdAdvertisers();
@@ -406,13 +407,118 @@ const AdPreferences = () => {
               className="w-full text-sm font-medium"
               onClick={() => {
                 setShowPartnerDataDialog(false);
-                // Toggle the setting
-                const newVal = !(adSettings?.use_partner_data ?? false);
-                updateSetting('use_partner_data', newVal);
+                setShowReviewSettingDialog(true);
               }}
             >
               Review setting
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Review Setting Dialog */}
+      <Dialog open={showReviewSettingDialog} onOpenChange={setShowReviewSettingDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <div className="space-y-6">
+            <div>
+              <button
+                className="text-primary hover:underline text-sm mb-3 flex items-center gap-1"
+                onClick={() => {
+                  setShowReviewSettingDialog(false);
+                  setShowPartnerDataDialog(true);
+                }}
+              >
+                ← Back
+              </button>
+              <h2 className="text-lg font-semibold text-foreground leading-snug">
+                Would you like us to leverage your activity data from ad partners to display your ads?
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Applied to {1} account.{' '}
+                <button className="text-primary hover:underline font-medium">View</button>
+              </p>
+            </div>
+
+            {/* Option: Yes */}
+            <div
+              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                (adSettings?.use_partner_data ?? false)
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:bg-muted/50'
+              }`}
+              onClick={() => updateSetting('use_partner_data', true)}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1 flex-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    Yes, present me ads that are more tailored by utilizing this data
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    You'll receive advertisements that are more pertinent to you based on what you already prefer.
+                  </p>
+                  {(adSettings?.use_partner_data ?? false) && (
+                    <p className="text-xs text-primary font-medium mt-1">Your current preference</p>
+                  )}
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
+                  (adSettings?.use_partner_data ?? false)
+                    ? 'border-primary'
+                    : 'border-muted-foreground'
+                }`}>
+                  {(adSettings?.use_partner_data ?? false) && (
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                  )}
+                </div>
+              </div>
+              <button className="text-xs text-primary hover:underline mt-2 font-medium">
+                How this influences your ads
+              </button>
+            </div>
+
+            {/* Option: No */}
+            <div
+              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                !(adSettings?.use_partner_data ?? false)
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:bg-muted/50'
+              }`}
+              onClick={() => updateSetting('use_partner_data', false)}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1 flex-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    No, don't enhance my ads' relevance by employing this data
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Your advertisements will rely on less of your data and be more likely to be generic.
+                  </p>
+                  {!(adSettings?.use_partner_data ?? false) && (
+                    <p className="text-xs text-primary font-medium mt-1">Your current preference</p>
+                  )}
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
+                  !(adSettings?.use_partner_data ?? false)
+                    ? 'border-primary'
+                    : 'border-muted-foreground'
+                }`}>
+                  {!(adSettings?.use_partner_data ?? false) && (
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                  )}
+                </div>
+              </div>
+              <button className="text-xs text-primary hover:underline mt-2 font-medium">
+                How this influences your ads
+              </button>
+            </div>
+
+            {/* Info bullets */}
+            <div className="space-y-3 pt-2">
+              <InfoBullet icon="⚙️" text="You can modify your selection at any time" />
+              <InfoBullet icon="🔒" text="We always adhere to rigorous security protocols to safeguard your data" />
+              <InfoBullet icon="📄" text={<>Certain data may be anonymized and utilized to enhance our products as outlined in our <button className="text-primary hover:underline">Privacy Policy</button>, irrespective of your selection</>} />
+              <InfoBullet icon="📋" text={<>This isn't the sole category of data from ad partners that can influence your ads. View details about <button className="text-primary hover:underline">audience-driven advertising</button></>} />
+              <InfoBullet icon="ℹ️" text={<>Discover more about <button className="text-primary hover:underline">ad partners</button></>} />
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -470,6 +576,14 @@ const RowItem = ({
     ) : (
       <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-2 mt-1" />
     )}
+  </div>
+);
+
+/* ---------- Info bullet ---------- */
+const InfoBullet = ({ icon, text }: { icon: string; text: React.ReactNode }) => (
+  <div className="flex items-start gap-3">
+    <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
+    <p className="text-xs text-muted-foreground leading-relaxed">{text}</p>
   </div>
 );
 
