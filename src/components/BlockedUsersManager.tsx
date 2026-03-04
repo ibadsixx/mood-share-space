@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { UserX, Users } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import { UserX, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -20,17 +21,64 @@ interface BlockedUser {
   };
 }
 
+interface BlockingSection {
+  id: string;
+  title: string;
+  description: string;
+  expanded: boolean;
+}
+
 const BlockedUsersManager = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [searchInputs, setSearchInputs] = useState<Record<string, string>>({});
+
+  const sections: BlockingSection[] = [
+    {
+      id: 'restricted',
+      title: 'Restricted list',
+      description: 'When you add someone to your Restricted list, they won\'t be able to see posts that you share exclusively with Friends. They may still see content you share publicly or on a mutual friend\'s profile, and posts where their profile is tagged. They won\'t be notified when you add them to your Restricted list.',
+      expanded: false,
+    },
+    {
+      id: 'profiles',
+      title: 'Block profiles and Pages',
+      description: 'Once you block a profile or Page, you can no longer interact with each other\'s profiles, posts, comments or messages. This doesn\'t include apps, games or groups you both participate in. If you are currently connected with that profile or Page, blocking it will unfriend, unlike and unfollow it.',
+      expanded: false,
+    },
+    {
+      id: 'nicknames',
+      title: 'Blocked nicknames',
+      description: 'They can\'t tag you or interact with your content. In some cases, they may still be able to see your content. Blocking may not prevent all communications or interactions.',
+      expanded: false,
+    },
+    {
+      id: 'messages',
+      title: 'Block messages',
+      description: 'If you block someone\'s profile, they won\'t be able to contact you in Messenger either. Unless you block someone\'s profile and any others they may create, they may be able to post on your timeline, tag you, and comment on your posts or comments.',
+      expanded: false,
+    },
+    {
+      id: 'app_invites',
+      title: 'Block app invites',
+      description: 'Once you block app invites from someone\'s profile, you\'ll automatically ignore future app requests from that person\'s profile. To block invites from a specific friend\'s profile, click the "Ignore All Invites From This Profile" link under your latest request.',
+      expanded: false,
+    },
+    {
+      id: 'event_invites',
+      title: 'Block event invites',
+      description: 'Once you block event invites from someone\'s profile, you\'ll automatically ignore future event requests from that profile.',
+      expanded: false,
+    },
+  ];
 
   const fetchBlockedUsers = async () => {
     if (!user?.id) return;
 
     try {
-      // First get the blocks
       const { data: blocks, error: blocksError } = await supabase
         .from('blocks')
         .select('id, blocked_id, created_at')
@@ -44,7 +92,6 @@ const BlockedUsersManager = () => {
         return;
       }
 
-      // Then get the profile information for blocked users
       const blockedIds = blocks.map(block => block.blocked_id);
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
@@ -53,7 +100,6 @@ const BlockedUsersManager = () => {
 
       if (profilesError) throw profilesError;
 
-      // Combine the data
       const combinedData = blocks.map(block => {
         const profile = profiles?.find(p => p.id === block.blocked_id);
         return {
@@ -90,7 +136,7 @@ const BlockedUsersManager = () => {
       if (error) throw error;
 
       setBlockedUsers(prev => prev.filter(block => block.id !== blockId));
-      
+
       toast({
         title: 'User unblocked',
         description: `@${username} has been unblocked successfully.`,
@@ -104,97 +150,149 @@ const BlockedUsersManager = () => {
     }
   };
 
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }));
+  };
+
   useEffect(() => {
     fetchBlockedUsers();
   }, [user?.id]);
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserX className="h-5 w-5" />
-            Blocked Users
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-4 text-muted-foreground">
-            Loading blocked users...
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-foreground">Blocking</h2>
+        <div className="text-center py-4 text-muted-foreground">
+          Loading...
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserX className="h-5 w-5 text-destructive" />
-          Blocked Users
-        </CardTitle>
-        <CardDescription>
-          Manage users you have blocked. Blocked users cannot see your profile, posts, or interact with you.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {blockedUsers.length === 0 ? (
-          <div className="text-center py-8">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">No blocked users</h3>
-            <p className="text-muted-foreground">You haven't blocked anyone yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <AnimatePresence>
-              {blockedUsers.map((block) => (
-                <motion.div
-                  key={block.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex items-center justify-between p-4 border border-border rounded-lg bg-card/50"
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-foreground">Blocking</h2>
+
+      <div className="bg-card border border-border rounded-lg">
+        <div className="px-6 py-4">
+          <h3 className="text-lg font-semibold text-foreground">Manage Blocking</h3>
+        </div>
+
+        <Separator />
+
+        {sections.map((section, index) => (
+          <div key={section.id}>
+            <div className="px-6 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-foreground text-sm mb-1">{section.title}</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{section.description}</p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => toggleSection(section.id)}
                 >
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={block.blocked_user.profile_pic || undefined} />
-                      <AvatarFallback className="bg-muted">
-                        {block.blocked_user.display_name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {block.blocked_user.display_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        @{block.blocked_user.username}
-                      </p>
+                  Edit
+                </Button>
+              </div>
+
+              <AnimatePresence>
+                {expandedSections[section.id] && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4 space-y-3">
+                      {section.id === 'profiles' && (
+                        <>
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Search for a user to block..."
+                              value={searchInputs[section.id] || ''}
+                              onChange={(e) => setSearchInputs(prev => ({ ...prev, [section.id]: e.target.value }))}
+                              className="flex-1"
+                            />
+                            <Button variant="default" size="sm">
+                              Block
+                            </Button>
+                          </div>
+
+                          {blockedUsers.length > 0 ? (
+                            <div className="space-y-2">
+                              {blockedUsers.map((block) => (
+                                <motion.div
+                                  key={block.id}
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  className="flex items-center justify-between p-3 rounded-md bg-muted/40"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-8 w-8">
+                                      <AvatarImage src={block.blocked_user.profile_pic || undefined} />
+                                      <AvatarFallback className="bg-muted text-xs">
+                                        {block.blocked_user.display_name.charAt(0).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="text-sm font-medium text-foreground">
+                                        {block.blocked_user.display_name}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        @{block.blocked_user.username}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => unblockUser(block.id, block.blocked_user.username)}
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Unblock
+                                  </Button>
+                                </motion.div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground py-2">You haven't blocked anyone yet.</p>
+                          )}
+                        </>
+                      )}
+
+                      {section.id !== 'profiles' && (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder={`Add a name to ${section.title.toLowerCase()}...`}
+                            value={searchInputs[section.id] || ''}
+                            onChange={(e) => setSearchInputs(prev => ({ ...prev, [section.id]: e.target.value }))}
+                            className="flex-1"
+                          />
+                          <Button variant="default" size="sm">
+                            Add
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">
-                        Blocked {new Date(block.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => unblockUser(block.id, block.blocked_user.username)}
-                      className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
-                    >
-                      Unblock
-                    </Button>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {index < sections.length - 1 && <Separator />}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        ))}
+      </div>
+    </div>
   );
 };
 
