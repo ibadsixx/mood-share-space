@@ -372,6 +372,50 @@ const AdPreferences = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Partner Data Dialog */}
+      <Dialog open={showPartnerDataDialog} onOpenChange={setShowPartnerDataDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-foreground">Activity information from ad partners</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 mt-2">
+            <div className="rounded-lg overflow-hidden">
+              <img
+                src={adPartnersIllustration}
+                alt="Ad partners illustration"
+                className="w-full h-48 object-cover rounded-lg"
+              />
+            </div>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              To present you advertisements that assist you in uncovering new things, it is beneficial to understand what you already enjoy. When you browse an ad partner's website, application, or make a purchase in their outlets, they may transmit us data about that interaction and what you engaged with.{' '}
+              <button className="text-primary hover:underline font-medium">Discover more about ad partners</button>
+            </p>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              This enables us to display advertisements that are pertinent to you and are as captivating as your regular content. However, we'll only employ it for this objective if you permit us to.
+            </p>
+
+            <p className="text-sm font-semibold text-foreground">
+              You have the option to decide if we utilize this data to assist in presenting the most suitable ads for you.
+            </p>
+
+            <Button
+              variant="default"
+              className="w-full text-sm font-medium"
+              onClick={() => {
+                setShowPartnerDataDialog(false);
+                // Toggle the setting
+                const newVal = !(adSettings?.use_partner_data ?? false);
+                updateSetting('use_partner_data', newVal);
+              }}
+            >
+              Review setting
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
