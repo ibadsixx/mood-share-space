@@ -202,9 +202,7 @@ const AdPreferences = () => {
                     description="Select whether to utilize this data to present you ads that are more relevant to you."
                     subtitle="View more details"
                     titleColor="text-green-400"
-                    toggle
-                    checked={adSettings?.use_partner_data ?? false}
-                    onToggle={(val) => updateSetting('use_partner_data', val)}
+                    onClick={() => setShowPartnerDataDialog(true)}
                   />
                   <RowItem
                     title="Audience-based advertising"
