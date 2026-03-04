@@ -525,6 +525,70 @@ const AdPreferences = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Audience-based Advertising Dialog */}
+      <Dialog open={showAudienceAdDialog} onOpenChange={setShowAudienceAdDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-foreground">Audience-driven promotions</DialogTitle>
+            <p className="text-sm text-muted-foreground">Advertisers employing your activity or details</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Applied for {1} account{' '}
+              <button className="text-primary hover:underline font-medium">View</button>
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-2">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Advertisers may opt to display their ads to specific audiences. You might encounter ads because an advertiser has placed you in an audience derived from your details or off-Tone activity. Advertisers can utilize or submit a roster of data that we can cross-reference with your profile to present you ads. You can also be incorporated in an audience based on your engagements with an advertiser's site, application, or shop.{' '}
+              <button className="text-primary hover:underline font-medium">Discover more</button>
+            </p>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              You can browse the advertisers whose audiences you have been included in based on your details or activity and determine whether we can display you ads based on this data.
+            </p>
+
+            {loadingAdvertisers ? (
+              <div className="space-y-2">
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+              </div>
+            ) : adAdvertisers && adAdvertisers.length > 0 ? (
+              <div className="border border-border rounded-lg divide-y divide-border">
+                {(audienceShowAll ? adAdvertisers : adAdvertisers.slice(0, 4)).map((adv) => (
+                  <button
+                    key={adv.id}
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={adv.icon || ''} />
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
+                          {adv.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-foreground">{adv.name}</p>
+                        <p className="text-xs text-muted-foreground">@{adv.name.toLowerCase().replace(/\s+/g, '')}</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                ))}
+                {!audienceShowAll && adAdvertisers.length > 4 && (
+                  <button
+                    className="w-full p-3 text-sm text-primary hover:underline font-medium text-left"
+                    onClick={() => setAudienceShowAll(true)}
+                  >
+                    View more
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4">No advertisers have included you in their audiences yet.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
