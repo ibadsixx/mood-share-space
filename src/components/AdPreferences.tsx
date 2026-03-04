@@ -11,10 +11,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import adPartnersIllustration from '@/assets/ad-partners-illustration.png';
 
 const AdPreferences = () => {
   const [activeTab, setActiveTab] = useState('customize');
   const [showCategoriesDialog, setShowCategoriesDialog] = useState(false);
+  const [showPartnerDataDialog, setShowPartnerDataDialog] = useState(false);
   const { data: adActivity, isLoading: loadingActivity } = useAdActivity();
   const { data: adTopics, isLoading: loadingTopics } = useAdTopics();
   const { data: adAdvertisers, isLoading: loadingAdvertisers } = useAdAdvertisers();
@@ -200,9 +202,7 @@ const AdPreferences = () => {
                     description="Select whether to utilize this data to present you ads that are more relevant to you."
                     subtitle="View more details"
                     titleColor="text-green-400"
-                    toggle
-                    checked={adSettings?.use_partner_data ?? false}
-                    onToggle={(val) => updateSetting('use_partner_data', val)}
+                    onClick={() => setShowPartnerDataDialog(true)}
                   />
                   <RowItem
                     title="Audience-based advertising"
@@ -369,6 +369,50 @@ const AdPreferences = () => {
                 Browse all
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Partner Data Dialog */}
+      <Dialog open={showPartnerDataDialog} onOpenChange={setShowPartnerDataDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-foreground">Activity information from ad partners</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 mt-2">
+            <div className="rounded-lg overflow-hidden">
+              <img
+                src={adPartnersIllustration}
+                alt="Ad partners illustration"
+                className="w-full h-48 object-cover rounded-lg"
+              />
+            </div>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              To present you advertisements that assist you in uncovering new things, it is beneficial to understand what you already enjoy. When you browse an ad partner's website, application, or make a purchase in their outlets, they may transmit us data about that interaction and what you engaged with.{' '}
+              <button className="text-primary hover:underline font-medium">Discover more about ad partners</button>
+            </p>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              This enables us to display advertisements that are pertinent to you and are as captivating as your regular content. However, we'll only employ it for this objective if you permit us to.
+            </p>
+
+            <p className="text-sm font-semibold text-foreground">
+              You have the option to decide if we utilize this data to assist in presenting the most suitable ads for you.
+            </p>
+
+            <Button
+              variant="default"
+              className="w-full text-sm font-medium"
+              onClick={() => {
+                setShowPartnerDataDialog(false);
+                // Toggle the setting
+                const newVal = !(adSettings?.use_partner_data ?? false);
+                updateSetting('use_partner_data', newVal);
+              }}
+            >
+              Review setting
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
