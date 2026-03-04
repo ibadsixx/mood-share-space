@@ -11,10 +11,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import adPartnersIllustration from '@/assets/ad-partners-illustration.png';
 
 const AdPreferences = () => {
   const [activeTab, setActiveTab] = useState('customize');
   const [showCategoriesDialog, setShowCategoriesDialog] = useState(false);
+  const [showPartnerDataDialog, setShowPartnerDataDialog] = useState(false);
   const { data: adActivity, isLoading: loadingActivity } = useAdActivity();
   const { data: adTopics, isLoading: loadingTopics } = useAdTopics();
   const { data: adAdvertisers, isLoading: loadingAdvertisers } = useAdAdvertisers();
