@@ -222,13 +222,10 @@ const AdPreferences = () => {
                 <h3 className="text-sm font-semibold text-yellow-400">Ads displayed outside of Tone</h3>
                 <div className="border border-border rounded-lg divide-y divide-border">
                   <RowItem
-                    title="Ads in external apps"
-                    description="Select whether you see ads from Tone Audience Network in third-party apps."
-                    subtitle="View more details"
+                    title="Advertisements in other applications"
+                    description="Decide whether you encounter ads from Tone Audience Network in other applications."
                     titleColor="text-yellow-400"
-                    toggle
-                    checked={adSettings?.show_ads_in_external_apps ?? false}
-                    onToggle={(val) => updateSetting('show_ads_in_external_apps', val)}
+                    onClick={() => setShowExternalAdsDialog(true)}
                   />
                   <RowItem
                     title="Promotions about Tone"
