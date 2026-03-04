@@ -17,6 +17,7 @@ const AdPreferences = () => {
   const [activeTab, setActiveTab] = useState('customize');
   const [showCategoriesDialog, setShowCategoriesDialog] = useState(false);
   const [showPartnerDataDialog, setShowPartnerDataDialog] = useState(false);
+  const [showReviewSettingDialog, setShowReviewSettingDialog] = useState(false);
   const { data: adActivity, isLoading: loadingActivity } = useAdActivity();
   const { data: adTopics, isLoading: loadingTopics } = useAdTopics();
   const { data: adAdvertisers, isLoading: loadingAdvertisers } = useAdAdvertisers();
