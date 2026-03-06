@@ -306,6 +306,38 @@ const BlockedUsersManager = () => {
         ))}
       </div>
 
+      {/* Block Messages Dialog */}
+      <Dialog open={blockMessagesDialogOpen} onOpenChange={setBlockMessagesDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-semibold">Block messages</DialogTitle>
+          </DialogHeader>
+          <Separator />
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            If you block someone's profile on the platform, they won't be able to reach
+            you in Messenger either. Unless you block someone's profile and any others they
+            may create, they may be able to post on your timeline, tag you, and comment on
+            your posts or comments.
+          </p>
+          <div className="space-y-1">
+            <button
+              className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
+              onClick={() => {/* TODO: Add to blocked list */}}
+            >
+              <PlusCircle className="h-6 w-6 text-primary" />
+              <span className="text-sm font-medium text-foreground">Add to blocked list</span>
+            </button>
+            <button
+              className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
+              onClick={() => {/* TODO: See blocked list */}}
+            >
+              <Users className="h-6 w-6 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">See your blocked list</span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Blocked Nicknames Dialog */}
       <Dialog open={blockedNicknamesDialogOpen} onOpenChange={setBlockedNicknamesDialogOpen}>
         <DialogContent className="sm:max-w-md">
