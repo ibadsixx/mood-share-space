@@ -243,8 +243,9 @@ const AdPreferences = () => {
                 <h3 className="text-sm font-semibold text-foreground">Other settings</h3>
                 <div className="border border-border rounded-lg">
                   <RowItem
-                    title="Social interactions"
-                    description="Select who can view your social interactions alongside ads."
+                    title="Social engagements"
+                    description="Determine who can observe your social engagements alongside advertisements."
+                    onClick={() => setShowSocialInteractionsDialog(true)}
                   />
                 </div>
               </div>
