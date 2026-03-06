@@ -229,13 +229,10 @@ const AdPreferences = () => {
                     onClick={() => setShowExternalAdsDialog(true)}
                   />
                   <RowItem
-                    title="Promotions about Tone"
-                    description="Select whether we leverage your activity to display you ads about Tone on other platforms."
-                    subtitle="Usage information"
+                    title="Promotions about Tone on alternate platforms"
+                    description="Decide whether we harness your activity to present you ads regarding Tone on other platforms."
                     titleColor="text-yellow-400"
-                    toggle
-                    checked={adSettings?.use_activity_for_external_ads ?? false}
-                    onToggle={(val) => updateSetting('use_activity_for_external_ads', val)}
+                    onClick={() => setShowToneAdsDialog(true)}
                   />
                 </div>
               </div>
