@@ -41,6 +41,7 @@ const BlockedUsersManager = () => {
   const [blockedNicknamesDialogOpen, setBlockedNicknamesDialogOpen] = useState(false);
   const [blockMessagesDialogOpen, setBlockMessagesDialogOpen] = useState(false);
   const [blockAppInvitesDialogOpen, setBlockAppInvitesDialogOpen] = useState(false);
+  const [blockEventInvitesDialogOpen, setBlockEventInvitesDialogOpen] = useState(false);
 
   const sections: BlockingSection[] = [
     {
@@ -207,6 +208,7 @@ const BlockedUsersManager = () => {
                     else if (section.id === 'nicknames') setBlockedNicknamesDialogOpen(true);
                     else if (section.id === 'messages') setBlockMessagesDialogOpen(true);
                     else if (section.id === 'app_invites') setBlockAppInvitesDialogOpen(true);
+                    else if (section.id === 'event_invites') setBlockEventInvitesDialogOpen(true);
                     else toggleSection(section.id);
                   }}
                 >
@@ -307,6 +309,36 @@ const BlockedUsersManager = () => {
           </div>
         ))}
       </div>
+
+      {/* Block Event Invites Dialog */}
+      <Dialog open={blockEventInvitesDialogOpen} onOpenChange={setBlockEventInvitesDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-semibold">Block event invites</DialogTitle>
+          </DialogHeader>
+          <Separator />
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Once you block event invites from someone's profile, you'll automatically
+            disregard future event requests from that profile.
+          </p>
+          <div className="space-y-1">
+            <button
+              className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
+              onClick={() => {/* TODO: Add to blocked list */}}
+            >
+              <PlusCircle className="h-6 w-6 text-primary" />
+              <span className="text-sm font-medium text-foreground">Add to blocked list</span>
+            </button>
+            <button
+              className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
+              onClick={() => {/* TODO: See blocked list */}}
+            >
+              <Users className="h-6 w-6 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">See your blocked list</span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Block App Invites Dialog */}
       <Dialog open={blockAppInvitesDialogOpen} onOpenChange={setBlockAppInvitesDialogOpen}>
