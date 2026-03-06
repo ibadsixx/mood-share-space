@@ -38,6 +38,7 @@ const BlockedUsersManager = () => {
   const [searchInputs, setSearchInputs] = useState<Record<string, string>>({});
   const [restrictedDialogOpen, setRestrictedDialogOpen] = useState(false);
   const [blockProfilesDialogOpen, setBlockProfilesDialogOpen] = useState(false);
+  const [blockedNicknamesDialogOpen, setBlockedNicknamesDialogOpen] = useState(false);
 
   const sections: BlockingSection[] = [
     {
@@ -201,6 +202,7 @@ const BlockedUsersManager = () => {
                   onClick={() => {
                     if (section.id === 'restricted') setRestrictedDialogOpen(true);
                     else if (section.id === 'profiles') setBlockProfilesDialogOpen(true);
+                    else if (section.id === 'nicknames') setBlockedNicknamesDialogOpen(true);
                     else toggleSection(section.id);
                   }}
                 >
