@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserX, X, PlusCircle, Users } from 'lucide-react';
+import { UserX, X, PlusCircle, Users, ShieldBan, List } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -37,6 +37,7 @@ const BlockedUsersManager = () => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [searchInputs, setSearchInputs] = useState<Record<string, string>>({});
   const [restrictedDialogOpen, setRestrictedDialogOpen] = useState(false);
+  const [blockProfilesDialogOpen, setBlockProfilesDialogOpen] = useState(false);
 
   const sections: BlockingSection[] = [
     {
@@ -197,7 +198,11 @@ const BlockedUsersManager = () => {
                   variant="secondary"
                   size="sm"
                   className="shrink-0"
-                  onClick={() => section.id === 'restricted' ? setRestrictedDialogOpen(true) : toggleSection(section.id)}
+                  onClick={() => {
+                    if (section.id === 'restricted') setRestrictedDialogOpen(true);
+                    else if (section.id === 'profiles') setBlockProfilesDialogOpen(true);
+                    else toggleSection(section.id);
+                  }}
                 >
                   Edit
                 </Button>
@@ -296,6 +301,38 @@ const BlockedUsersManager = () => {
           </div>
         ))}
       </div>
+
+      {/* Block Profiles and Pages Dialog */}
+      <Dialog open={blockProfilesDialogOpen} onOpenChange={setBlockProfilesDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-semibold">Block profiles and Pages</DialogTitle>
+          </DialogHeader>
+          <Separator />
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Once you block a profile or Page, you can no longer interact with each
+            others' profiles, posts, comments or messages. This doesn't include apps,
+            games or groups you both participate in. If you are currently connected with
+            that profile or Page, blocking it will unfriend, unlike and unfollow it.
+          </p>
+          <div className="space-y-1">
+            <button
+              className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
+              onClick={() => {/* TODO: Add to blocked list */}}
+            >
+              <ShieldBan className="h-6 w-6 text-primary" />
+              <span className="text-sm font-medium text-foreground">Add to blocked list</span>
+            </button>
+            <button
+              className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
+              onClick={() => {/* TODO: See blocked list */}}
+            >
+              <List className="h-6 w-6 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">See your blocked list</span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Restricted List Dialog */}
       <Dialog open={restrictedDialogOpen} onOpenChange={setRestrictedDialogOpen}>
