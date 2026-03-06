@@ -23,6 +23,7 @@ const AdPreferences = () => {
   const [showToneAdsDialog, setShowToneAdsDialog] = useState(false);
   const [showSocialInteractionsDialog, setShowSocialInteractionsDialog] = useState(false);
   const [audienceShowAll, setAudienceShowAll] = useState(false);
+  const [showBrowseAllCategories, setShowBrowseAllCategories] = useState(false);
   const { data: adActivity, isLoading: loadingActivity } = useAdActivity();
   const { data: adTopics, isLoading: loadingTopics } = useAdTopics();
   const { data: adAdvertisers, isLoading: loadingAdvertisers } = useAdAdvertisers();
