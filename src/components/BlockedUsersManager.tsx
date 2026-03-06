@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { UserX, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { UserX, X, PlusCircle, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -35,6 +36,7 @@ const BlockedUsersManager = () => {
   const [loading, setLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [searchInputs, setSearchInputs] = useState<Record<string, string>>({});
+  const [restrictedDialogOpen, setRestrictedDialogOpen] = useState(false);
 
   const sections: BlockingSection[] = [
     {
@@ -195,7 +197,7 @@ const BlockedUsersManager = () => {
                   variant="secondary"
                   size="sm"
                   className="shrink-0"
-                  onClick={() => toggleSection(section.id)}
+                  onClick={() => section.id === 'restricted' ? setRestrictedDialogOpen(true) : toggleSection(section.id)}
                 >
                   Edit
                 </Button>
@@ -211,19 +213,7 @@ const BlockedUsersManager = () => {
                     className="overflow-hidden"
                   >
                     <div className="mt-4 space-y-3">
-                      {section.id === 'restricted' && (
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Type a name"
-                            value={searchInputs[section.id] || ''}
-                            onChange={(e) => setSearchInputs(prev => ({ ...prev, [section.id]: e.target.value }))}
-                            className="flex-1"
-                          />
-                          <Button variant="default" size="sm">
-                            Submit
-                          </Button>
-                        </div>
-                      )}
+                      {section.id === 'restricted' && null}
 
                       {section.id === 'profiles' && (
                         <>
