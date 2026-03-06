@@ -23,6 +23,7 @@ const AdPreferences = () => {
   const [showToneAdsDialog, setShowToneAdsDialog] = useState(false);
   const [showSocialInteractionsDialog, setShowSocialInteractionsDialog] = useState(false);
   const [audienceShowAll, setAudienceShowAll] = useState(false);
+  const [showBrowseAllCategories, setShowBrowseAllCategories] = useState(false);
   const { data: adActivity, isLoading: loadingActivity } = useAdActivity();
   const { data: adTopics, isLoading: loadingTopics } = useAdTopics();
   const { data: adAdvertisers, isLoading: loadingAdvertisers } = useAdAdvertisers();
@@ -367,11 +368,61 @@ const AdPreferences = () => {
                 <p className="text-sm text-muted-foreground py-2">No linked categories found.</p>
               )}
 
-              <Button variant="default" className="w-full text-sm mt-2">
+              <Button variant="default" className="w-full text-sm mt-2" onClick={() => setShowBrowseAllCategories(true)}>
                 Browse all
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Browse All Associated Categories Dialog */}
+      <Dialog open={showBrowseAllCategories} onOpenChange={setShowBrowseAllCategories}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-foreground">Classifications associated with you</DialogTitle>
+          </DialogHeader>
+
+          <p className="text-xs text-muted-foreground mt-1">
+            Ad providers can also employ these additional classifications of information you share with Tone to reach you with advertisements.
+          </p>
+
+          <div className="space-y-1 mt-3">
+            {loadingAssocCats ? (
+              <div className="space-y-2">
+                {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+              </div>
+            ) : associatedCategories && associatedCategories.length > 0 ? (
+              <div className="border border-border rounded-lg divide-y divide-border">
+                {associatedCategories.map((cat) => (
+                  <div key={cat.id} className="flex items-center justify-between p-3">
+                    <div className="flex-1 min-w-0 pr-3">
+                      <p className="text-sm font-semibold text-foreground">{cat.title}</p>
+                      {cat.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{cat.description}</p>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs flex-shrink-0"
+                      onClick={() => removeAssociatedCategory(cat.id)}
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">No classifications found for your account.</p>
+            )}
+          </div>
+
+          {/* Removed categories link */}
+          <button className="flex items-center gap-2 w-full p-3 mt-2 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+            <span className="text-sm text-foreground">Removed classifications</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
+          </button>
         </DialogContent>
       </Dialog>
       {/* Partner Data Dialog */}
