@@ -296,6 +296,39 @@ const BlockedUsersManager = () => {
           </div>
         ))}
       </div>
+
+      {/* Restricted List Dialog */}
+      <Dialog open={restrictedDialogOpen} onOpenChange={setRestrictedDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-semibold">Restricted list</DialogTitle>
+          </DialogHeader>
+          <Separator />
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            When you place someone's profile on your Restricted list, they won't be able to view posts
+            that you share exclusively with Friends. They may still notice things you
+            share to Public or on a mutual friend's timeline, and posts their profile is
+            mentioned in. The platform doesn't alert your friends when you place them on your
+            Restricted list.
+          </p>
+          <div className="space-y-1">
+            <button
+              className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
+              onClick={() => {/* TODO: Add to restricted list */}}
+            >
+              <PlusCircle className="h-6 w-6 text-primary" />
+              <span className="text-sm font-medium text-foreground">Add to restricted list</span>
+            </button>
+            <button
+              className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
+              onClick={() => {/* TODO: See restricted list */}}
+            >
+              <Users className="h-6 w-6 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">View your restricted list</span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
