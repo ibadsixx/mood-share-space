@@ -752,6 +752,76 @@ const AdPreferences = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Social Interactions Dialog */}
+      <Dialog open={showSocialInteractionsDialog} onOpenChange={setShowSocialInteractionsDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-foreground">Social Engagements</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-2">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              We may incorporate your social engagements alongside advertisements that your connections observe.
+              Social engagements encompass Page likes, account tags, application usage, event
+              responses and more. For instance, if you appreciate a Page that's running an ad, we
+              might inform your connections that you liked the Page when they encounter the ad. You
+              can determine whether your connections can observe your social engagements alongside the
+              advertisements they see.
+            </p>
+
+            <p className="text-sm font-semibold text-foreground leading-relaxed">
+              This does not encompass reactions to the ad itself. If you respond to an ad, your
+              connections will still be able to observe that activity.
+            </p>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Social engagements are not displayed alongside advertisements about social issues, elections or politics
+              that have a label showing who funded the ad.{' '}
+              <button className="text-primary hover:underline font-medium">Discover more</button>
+            </p>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              If you're under 18, your social engagements are not displayed alongside any advertisements. Modifying who
+              can observe your social engagements will not take effect until you're 18 years old.
+            </p>
+
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-foreground">Choose an account</h4>
+
+              {loadingSettings ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                </div>
+              ) : (
+                <div className="border border-border rounded-lg divide-y divide-border">
+                  <button
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
+                          {user?.email?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-foreground">
+                          {user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Tone</p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {adSettings?.social_interactions_visibility || 'Only Me'}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
