@@ -20,6 +20,7 @@ const AdPreferences = () => {
   const [showReviewSettingDialog, setShowReviewSettingDialog] = useState(false);
   const [showAudienceAdDialog, setShowAudienceAdDialog] = useState(false);
   const [showExternalAdsDialog, setShowExternalAdsDialog] = useState(false);
+  const [showToneAdsDialog, setShowToneAdsDialog] = useState(false);
   const [audienceShowAll, setAudienceShowAll] = useState(false);
   const { data: adActivity, isLoading: loadingActivity } = useAdActivity();
   const { data: adTopics, isLoading: loadingTopics } = useAdTopics();
