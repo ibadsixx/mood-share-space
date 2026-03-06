@@ -308,6 +308,38 @@ const BlockedUsersManager = () => {
         ))}
       </div>
 
+      {/* Block App Invites Dialog */}
+      <Dialog open={blockAppInvitesDialogOpen} onOpenChange={setBlockAppInvitesDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-semibold">Block app invites</DialogTitle>
+          </DialogHeader>
+          <Separator />
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Once you block app invites from someone's profile, you'll automatically
+            disregard future app requests from that person's profile. To block invites from a
+            specific friend's profile, click the "Ignore All Invites From This Profile" link
+            under your latest request.
+          </p>
+          <div className="space-y-1">
+            <button
+              className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
+              onClick={() => {/* TODO: Add to blocked list */}}
+            >
+              <PlusCircle className="h-6 w-6 text-primary" />
+              <span className="text-sm font-medium text-foreground">Add to blocked list</span>
+            </button>
+            <button
+              className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
+              onClick={() => {/* TODO: See blocked list */}}
+            >
+              <Users className="h-6 w-6 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">See your blocked list</span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Block Messages Dialog */}
       <Dialog open={blockMessagesDialogOpen} onOpenChange={setBlockMessagesDialogOpen}>
         <DialogContent className="sm:max-w-md">
