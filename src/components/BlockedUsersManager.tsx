@@ -38,6 +38,7 @@ const BlockedUsersManager = () => {
   const [searchInputs, setSearchInputs] = useState<Record<string, string>>({});
   const [restrictedDialogOpen, setRestrictedDialogOpen] = useState(false);
   const [blockProfilesDialogOpen, setBlockProfilesDialogOpen] = useState(false);
+  const [blockedNicknamesDialogOpen, setBlockedNicknamesDialogOpen] = useState(false);
 
   const sections: BlockingSection[] = [
     {
@@ -201,6 +202,7 @@ const BlockedUsersManager = () => {
                   onClick={() => {
                     if (section.id === 'restricted') setRestrictedDialogOpen(true);
                     else if (section.id === 'profiles') setBlockProfilesDialogOpen(true);
+                    else if (section.id === 'nicknames') setBlockedNicknamesDialogOpen(true);
                     else toggleSection(section.id);
                   }}
                 >
@@ -301,6 +303,30 @@ const BlockedUsersManager = () => {
           </div>
         ))}
       </div>
+
+      {/* Blocked Nicknames Dialog */}
+      <Dialog open={blockedNicknamesDialogOpen} onOpenChange={setBlockedNicknamesDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-semibold">Blocked nicknames</DialogTitle>
+          </DialogHeader>
+          <Separator />
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            They can't tag you or engage with your content. In certain situations, they may still
+            be able to view your content. Blocking may not prevent all communications
+            or interactions.
+          </p>
+          <div className="space-y-1">
+            <button
+              className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
+              onClick={() => {/* TODO: See blocked list */}}
+            >
+              <Users className="h-6 w-6 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">See your blocked list</span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Block Profiles and Pages Dialog */}
       <Dialog open={blockProfilesDialogOpen} onOpenChange={setBlockProfilesDialogOpen}>
