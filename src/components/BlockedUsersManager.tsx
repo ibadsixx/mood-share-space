@@ -41,6 +41,7 @@ const BlockedUsersManager = () => {
   const [blockedNicknamesDialogOpen, setBlockedNicknamesDialogOpen] = useState(false);
   const [blockMessagesDialogOpen, setBlockMessagesDialogOpen] = useState(false);
   const [blockAppInvitesDialogOpen, setBlockAppInvitesDialogOpen] = useState(false);
+  const [blockEventInvitesDialogOpen, setBlockEventInvitesDialogOpen] = useState(false);
 
   const sections: BlockingSection[] = [
     {
@@ -207,6 +208,7 @@ const BlockedUsersManager = () => {
                     else if (section.id === 'nicknames') setBlockedNicknamesDialogOpen(true);
                     else if (section.id === 'messages') setBlockMessagesDialogOpen(true);
                     else if (section.id === 'app_invites') setBlockAppInvitesDialogOpen(true);
+                    else if (section.id === 'event_invites') setBlockEventInvitesDialogOpen(true);
                     else toggleSection(section.id);
                   }}
                 >
