@@ -254,6 +254,55 @@ const YourInformationAndPermissions: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Select a profile dialog */}
+      <Dialog open={showChooseProfile} onOpenChange={setShowChooseProfile}>
+        <DialogContent className="sm:max-w-[500px] p-0 gap-0">
+          <div className="flex items-center gap-3 p-4 border-b border-border">
+            <button onClick={() => setShowChooseProfile(false)} className="hover:bg-accent/50 rounded-full p-1 transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-semibold flex-1">Select a profile</h2>
+          </div>
+          <div className="p-4 space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Pick a profile to transfer your details{' '}
+                <span className="text-primary cursor-pointer hover:underline">Discover more</span>
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3">Profiles</h3>
+              <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+                {profile ? (
+                  <button className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
+                        {profile.profile_pic ? (
+                          <img src={profile.profile_pic} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm font-semibold">
+                            {profile.display_name?.[0] || '?'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-foreground">{profile.display_name || profile.username}</p>
+                        <p className="text-xs text-muted-foreground">Tone</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                ) : (
+                  <div className="px-4 py-3 text-sm text-muted-foreground">No profiles associated</div>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Supplementary Tone profile details can be transferred by navigating to Tone settings.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
