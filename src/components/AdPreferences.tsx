@@ -846,10 +846,8 @@ const AdPreferences = () => {
                 </div>
               ) : (
                 <div className="border border-border rounded-lg divide-y divide-border">
-                  <button
-                    className="w-full flex items-center justify-between p-3.5 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
+                  <div className="p-3.5">
+                    <div className="flex items-center gap-3 mb-3">
                       <Avatar className="h-10 w-10">
                         <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
                           {user?.email?.charAt(0).toUpperCase() || 'U'}
@@ -860,13 +858,43 @@ const AdPreferences = () => {
                           {user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User'}
                         </p>
                         <p className="text-xs text-muted-foreground">Tone</p>
-                        <p className="text-xs text-muted-foreground capitalize">
-                          {adSettings?.social_interactions_visibility || 'Only Me'}
-                        </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </button>
+
+                    <div className="space-y-2 pl-1">
+                      {[
+                        { value: 'Only Me', label: 'Only Me', desc: 'No one else can see your social engagements alongside ads.' },
+                        { value: 'Friends', label: 'Friends', desc: 'Only your friends can see your social engagements alongside ads.' },
+                        { value: 'Everyone', label: 'Everyone', desc: 'Anyone can see your social engagements alongside ads.' },
+                      ].map((option) => (
+                        <div
+                          key={option.value}
+                          className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                            (adSettings?.social_interactions_visibility || 'Only Me') === option.value
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:bg-muted/50'
+                          }`}
+                          onClick={() => updateSetting('social_interactions_visibility', option.value)}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground">{option.label}</p>
+                              <p className="text-xs text-muted-foreground">{option.desc}</p>
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                              (adSettings?.social_interactions_visibility || 'Only Me') === option.value
+                                ? 'border-primary'
+                                : 'border-muted-foreground'
+                            }`}>
+                              {(adSettings?.social_interactions_visibility || 'Only Me') === option.value && (
+                                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
