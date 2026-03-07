@@ -275,7 +275,13 @@ const YourInformationAndPermissions: React.FC = () => {
               <h3 className="text-sm font-semibold text-foreground mb-3">Profiles</h3>
               <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
                 {profile ? (
-                  <button className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors">
+                  <button
+                    onClick={() => {
+                      setShowChooseProfile(false);
+                      setShowExportDestination(true);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
                         {profile.profile_pic ? (
@@ -301,6 +307,45 @@ const YourInformationAndPermissions: React.FC = () => {
             <p className="text-xs text-muted-foreground">
               Supplementary Tone profile details can be transferred by navigating to Tone settings.
             </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Choose where to export dialog */}
+      <Dialog open={showExportDestination} onOpenChange={setShowExportDestination}>
+        <DialogContent className="sm:max-w-[500px] p-0 gap-0">
+          <div className="flex items-center gap-3 p-4 border-b border-border">
+            <button
+              onClick={() => {
+                setShowExportDestination(false);
+                setShowChooseProfile(true);
+              }}
+              className="hover:bg-accent/50 rounded-full p-1 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-semibold flex-1">Pick an export destination</h2>
+          </div>
+          <div className="p-4 space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground font-medium">
+                {profile?.display_name || profile?.username} • Tone
+              </p>
+              <h3 className="text-base font-semibold text-foreground mt-1">Select where to send your data</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                You may transfer your details to your device or to a third-party platform.{' '}
+                <span className="text-primary cursor-pointer hover:underline">Discover more about storage needs</span>
+              </p>
+            </div>
+            <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+              <button className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors">
+                <span className="text-sm text-foreground">Save to device</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <button className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors">
+                <span className="text-sm text-foreground">Transfer to external platform</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
