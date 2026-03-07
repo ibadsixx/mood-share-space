@@ -483,10 +483,10 @@ const AdPreferences = () => {
                 ← Back
               </button>
               <h2 className="text-lg font-semibold text-foreground leading-snug">
-                Would you like us to leverage your activity data from ad partners to display your ads?
+                Do you want us to use your activity information from ad partners to show you ads?
               </h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Applied to {1} account.{' '}
+                Used for {2} accounts{' '}
                 <button className="text-primary hover:underline font-medium">View</button>
               </p>
             </div>
@@ -503,13 +503,13 @@ const AdPreferences = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1 flex-1">
                   <p className="text-sm font-semibold text-foreground">
-                    Yes, present me ads that are more tailored by utilizing this data
+                    Yes, show me ads that are more relevant by using this information
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    You'll receive advertisements that are more pertinent to you based on what you already prefer.
+                    You'll get ads that are more relevant to you based on what you already like.
                   </p>
                   {(adSettings?.use_partner_data ?? false) && (
-                    <p className="text-xs text-primary font-medium mt-1">Your current preference</p>
+                    <p className="text-xs text-primary font-medium mt-1">Your current experience</p>
                   )}
                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
@@ -523,7 +523,7 @@ const AdPreferences = () => {
                 </div>
               </div>
               <button className="text-xs text-primary hover:underline mt-2 font-medium">
-                How this influences your ads
+                How this affects your ads
               </button>
             </div>
 
@@ -539,13 +539,13 @@ const AdPreferences = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1 flex-1">
                   <p className="text-sm font-semibold text-foreground">
-                    No, don't enhance my ads' relevance by employing this data
+                    No, don't make my ads more relevant by using this information
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Your advertisements will rely on less of your data and be more likely to be generic.
+                    Your ads will use less of your information and be more likely to apply to other people.
                   </p>
                   {!(adSettings?.use_partner_data ?? false) && (
-                    <p className="text-xs text-primary font-medium mt-1">Your current preference</p>
+                    <p className="text-xs text-primary font-medium mt-1">Your current experience</p>
                   )}
                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
@@ -559,17 +559,17 @@ const AdPreferences = () => {
                 </div>
               </div>
               <button className="text-xs text-primary hover:underline mt-2 font-medium">
-                How this influences your ads
+                How this affects your ads
               </button>
             </div>
 
             {/* Info bullets */}
             <div className="space-y-3 pt-2">
-              <InfoBullet icon="⚙️" text="You can modify your selection at any time" />
-              <InfoBullet icon="🔒" text="We always adhere to rigorous security protocols to safeguard your data" />
-              <InfoBullet icon="📄" text={<>Certain data may be anonymized and utilized to enhance our products as outlined in our <button className="text-primary hover:underline">Privacy Policy</button>, irrespective of your selection</>} />
-              <InfoBullet icon="📋" text={<>This isn't the sole category of data from ad partners that can influence your ads. View details about <button className="text-primary hover:underline">audience-driven advertising</button></>} />
-              <InfoBullet icon="ℹ️" text={<>Discover more about <button className="text-primary hover:underline">ad partners</button></>} />
+              <InfoBullet icon="⚙️" text="You can change your choice at any time" />
+              <InfoBullet icon="🔒" text="We always use strict security standards to keep your information safe" />
+              <InfoBullet icon="📄" text={<>Some information may be anonymized and used to improve our products as described in our <button className="text-primary hover:underline">Privacy Policy</button>, regardless of your choice</>} />
+              <InfoBullet icon="📋" text={<>This isn't the only kind of information from ad partners that can affect your ads. See details about <button className="text-primary hover:underline">audience based advertising</button></>} />
+              <InfoBullet icon="ℹ️" text={<>Learn more about <button className="text-primary hover:underline">ad partners</button></>} />
             </div>
           </div>
         </DialogContent>
