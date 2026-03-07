@@ -44,19 +44,22 @@ const YourInformationAndPermissions: React.FC = () => {
         return (
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground">
-              You can export a copy of your information to an external service, or export it to your device. Available information includes content and info you've shared, your activity and info we collect.
+              You may transfer a duplicate of your details to an outside platform, or save it locally to your device. Accessible data encompasses content and details you've contributed, your engagement and data we gather.
             </p>
-            <button className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors">
-              Create export
+            <button
+              onClick={() => setShowChooseProfile(true)}
+              className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+            >
+              Generate export
             </button>
             <div className="border-b border-border">
               <div className="flex">
-                <button className="flex-1 pb-2 text-sm font-semibold border-b-2 border-primary text-foreground">Current activity</button>
-                <button className="flex-1 pb-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Past activity</button>
+                <button className="flex-1 pb-2 text-sm font-semibold border-b-2 border-primary text-foreground">Present engagement</button>
+                <button className="flex-1 pb-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Previous engagement</button>
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Your export won't include information that someone else shared, such as another person's photos you're tagged in. <span className="text-primary cursor-pointer hover:underline">Learn more</span>
+              Your export won't encompass details that another individual contributed, such as someone else's photos where you're identified. <span className="text-primary cursor-pointer hover:underline">Discover more</span>
             </p>
           </div>
         );
