@@ -12,6 +12,7 @@ const YourInformationAndPermissions: React.FC = () => {
   const [showChooseProfile, setShowChooseProfile] = useState(false);
   const [showExportDestination, setShowExportDestination] = useState(false);
   const [showConfirmExport, setShowConfirmExport] = useState(false);
+  const [showNotifyEmail, setShowNotifyEmail] = useState(false);
   const { profile } = useProfile();
   const { user } = useAuth();
 
