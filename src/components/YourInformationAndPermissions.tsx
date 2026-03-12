@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ChevronRight, ArrowLeft, Instagram, Facebook } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Instagram, Facebook, Bell, FileText, Calendar, File, Maximize2 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import YourActivity from './YourActivity';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
 
 type SubView = null | 'download' | 'view-data' | 'search-history' | 'activity-outside' | 'app-connections' | 'manage-contacts' | 'identity-verification';
 
