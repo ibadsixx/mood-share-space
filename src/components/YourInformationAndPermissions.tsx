@@ -61,6 +61,7 @@ const YourInformationAndPermissions: React.FC = () => {
     if (Object.keys(exportCategories).length === 0) {
       const initial: Record<string, boolean> = {};
       toneActivityItems.forEach(item => { initial[item.key] = true; });
+      personalInfoItems.forEach(item => { initial[item.key] = true; });
       setExportCategories(initial);
     }
   }, []);
@@ -69,9 +70,9 @@ const YourInformationAndPermissions: React.FC = () => {
     setExportCategories(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const clearAllCategories = () => {
-    const cleared: Record<string, boolean> = {};
-    toneActivityItems.forEach(item => { cleared[item.key] = false; });
+  const clearAllSectionCategories = (items: { key: string; label: string }[]) => {
+    const cleared: Record<string, boolean> = { ...exportCategories };
+    items.forEach(item => { cleared[item.key] = false; });
     setExportCategories(cleared);
   };
 
