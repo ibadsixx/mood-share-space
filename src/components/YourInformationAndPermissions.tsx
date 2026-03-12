@@ -607,7 +607,7 @@ const YourInformationAndPermissions: React.FC = () => {
                 </p>
               </div>
               <button
-                onClick={clearAllCategories}
+                onClick={() => clearAllSectionCategories(toneActivityItems)}
                 className="text-xs text-primary hover:underline whitespace-nowrap ml-3"
               >
                 Remove all
@@ -625,6 +625,46 @@ const YourInformationAndPermissions: React.FC = () => {
                     {item.subtitle && (
                       <p className="text-xs text-muted-foreground">{item.subtitle}</p>
                     )}
+                  </div>
+                  <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border ${
+                    exportCategories[item.key]
+                      ? 'bg-primary border-primary'
+                      : 'border-muted-foreground'
+                  }`}>
+                    {exportCategories[item.key] && (
+                      <svg className="w-3 h-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Personal information section */}
+            <div className="flex items-center justify-between mt-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Individual details</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Particulars regarding your profile
+                </p>
+              </div>
+              <button
+                onClick={() => clearAllSectionCategories(personalInfoItems)}
+                className="text-xs text-primary hover:underline whitespace-nowrap ml-3"
+              >
+                Remove all
+              </button>
+            </div>
+            <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+              {personalInfoItems.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => toggleCategory(item.key)}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="text-left">
+                    <p className="text-sm text-foreground">{item.label}</p>
                   </div>
                   <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border ${
                     exportCategories[item.key]
