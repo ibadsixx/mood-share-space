@@ -34,14 +34,34 @@ const YourInformationAndPermissions: React.FC = () => {
     { key: 'stories', label: 'Stories' },
     { key: 'bug_bounty', label: 'Bug Bounty' },
     { key: 'reels', label: 'Reels' },
-    { key: 'fundraisers', label: 'Fundraisers' },
-    { key: 'groups', label: 'Communities' },
+    { key: 'fundraisers', label: 'Charitable drives' },
+    { key: 'groups', label: 'Communities', subtitle: 'May require additional time to export' },
+    { key: 'reviews', label: 'Appraisals' },
+    { key: 'tone_spark', label: 'Tone Spark' },
+    { key: 'navigation_bar', label: 'Navigation panel' },
+    { key: 'shops', label: 'Storefronts' },
+    { key: 'tagged_activity', label: 'Engagement you\'re identified in' },
+    { key: 'tone_support', label: 'Tone assistance' },
+    { key: 'live_videos', label: 'Live Broadcasts' },
+    { key: 'ai', label: 'AI' },
+    { key: 'other_activity', label: 'Miscellaneous engagement' },
+  ];
+
+  const personalInfoItems = [
+    { key: 'tone_portal', label: 'Tone Portal' },
+    { key: 'profile_information', label: 'Profile details' },
+    { key: 'tone_assistant', label: 'Tone Assistant' },
+    { key: 'health_professional', label: 'Health specialist' },
+    { key: 'avatars_store', label: 'Avatars Gallery' },
+    { key: 'tone_accounts_center', label: 'Tone Accounts Hub' },
+    { key: 'other_personal_info', label: 'Additional personal details' },
   ];
 
   useEffect(() => {
     if (Object.keys(exportCategories).length === 0) {
       const initial: Record<string, boolean> = {};
       toneActivityItems.forEach(item => { initial[item.key] = true; });
+      personalInfoItems.forEach(item => { initial[item.key] = true; });
       setExportCategories(initial);
     }
   }, []);
@@ -50,9 +70,9 @@ const YourInformationAndPermissions: React.FC = () => {
     setExportCategories(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const clearAllCategories = () => {
-    const cleared: Record<string, boolean> = {};
-    toneActivityItems.forEach(item => { cleared[item.key] = false; });
+  const clearAllSectionCategories = (items: { key: string; label: string }[]) => {
+    const cleared: Record<string, boolean> = { ...exportCategories };
+    items.forEach(item => { cleared[item.key] = false; });
     setExportCategories(cleared);
   };
 
@@ -587,7 +607,7 @@ const YourInformationAndPermissions: React.FC = () => {
                 </p>
               </div>
               <button
-                onClick={clearAllCategories}
+                onClick={() => clearAllSectionCategories(toneActivityItems)}
                 className="text-xs text-primary hover:underline whitespace-nowrap ml-3"
               >
                 Remove all
@@ -605,6 +625,46 @@ const YourInformationAndPermissions: React.FC = () => {
                     {item.subtitle && (
                       <p className="text-xs text-muted-foreground">{item.subtitle}</p>
                     )}
+                  </div>
+                  <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border ${
+                    exportCategories[item.key]
+                      ? 'bg-primary border-primary'
+                      : 'border-muted-foreground'
+                  }`}>
+                    {exportCategories[item.key] && (
+                      <svg className="w-3 h-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Personal information section */}
+            <div className="flex items-center justify-between mt-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Individual details</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Particulars regarding your profile
+                </p>
+              </div>
+              <button
+                onClick={() => clearAllSectionCategories(personalInfoItems)}
+                className="text-xs text-primary hover:underline whitespace-nowrap ml-3"
+              >
+                Remove all
+              </button>
+            </div>
+            <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+              {personalInfoItems.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => toggleCategory(item.key)}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="text-left">
+                    <p className="text-sm text-foreground">{item.label}</p>
                   </div>
                   <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border ${
                     exportCategories[item.key]
