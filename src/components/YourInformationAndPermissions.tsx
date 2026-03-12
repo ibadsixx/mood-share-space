@@ -13,6 +13,8 @@ const YourInformationAndPermissions: React.FC = () => {
   const [showExportDestination, setShowExportDestination] = useState(false);
   const [showConfirmExport, setShowConfirmExport] = useState(false);
   const [showNotifyEmail, setShowNotifyEmail] = useState(false);
+  const [showTailorInfo, setShowTailorInfo] = useState(false);
+  const [exportCategories, setExportCategories] = useState<Record<string, boolean>>({});
   const { profile } = useProfile();
   const { user } = useAuth();
 
