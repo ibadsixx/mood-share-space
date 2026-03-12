@@ -454,7 +454,10 @@ const YourInformationAndPermissions: React.FC = () => {
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
-              <button className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors">
+              <button
+                onClick={() => setShowTailorInfo(true)}
+                className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors"
+              >
                 <div className="flex items-center gap-3">
                   <FileText className="w-5 h-5 text-muted-foreground" />
                   <div className="text-left">
