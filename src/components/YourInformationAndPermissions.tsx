@@ -401,7 +401,10 @@ const YourInformationAndPermissions: React.FC = () => {
 
             {/* Settings list */}
             <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
-              <button className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors">
+              <button
+                onClick={() => setShowNotifyEmail(true)}
+                className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-accent/50 transition-colors"
+              >
                 <div className="flex items-center gap-3">
                   <Bell className="w-5 h-5 text-muted-foreground" />
                   <div className="text-left">
