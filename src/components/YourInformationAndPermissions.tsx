@@ -470,6 +470,51 @@ const YourInformationAndPermissions: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Notify email dialog */}
+      <Dialog open={showNotifyEmail} onOpenChange={setShowNotifyEmail}>
+        <DialogContent className="sm:max-w-[500px] p-0 gap-0">
+          <div className="flex items-center gap-3 p-4 border-b border-border">
+            <button
+              onClick={() => {
+                setShowNotifyEmail(false);
+                setShowConfirmExport(true);
+              }}
+              className="hover:bg-accent/50 rounded-full p-1 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-semibold flex-1">Inform</h2>
+          </div>
+          <div className="p-4 space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground font-medium">
+                {profile?.display_name || profile?.username} • Tone
+              </p>
+              <h3 className="text-base font-semibold text-foreground mt-1">Notify</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Notifications regarding your data export will be dispatched to this email address.
+              </p>
+            </div>
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3.5">
+                <span className="text-sm text-foreground">{user?.email || 'No email configured'}</span>
+                <div className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center">
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowNotifyEmail(false);
+                setShowConfirmExport(true);
+              }}
+              className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+            >
+              Preserve
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
