@@ -366,7 +366,7 @@ const PrivacyCheckup = () => {
       <div className="space-y-4">
         <h4 className="font-semibold text-foreground">Tag Audience Broadening</h4>
         <div>
-          <Label>When you're tagged in a post, who can be added to the audience?</Label>
+          <Label>When you're mentioned in a post, who can be appended to the audience?</Label>
           <Select value={privacySettings.tag_audience_expansion || 'friends'} onValueChange={v => updatePrivacySetting('tag_audience_expansion', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
