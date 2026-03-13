@@ -282,8 +282,8 @@ const PrivacyCheckup = () => {
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <Label className="text-sm font-medium">Permit search engines to link to your profile</Label>
-            <p className="text-sm text-muted-foreground">Allow search engines outside of Tone to reference your profile</p>
+            <Label className="text-sm font-medium">Allow search engines to index your profile</Label>
+            <p className="text-sm text-muted-foreground">Permit search engines beyond Tone to reference your profile</p>
           </div>
           <Switch checked={privacySettings.search_engine_indexing === 'true'} onCheckedChange={c => updatePrivacySetting('search_engine_indexing', c.toString())} />
         </div>
