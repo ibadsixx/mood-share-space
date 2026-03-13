@@ -306,15 +306,15 @@ const PrivacyCheckup = () => {
           <Input id="birthday" type="date" value={profileData.birthday} onChange={e => updateProfile('birthday', e.target.value)} />
         </div>
         <div>
-          <Label htmlFor="relationship">Partnership Status</Label>
+          <Label htmlFor="relationship">Union Status</Label>
           <Select value={profileData.relationship} onValueChange={v => updateProfile('relationship', v)}>
-            <SelectTrigger><SelectValue placeholder="Choose partnership status" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Pick union status" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="single">Unattached</SelectItem>
-              <SelectItem value="in_relationship">In a Partnership</SelectItem>
-              <SelectItem value="married">Wedded</SelectItem>
-              <SelectItem value="its_complicated">It's Nuanced</SelectItem>
-              <SelectItem value="prefer_not_to_say">Rather Not Disclose</SelectItem>
+              <SelectItem value="single">Uncommitted</SelectItem>
+              <SelectItem value="in_relationship">In a Union</SelectItem>
+              <SelectItem value="married">Married</SelectItem>
+              <SelectItem value="its_complicated">It's Complex</SelectItem>
+              <SelectItem value="prefer_not_to_say">Prefer Not to Say</SelectItem>
             </SelectContent>
           </Select>
         </div>
