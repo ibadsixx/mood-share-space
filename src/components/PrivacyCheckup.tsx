@@ -204,7 +204,7 @@ const PrivacyCheckup = () => {
           </Select>
         </div>
         <div>
-          <Label>Who can view your companions list?</Label>
+          <Label>Who can observe your allies list?</Label>
           <Select value={privacySettings.friends_list_visibility || 'friends'} onValueChange={v => updatePrivacySetting('friends_list_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
