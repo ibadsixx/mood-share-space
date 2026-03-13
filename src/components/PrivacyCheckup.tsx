@@ -232,8 +232,8 @@ const PrivacyCheckup = () => {
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <Label className="text-sm font-medium">Examine posts you're tagged in before they show on your profile</Label>
-            <p className="text-sm text-muted-foreground">Tagged posts will require consent to appear on your timeline</p>
+            <Label className="text-sm font-medium">Review posts you're mentioned in before they appear on your profile</Label>
+            <p className="text-sm text-muted-foreground">Mentioned posts will need approval to surface on your timeline</p>
           </div>
           <Switch checked={privacySettings.review_tagged_posts === 'true'} onCheckedChange={c => updatePrivacySetting('review_tagged_posts', c.toString())} />
         </div>
