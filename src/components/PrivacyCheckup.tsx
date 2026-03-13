@@ -302,7 +302,7 @@ const PrivacyCheckup = () => {
           <Input id="email" type="email" value={profileData.email} onChange={e => updateProfile('email', e.target.value)} placeholder="Enter your email" />
         </div>
         <div>
-          <Label htmlFor="birthday">Date of Birth</Label>
+          <Label htmlFor="birthday">Birth Date</Label>
           <Input id="birthday" type="date" value={profileData.birthday} onChange={e => updateProfile('birthday', e.target.value)} />
         </div>
         <div>
