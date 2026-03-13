@@ -85,6 +85,9 @@ const YourInformationAndPermissions: React.FC = () => {
       const initial: Record<string, boolean> = {};
       toneActivityItems.forEach(item => { initial[item.key] = true; });
       personalInfoItems.forEach(item => { initial[item.key] = true; });
+      connectionsItems.forEach(item => { initial[item.key] = true; });
+      loggedInfoItems.forEach(item => { initial[item.key] = true; });
+      securityItems.forEach(item => { initial[item.key] = true; });
       setExportCategories(initial);
     }
   }, []);
