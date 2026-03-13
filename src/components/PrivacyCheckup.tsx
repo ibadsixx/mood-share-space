@@ -332,7 +332,7 @@ const PrivacyCheckup = () => {
   const renderSecurityView = () => (
     <div className="space-y-6">
       {renderBackButton()}
-      <h3 className="text-xl font-bold text-foreground">Ways to safeguard your account</h3>
+      <h3 className="text-xl font-bold text-foreground">How to maintain your account protected</h3>
 
       <div className="space-y-4">
         <h4 className="font-semibold text-foreground">Restricted Users</h4>
