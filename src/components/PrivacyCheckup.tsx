@@ -248,7 +248,7 @@ const PrivacyCheckup = () => {
 
       <div className="space-y-4">
         <div>
-          <Label>Who can dispatch you companion requests?</Label>
+          <Label>Who can transmit you ally requests?</Label>
           <Select value={privacySettings.friend_requests_from || 'everyone'} onValueChange={v => updatePrivacySetting('friend_requests_from', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
