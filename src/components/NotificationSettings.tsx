@@ -39,7 +39,7 @@ interface CategoryConfig {
 }
 
 const NOTIFICATION_CATEGORIES: CategoryConfig[] = [
-  { key: 'remarks', label: 'Remarks', icon: <MessageCircle className="h-5 w-5 text-muted-foreground" />, description: 'Notify, In-app, Text' },
+  { key: 'remarks', label: 'Comments', icon: <MessageCircle className="h-5 w-5 text-muted-foreground" />, description: 'Notify, In-app, Text' },
   { key: 'labels', label: 'Labels', icon: <Tag className="h-5 w-5 text-muted-foreground" />, description: 'Notify, In-app, Text' },
   { key: 'alerts', label: 'Alerts', icon: <Bell className="h-5 w-5 text-muted-foreground" />, description: 'Notify, In-app, Text' },
   { key: 'extra_engagement', label: 'Additional engagement regarding you', icon: <Activity className="h-5 w-5 text-muted-foreground" />, description: 'Notify, In-app, Text' },
