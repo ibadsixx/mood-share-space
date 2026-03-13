@@ -179,7 +179,7 @@ const PrivacyCheckup = () => {
   const renderSharingView = () => (
     <div className="space-y-6">
       {renderBackButton()}
-      <h3 className="text-xl font-bold text-foreground">Who can view what you post</h3>
+      <h3 className="text-xl font-bold text-foreground">Who can observe what you share</h3>
 
       <div className="space-y-4">
         <div>
