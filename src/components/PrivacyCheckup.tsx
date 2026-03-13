@@ -211,7 +211,7 @@ const PrivacyCheckup = () => {
           </Select>
         </div>
         <div>
-          <Label>Who can view posts you're tagged in on your profile?</Label>
+          <Label>Who can observe posts you're mentioned in on your profile?</Label>
           <Select value={privacySettings.tagged_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('tagged_posts_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
