@@ -197,7 +197,7 @@ const PrivacyCheckup = () => {
           </Select>
         </div>
         <div>
-          <Label>Restrict who can view previous posts</Label>
+          <Label>Limit who can observe earlier posts</Label>
           <Select value={privacySettings.past_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('past_posts_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
