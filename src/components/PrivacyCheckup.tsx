@@ -190,7 +190,7 @@ const PrivacyCheckup = () => {
           </Select>
         </div>
         <div>
-          <Label>Who can view your stories?</Label>
+          <Label>Who can observe your narratives?</Label>
           <Select value={privacySettings.stories_visibility || 'friends'} onValueChange={v => updatePrivacySetting('stories_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
