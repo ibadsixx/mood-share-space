@@ -298,7 +298,7 @@ const PrivacyCheckup = () => {
 
       <div className="space-y-4">
         <div>
-          <Label htmlFor="email">Email Address</Label>
+          <Label htmlFor="email">Electronic Mail</Label>
           <Input id="email" type="email" value={profileData.email} onChange={e => updateProfile('email', e.target.value)} placeholder="Enter your email" />
         </div>
         <div>
