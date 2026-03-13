@@ -119,20 +119,20 @@ const PrivacyCheckup = () => {
   if (loading) return <div className="p-6 text-center text-muted-foreground">Loading privacy preferences...</div>;
 
   const cards: { id: ActiveView; title: string; image: string; bg: string }[] = [
-    { id: 'sharing', title: 'Who can view what you post', image: whoCanSeeImg, bg: 'bg-sky-50 dark:bg-sky-950/30' },
-    { id: 'discoverability', title: 'How others can locate you on Tone', image: howPeopleFindImg, bg: 'bg-purple-50 dark:bg-purple-950/30' },
-    { id: 'data', title: 'Your information preferences on Tone', image: dataSettingsImg, bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
-    { id: 'security', title: 'Ways to safeguard your account', image: accountSecureImg, bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
-    { id: 'ads', title: 'Your promotion choices on Tone', image: adPreferencesImg, bg: 'bg-pink-50 dark:bg-pink-950/30' },
+    { id: 'sharing', title: 'Who can observe what you share', image: whoCanSeeImg, bg: 'bg-amber-100 dark:bg-amber-950/30' },
+    { id: 'discoverability', title: 'How others can discover you on Tone', image: howPeopleFindImg, bg: 'bg-sky-100 dark:bg-sky-950/30' },
+    { id: 'data', title: 'Your data configurations on Tone', image: dataSettingsImg, bg: 'bg-emerald-100 dark:bg-emerald-950/30' },
+    { id: 'security', title: 'How to maintain your account protected', image: accountSecureImg, bg: 'bg-blue-100 dark:bg-blue-950/30' },
+    { id: 'ads', title: 'Your advertisement preferences on Tone', image: adPreferencesImg, bg: 'bg-pink-100 dark:bg-pink-950/30' },
   ];
 
   // Landing page
   if (!activeView) {
     return (
       <div className="max-w-2xl mx-auto">
-        <h2 className="text-2xl font-bold text-foreground mb-2">Privacy Checkup</h2>
-        <p className="text-muted-foreground mb-6">
-          We'll walk you through key configurations so you can make the ideal selections for your account.
+        <h2 className="text-2xl font-bold text-foreground mb-1">Privacy Checkup</h2>
+        <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
+          We'll walk you through certain configurations so you can make the appropriate decisions for your account.
           Which subject would you like to begin with?
         </p>
 
@@ -141,10 +141,10 @@ const PrivacyCheckup = () => {
             <button
               key={card.id}
               onClick={() => setActiveView(card.id)}
-              className={`${card.bg} rounded-xl p-4 text-left transition-all hover:shadow-md hover:scale-[1.02] border border-border/40`}
+              className={`${card.bg} rounded-xl overflow-hidden text-left transition-all hover:shadow-lg hover:scale-[1.02] border border-border/30`}
             >
-              <img src={card.image} alt={card.title} className="w-full h-32 object-contain mb-3 rounded-lg" />
-              <p className="font-semibold text-sm text-foreground">{card.title}</p>
+              <img src={card.image} alt={card.title} className="w-full h-36 object-cover" />
+              <p className="font-semibold text-sm text-foreground p-3 pt-2">{card.title}</p>
             </button>
           ))}
         </div>
@@ -153,16 +153,16 @@ const PrivacyCheckup = () => {
             <button
               key={card.id}
               onClick={() => setActiveView(card.id)}
-              className={`${card.bg} rounded-xl p-4 text-left transition-all hover:shadow-md hover:scale-[1.02] border border-border/40`}
+              className={`${card.bg} rounded-xl overflow-hidden text-left transition-all hover:shadow-lg hover:scale-[1.02] border border-border/30`}
             >
-              <img src={card.image} alt={card.title} className="w-full h-28 object-contain mb-3 rounded-lg" />
-              <p className="font-semibold text-sm text-foreground">{card.title}</p>
+              <img src={card.image} alt={card.title} className="w-full h-28 object-cover" />
+              <p className="font-semibold text-sm text-foreground p-3 pt-2">{card.title}</p>
             </button>
           ))}
         </div>
 
         <p className="text-sm text-muted-foreground">
-          You can review additional privacy configurations on Tone in{' '}
+          You can inspect additional privacy configurations on Tone in{' '}
           <span className="text-primary font-medium cursor-pointer">Preferences</span>
         </p>
       </div>
