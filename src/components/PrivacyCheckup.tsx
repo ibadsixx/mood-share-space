@@ -319,7 +319,7 @@ const PrivacyCheckup = () => {
           </Select>
         </div>
         <div>
-          <Label>Who can view the people, Pages, and lists you follow?</Label>
+          <Label>Who can observe the individuals, Pages, and lists you trail?</Label>
           <Select value={privacySettings.following_visibility || 'friends'} onValueChange={v => updatePrivacySetting('following_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
