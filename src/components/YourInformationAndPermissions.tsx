@@ -57,11 +57,37 @@ const YourInformationAndPermissions: React.FC = () => {
     { key: 'other_personal_info', label: 'Additional personal details' },
   ];
 
+  const connectionsItems = [
+    { key: 'friends_export', label: 'Companions' },
+    { key: 'followers_export', label: 'Subscribers' },
+    { key: 'supervision', label: 'Oversight' },
+  ];
+
+  const loggedInfoItems = [
+    { key: 'recommendations', label: 'Suggestions' },
+    { key: 'location_log', label: 'Whereabouts' },
+    { key: 'search_log', label: 'Lookups' },
+    { key: 'notifications_log', label: 'Alerts' },
+    { key: 'interactions', label: 'Engagements' },
+    { key: 'activity_messages', label: 'Engagement dispatches' },
+    { key: 'form_submissions', label: 'Form entries' },
+    { key: 'in_app_messages', label: 'In-app dispatches' },
+    { key: 'bonuses', label: 'Rewards' },
+    { key: 'other_logged_info', label: 'Additional logged details' },
+  ];
+
+  const securityItems = [
+    { key: 'security_login_info', label: 'Protection and access details' },
+  ];
+
   useEffect(() => {
     if (Object.keys(exportCategories).length === 0) {
       const initial: Record<string, boolean> = {};
       toneActivityItems.forEach(item => { initial[item.key] = true; });
       personalInfoItems.forEach(item => { initial[item.key] = true; });
+      connectionsItems.forEach(item => { initial[item.key] = true; });
+      loggedInfoItems.forEach(item => { initial[item.key] = true; });
+      securityItems.forEach(item => { initial[item.key] = true; });
       setExportCategories(initial);
     }
   }, []);
@@ -658,6 +684,126 @@ const YourInformationAndPermissions: React.FC = () => {
             </div>
             <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
               {personalInfoItems.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => toggleCategory(item.key)}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="text-left">
+                    <p className="text-sm text-foreground">{item.label}</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border ${
+                    exportCategories[item.key]
+                      ? 'bg-primary border-primary'
+                      : 'border-muted-foreground'
+                  }`}>
+                    {exportCategories[item.key] && (
+                      <svg className="w-3 h-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Connections section */}
+            <div className="flex items-center justify-between mt-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Associations</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Who and how you're linked with others
+                </p>
+              </div>
+              <button
+                onClick={() => clearAllSectionCategories(connectionsItems)}
+                className="text-xs text-primary hover:underline whitespace-nowrap ml-3"
+              >
+                Remove all
+              </button>
+            </div>
+            <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+              {connectionsItems.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => toggleCategory(item.key)}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="text-left">
+                    <p className="text-sm text-foreground">{item.label}</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border ${
+                    exportCategories[item.key]
+                      ? 'bg-primary border-primary'
+                      : 'border-muted-foreground'
+                  }`}>
+                    {exportCategories[item.key] && (
+                      <svg className="w-3 h-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Logged information section */}
+            <div className="flex items-center justify-between mt-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Recorded details</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Data that Tone records about your engagement, including items like your whereabouts and lookup history
+                </p>
+              </div>
+              <button
+                onClick={() => clearAllSectionCategories(loggedInfoItems)}
+                className="text-xs text-primary hover:underline whitespace-nowrap ml-3"
+              >
+                Remove all
+              </button>
+            </div>
+            <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+              {loggedInfoItems.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => toggleCategory(item.key)}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="text-left">
+                    <p className="text-sm text-foreground">{item.label}</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border ${
+                    exportCategories[item.key]
+                      ? 'bg-primary border-primary'
+                      : 'border-muted-foreground'
+                  }`}>
+                    {exportCategories[item.key] && (
+                      <svg className="w-3 h-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Security and login section */}
+            <div className="flex items-center justify-between mt-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Protection and access details</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Technical data and sign-in engagement
+                </p>
+              </div>
+              <button
+                onClick={() => clearAllSectionCategories(securityItems)}
+                className="text-xs text-primary hover:underline whitespace-nowrap ml-3"
+              >
+                Remove all
+              </button>
+            </div>
+            <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+              {securityItems.map(item => (
                 <button
                   key={item.key}
                   onClick={() => toggleCategory(item.key)}
