@@ -36,9 +36,9 @@ type ActiveView = null | 'sharing' | 'discoverability' | 'data' | 'security' | '
 
 const privacyOptions = [
   { value: 'public', label: 'Everyone' },
-  { value: 'friends', label: 'Companions' },
-  { value: 'friends_of_friends', label: 'Extended Circle' },
-  { value: 'only_me', label: 'Just Me' }
+  { value: 'friends', label: 'Allies' },
+  { value: 'friends_of_friends', label: 'Wider Circle' },
+  { value: 'only_me', label: 'Only Me' }
 ];
 
 const PrivacyCheckup = () => {
