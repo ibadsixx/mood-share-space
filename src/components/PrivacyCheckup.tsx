@@ -259,7 +259,7 @@ const PrivacyCheckup = () => {
           </Select>
         </div>
         <div>
-          <Label>Who can locate your profile via your email address?</Label>
+          <Label>Who can discover your profile through your email?</Label>
           <Select value={privacySettings.findable_by_email || 'friends'} onValueChange={v => updatePrivacySetting('findable_by_email', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
