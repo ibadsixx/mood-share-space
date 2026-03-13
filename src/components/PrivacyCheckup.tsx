@@ -36,9 +36,9 @@ type ActiveView = null | 'sharing' | 'discoverability' | 'data' | 'security' | '
 
 const privacyOptions = [
   { value: 'public', label: 'Everyone' },
-  { value: 'friends', label: 'Companions' },
-  { value: 'friends_of_friends', label: 'Extended Circle' },
-  { value: 'only_me', label: 'Just Me' }
+  { value: 'friends', label: 'Allies' },
+  { value: 'friends_of_friends', label: 'Wider Circle' },
+  { value: 'only_me', label: 'Only Me' }
 ];
 
 const PrivacyCheckup = () => {
@@ -119,20 +119,20 @@ const PrivacyCheckup = () => {
   if (loading) return <div className="p-6 text-center text-muted-foreground">Loading privacy preferences...</div>;
 
   const cards: { id: ActiveView; title: string; image: string; bg: string }[] = [
-    { id: 'sharing', title: 'Who can view what you post', image: whoCanSeeImg, bg: 'bg-sky-50 dark:bg-sky-950/30' },
-    { id: 'discoverability', title: 'How others can locate you on Tone', image: howPeopleFindImg, bg: 'bg-purple-50 dark:bg-purple-950/30' },
-    { id: 'data', title: 'Your information preferences on Tone', image: dataSettingsImg, bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
-    { id: 'security', title: 'Ways to safeguard your account', image: accountSecureImg, bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
-    { id: 'ads', title: 'Your promotion choices on Tone', image: adPreferencesImg, bg: 'bg-pink-50 dark:bg-pink-950/30' },
+    { id: 'sharing', title: 'Who can observe what you share', image: whoCanSeeImg, bg: 'bg-amber-100 dark:bg-amber-950/30' },
+    { id: 'discoverability', title: 'How others can discover you on Tone', image: howPeopleFindImg, bg: 'bg-sky-100 dark:bg-sky-950/30' },
+    { id: 'data', title: 'Your data configurations on Tone', image: dataSettingsImg, bg: 'bg-emerald-100 dark:bg-emerald-950/30' },
+    { id: 'security', title: 'How to maintain your account protected', image: accountSecureImg, bg: 'bg-blue-100 dark:bg-blue-950/30' },
+    { id: 'ads', title: 'Your advertisement preferences on Tone', image: adPreferencesImg, bg: 'bg-pink-100 dark:bg-pink-950/30' },
   ];
 
   // Landing page
   if (!activeView) {
     return (
       <div className="max-w-2xl mx-auto">
-        <h2 className="text-2xl font-bold text-foreground mb-2">Privacy Checkup</h2>
-        <p className="text-muted-foreground mb-6">
-          We'll walk you through key configurations so you can make the ideal selections for your account.
+        <h2 className="text-2xl font-bold text-foreground mb-1">Privacy Checkup</h2>
+        <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
+          We'll walk you through certain configurations so you can make the appropriate decisions for your account.
           Which subject would you like to begin with?
         </p>
 
@@ -141,10 +141,10 @@ const PrivacyCheckup = () => {
             <button
               key={card.id}
               onClick={() => setActiveView(card.id)}
-              className={`${card.bg} rounded-xl p-4 text-left transition-all hover:shadow-md hover:scale-[1.02] border border-border/40`}
+              className={`${card.bg} rounded-xl overflow-hidden text-left transition-all hover:shadow-lg hover:scale-[1.02] border border-border/30`}
             >
-              <img src={card.image} alt={card.title} className="w-full h-32 object-contain mb-3 rounded-lg" />
-              <p className="font-semibold text-sm text-foreground">{card.title}</p>
+              <img src={card.image} alt={card.title} className="w-full h-36 object-cover" />
+              <p className="font-semibold text-sm text-foreground p-3 pt-2">{card.title}</p>
             </button>
           ))}
         </div>
@@ -153,16 +153,16 @@ const PrivacyCheckup = () => {
             <button
               key={card.id}
               onClick={() => setActiveView(card.id)}
-              className={`${card.bg} rounded-xl p-4 text-left transition-all hover:shadow-md hover:scale-[1.02] border border-border/40`}
+              className={`${card.bg} rounded-xl overflow-hidden text-left transition-all hover:shadow-lg hover:scale-[1.02] border border-border/30`}
             >
-              <img src={card.image} alt={card.title} className="w-full h-28 object-contain mb-3 rounded-lg" />
-              <p className="font-semibold text-sm text-foreground">{card.title}</p>
+              <img src={card.image} alt={card.title} className="w-full h-28 object-cover" />
+              <p className="font-semibold text-sm text-foreground p-3 pt-2">{card.title}</p>
             </button>
           ))}
         </div>
 
         <p className="text-sm text-muted-foreground">
-          You can review additional privacy configurations on Tone in{' '}
+          You can inspect additional privacy configurations on Tone in{' '}
           <span className="text-primary font-medium cursor-pointer">Preferences</span>
         </p>
       </div>
@@ -172,46 +172,46 @@ const PrivacyCheckup = () => {
   // Detail views
   const renderBackButton = () => (
     <Button variant="ghost" size="sm" onClick={() => setActiveView(null)} className="mb-4 -ml-2 text-muted-foreground hover:text-foreground">
-      <ArrowLeft className="h-4 w-4 mr-1" /> Return to overview
+      <ArrowLeft className="h-4 w-4 mr-1" /> Back to overview
     </Button>
   );
 
   const renderSharingView = () => (
     <div className="space-y-6">
       {renderBackButton()}
-      <h3 className="text-xl font-bold text-foreground">Who can view what you post</h3>
+      <h3 className="text-xl font-bold text-foreground">Who can observe what you share</h3>
 
       <div className="space-y-4">
         <div>
-          <Label>Who can view your upcoming posts?</Label>
+          <Label>Who can observe your forthcoming posts?</Label>
           <Select value={privacySettings.future_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('future_posts_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div>
-          <Label>Who can view your stories?</Label>
+          <Label>Who can observe your narratives?</Label>
           <Select value={privacySettings.stories_visibility || 'friends'} onValueChange={v => updatePrivacySetting('stories_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div>
-          <Label>Restrict who can view previous posts</Label>
+          <Label>Limit who can observe earlier posts</Label>
           <Select value={privacySettings.past_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('past_posts_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div>
-          <Label>Who can view your companions list?</Label>
+          <Label>Who can observe your allies list?</Label>
           <Select value={privacySettings.friends_list_visibility || 'friends'} onValueChange={v => updatePrivacySetting('friends_list_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div>
-          <Label>Who can view posts you're tagged in on your profile?</Label>
+          <Label>Who can observe posts you're mentioned in on your profile?</Label>
           <Select value={privacySettings.tagged_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('tagged_posts_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -222,18 +222,18 @@ const PrivacyCheckup = () => {
       <Separator />
 
       <div className="space-y-4">
-        <h4 className="font-semibold text-foreground">Tag Oversight</h4>
+        <h4 className="font-semibold text-foreground">Tag Supervision</h4>
         <div className="flex items-center justify-between">
           <div>
-            <Label className="text-sm font-medium">Examine tags companions add before they show</Label>
-            <p className="text-sm text-muted-foreground">Tags will require your consent before appearing on your profile</p>
+            <Label className="text-sm font-medium">Review tags allies attach before they appear</Label>
+            <p className="text-sm text-muted-foreground">Tags will need your approval before showing on your profile</p>
           </div>
           <Switch checked={privacySettings.review_tags === 'true'} onCheckedChange={c => updatePrivacySetting('review_tags', c.toString())} />
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <Label className="text-sm font-medium">Examine posts you're tagged in before they show on your profile</Label>
-            <p className="text-sm text-muted-foreground">Tagged posts will require consent to appear on your timeline</p>
+            <Label className="text-sm font-medium">Review posts you're mentioned in before they appear on your profile</Label>
+            <p className="text-sm text-muted-foreground">Mentioned posts will need approval to surface on your timeline</p>
           </div>
           <Switch checked={privacySettings.review_tagged_posts === 'true'} onCheckedChange={c => updatePrivacySetting('review_tagged_posts', c.toString())} />
         </div>
@@ -244,11 +244,11 @@ const PrivacyCheckup = () => {
   const renderDiscoverabilityView = () => (
     <div className="space-y-6">
       {renderBackButton()}
-      <h3 className="text-xl font-bold text-foreground">How others can locate you on Tone</h3>
+      <h3 className="text-xl font-bold text-foreground">How others can discover you on Tone</h3>
 
       <div className="space-y-4">
         <div>
-          <Label>Who can dispatch you companion requests?</Label>
+          <Label>Who can transmit you ally requests?</Label>
           <Select value={privacySettings.friend_requests_from || 'everyone'} onValueChange={v => updatePrivacySetting('friend_requests_from', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -259,31 +259,31 @@ const PrivacyCheckup = () => {
           </Select>
         </div>
         <div>
-          <Label>Who can locate your profile via your email address?</Label>
+          <Label>Who can discover your profile through your email?</Label>
           <Select value={privacySettings.findable_by_email || 'friends'} onValueChange={v => updatePrivacySetting('findable_by_email', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="everyone">Everyone</SelectItem>
-              <SelectItem value="friends">Companions</SelectItem>
+              <SelectItem value="friends">Allies</SelectItem>
               <SelectItem value="no_one">Nobody</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label>Who can locate your profile via your phone number?</Label>
+          <Label>Who can discover your profile through your phone number?</Label>
           <Select value={privacySettings.findable_by_phone || 'friends'} onValueChange={v => updatePrivacySetting('findable_by_phone', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="everyone">Everyone</SelectItem>
-              <SelectItem value="friends">Companions</SelectItem>
+              <SelectItem value="friends">Allies</SelectItem>
               <SelectItem value="no_one">Nobody</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <Label className="text-sm font-medium">Permit search engines to link to your profile</Label>
-            <p className="text-sm text-muted-foreground">Allow search engines outside of Tone to reference your profile</p>
+            <Label className="text-sm font-medium">Allow search engines to index your profile</Label>
+            <p className="text-sm text-muted-foreground">Permit search engines beyond Tone to reference your profile</p>
           </div>
           <Switch checked={privacySettings.search_engine_indexing === 'true'} onCheckedChange={c => updatePrivacySetting('search_engine_indexing', c.toString())} />
         </div>
@@ -294,32 +294,32 @@ const PrivacyCheckup = () => {
   const renderDataView = () => (
     <div className="space-y-6">
       {renderBackButton()}
-      <h3 className="text-xl font-bold text-foreground">Your information preferences on Tone</h3>
+      <h3 className="text-xl font-bold text-foreground">Your data configurations on Tone</h3>
 
       <div className="space-y-4">
         <div>
-          <Label htmlFor="email">Email Address</Label>
+          <Label htmlFor="email">Electronic Mail</Label>
           <Input id="email" type="email" value={profileData.email} onChange={e => updateProfile('email', e.target.value)} placeholder="Enter your email" />
         </div>
         <div>
-          <Label htmlFor="birthday">Date of Birth</Label>
+          <Label htmlFor="birthday">Birth Date</Label>
           <Input id="birthday" type="date" value={profileData.birthday} onChange={e => updateProfile('birthday', e.target.value)} />
         </div>
         <div>
-          <Label htmlFor="relationship">Partnership Status</Label>
+          <Label htmlFor="relationship">Union Status</Label>
           <Select value={profileData.relationship} onValueChange={v => updateProfile('relationship', v)}>
-            <SelectTrigger><SelectValue placeholder="Choose partnership status" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Pick union status" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="single">Unattached</SelectItem>
-              <SelectItem value="in_relationship">In a Partnership</SelectItem>
-              <SelectItem value="married">Wedded</SelectItem>
-              <SelectItem value="its_complicated">It's Nuanced</SelectItem>
-              <SelectItem value="prefer_not_to_say">Rather Not Disclose</SelectItem>
+              <SelectItem value="single">Uncommitted</SelectItem>
+              <SelectItem value="in_relationship">In a Union</SelectItem>
+              <SelectItem value="married">Married</SelectItem>
+              <SelectItem value="its_complicated">It's Complex</SelectItem>
+              <SelectItem value="prefer_not_to_say">Prefer Not to Say</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label>Who can view the people, Pages, and lists you follow?</Label>
+          <Label>Who can observe the individuals, Pages, and lists you trail?</Label>
           <Select value={privacySettings.following_visibility || 'friends'} onValueChange={v => updatePrivacySetting('following_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -332,12 +332,12 @@ const PrivacyCheckup = () => {
   const renderSecurityView = () => (
     <div className="space-y-6">
       {renderBackButton()}
-      <h3 className="text-xl font-bold text-foreground">Ways to safeguard your account</h3>
+      <h3 className="text-xl font-bold text-foreground">How to maintain your account protected</h3>
 
       <div className="space-y-4">
-        <h4 className="font-semibold text-foreground">Restricted Users</h4>
+        <h4 className="font-semibold text-foreground">Barred Users</h4>
         {blockedUsers.length === 0 ? (
-          <p className="text-muted-foreground">No restricted users at this time</p>
+          <p className="text-muted-foreground">No barred users currently</p>
         ) : (
           <div className="space-y-3">
             {blockedUsers.map(blocked => (
@@ -353,7 +353,7 @@ const PrivacyCheckup = () => {
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => unblockUser(blocked.blocked_user_id)} className="text-destructive hover:text-destructive/80">
-                  <Trash2 className="h-4 w-4 mr-2" /> Lift Restriction
+                  <Trash2 className="h-4 w-4 mr-2" /> Remove Bar
                 </Button>
               </div>
             ))}
@@ -364,9 +364,9 @@ const PrivacyCheckup = () => {
       <Separator />
 
       <div className="space-y-4">
-        <h4 className="font-semibold text-foreground">Tag Audience Expansion</h4>
+        <h4 className="font-semibold text-foreground">Tag Audience Broadening</h4>
         <div>
-          <Label>When you're tagged in a post, who can be added to the audience?</Label>
+          <Label>When you're mentioned in a post, who can be appended to the audience?</Label>
           <Select value={privacySettings.tag_audience_expansion || 'friends'} onValueChange={v => updatePrivacySetting('tag_audience_expansion', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -379,9 +379,9 @@ const PrivacyCheckup = () => {
   const renderAdsView = () => (
     <div className="space-y-6">
       {renderBackButton()}
-      <h3 className="text-xl font-bold text-foreground">Your promotion choices on Tone</h3>
+      <h3 className="text-xl font-bold text-foreground">Your advertisement preferences on Tone</h3>
       <p className="text-muted-foreground text-sm">
-        Manage how promotions are tailored for you. Visit the Ad Preferences section in Preferences for comprehensive controls.
+        Oversee how advertisements are customized for you. Navigate to the Ad Preferences area in Preferences for thorough controls.
       </p>
     </div>
   );
