@@ -1,969 +1,298 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronRight, Target, Database, Users, Building2, Info, Shield, ExternalLink, X } from 'lucide-react';
-import { useAdActivity, useAdTopics, useAdAdvertisers, useAdSettings, useAdProfileCategories, useAdAssociatedCategories } from '@/hooks/useAdPreferences';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import adPartnersIllustration from '@/assets/ad-partners-illustration.png';
+import { ChevronRight, Loader2 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { useAdPreferences } from '@/hooks/useAdPreferences';
 
 const AdPreferences = () => {
   const [activeTab, setActiveTab] = useState('customize');
-  const [showCategoriesDialog, setShowCategoriesDialog] = useState(false);
-  const [showPartnerDataDialog, setShowPartnerDataDialog] = useState(false);
-  const [showReviewSettingDialog, setShowReviewSettingDialog] = useState(false);
-  const [showAudienceAdDialog, setShowAudienceAdDialog] = useState(false);
-  const [showExternalAdsDialog, setShowExternalAdsDialog] = useState(false);
-  const [showToneAdsDialog, setShowToneAdsDialog] = useState(false);
-  const [showSocialInteractionsDialog, setShowSocialInteractionsDialog] = useState(false);
-  const [audienceShowAll, setAudienceShowAll] = useState(false);
-  const [showBrowseAllCategories, setShowBrowseAllCategories] = useState(false);
-  const { data: adActivity, isLoading: loadingActivity } = useAdActivity();
-  const { data: adTopics, isLoading: loadingTopics } = useAdTopics();
-  const { data: adAdvertisers, isLoading: loadingAdvertisers } = useAdAdvertisers();
-  const { data: adSettings, isLoading: loadingSettings } = useAdSettings();
-  const { data: profileCategories, isLoading: loadingProfileCats } = useAdProfileCategories();
-  const { data: associatedCategories, isLoading: loadingAssocCats } = useAdAssociatedCategories();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
+  const {
+    adActivity,
+    savedAds,
+    advertisers,
+    adTopics,
+    adSettings,
+    loading,
+    updateSettings,
+  } = useAdPreferences();
 
-  const updateSetting = async (field: string, value: boolean | string) => {
-    if (!user) return;
-    const { error } = await supabase
-      .from('ad_settings')
-      .upsert({ user_id: user.id, [field]: value }, { onConflict: 'user_id' });
-    if (error) {
-      toast.error('Failed to update setting');
-    } else {
-      toast.success('Setting updated');
-      queryClient.invalidateQueries({ queryKey: ['ad-settings'] });
-    }
-  };
+  const SectionHeader = ({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) => (
+    <div className="flex items-center justify-between mb-3">
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      {onSeeAll && (
+        <button className="text-xs font-medium text-primary hover:underline">View all</button>
+      )}
+    </div>
+  );
 
-  const removeAssociatedCategory = async (categoryId: string) => {
-    const { error } = await supabase
-      .from('ad_associated_categories')
-      .delete()
-      .eq('id', categoryId);
-    if (error) {
-      toast.error('Failed to dismiss category');
-    } else {
-      toast.success('Category dismissed');
-      queryClient.invalidateQueries({ queryKey: ['ad-associated-categories'] });
-    }
-  };
+  const ListItem = ({ name, icon }: { name: string; icon: string }) => (
+    <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+      <div className="flex items-center gap-3">
+        <span className="text-lg">{icon}</span>
+        <span className="text-sm text-foreground">{name}</span>
+      </div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+    </div>
+  );
+
+  const EmptyState = ({ message }: { message: string }) => (
+    <div className="rounded-lg border border-border/50 p-6 text-center">
+      <p className="text-xs text-muted-foreground">{message}</p>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold text-foreground mb-1">Ad Preferences</h2>
+        <h2 className="text-2xl font-semibold text-foreground mb-2">Ad Preferences</h2>
         <p className="text-sm text-muted-foreground">
-          Take charge of your ad experience and the data used to display your ads.
+          Take charge of your advertising experience and the data used to display ads to you.
         </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="customize" className="text-sm font-medium">Customize ads</TabsTrigger>
-          <TabsTrigger value="manage" className="text-sm font-medium">Manage info</TabsTrigger>
+        <TabsList className="bg-transparent border-b border-border rounded-none w-auto gap-4 h-auto p-0">
+          <TabsTrigger
+            value="customize"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Tailor ads
+          </TabsTrigger>
+          <TabsTrigger
+            value="manage"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium text-muted-foreground"
+          >
+            Handle info
+          </TabsTrigger>
         </TabsList>
 
-        {/* ========== CUSTOMIZE ADS TAB ========== */}
-        <TabsContent value="customize" className="space-y-8">
-          {/* --- Ad activity --- */}
-          <Section title="Ad activity" action="See all">
-            {loadingActivity ? (
-              <div className="flex gap-4">
-                <Skeleton className="h-48 w-52 rounded-lg" />
-                <Skeleton className="h-48 w-52 rounded-lg" />
-              </div>
-            ) : adActivity && adActivity.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto pb-2">
-                {adActivity.slice(0, 4).map((ad) => (
-                  <div key={ad.id} className="flex-shrink-0 w-52 rounded-lg overflow-hidden border border-border bg-card">
-                    <div className="h-28 bg-muted flex items-center justify-center overflow-hidden">
-                      {ad.image_url ? (
-                        <img src={ad.image_url} alt={ad.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-muted" />
-                      )}
+        <TabsContent value="customize" className="mt-6 space-y-6">
+          {/* Ad activity */}
+          <div>
+            <SectionHeader title="Ad interactions" onSeeAll={adActivity.length > 0 ? () => {} : undefined} />
+            {adActivity.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {adActivity.map((ad) => (
+                  <div key={ad.id} className="rounded-lg overflow-hidden border border-border/50 bg-muted/20">
+                    <div className="aspect-video bg-muted/50 relative">
+                      <img src={ad.image_url} alt={ad.title} className="w-full h-full object-cover" />
                     </div>
-                    <div className="p-3 space-y-2">
-                      <p className="text-sm font-medium text-foreground truncate">{ad.title}</p>
+                    <div className="p-2">
                       <p className="text-xs text-muted-foreground truncate">{ad.advertiser}</p>
-                      <Button variant="default" size="sm" className="w-full text-xs">Ad details</Button>
+                      <button className="w-full mt-1.5 text-xs font-medium text-primary-foreground bg-primary rounded-md py-1.5 hover:bg-primary/90 transition-colors">
+                        Ad info
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No recent ad interactions recorded.</p>
+              <EmptyState message="No ad interactions recorded yet." />
             )}
-          </Section>
+          </div>
 
-          {/* --- Saved ads --- */}
-          <Section title="Ads you bookmarked" action="See all">
-            {loadingActivity ? (
-              <div className="flex gap-3">
-                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-20 rounded-lg" />)}
-              </div>
-            ) : adActivity && adActivity.filter(a => a.image_url).length > 0 ? (
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {adActivity.filter(a => a.image_url).slice(0, 8).map((ad) => (
-                  <div key={ad.id} className="flex-shrink-0 w-20 space-y-1">
-                    <div className="w-20 h-20 rounded-lg overflow-hidden border border-border">
-                      <img src={ad.image_url!} alt={ad.title} className="w-full h-full object-cover" />
+          <Separator />
+
+          {/* Saved ads */}
+          <div>
+            <SectionHeader title="Bookmarked ads" onSeeAll={savedAds.length > 0 ? () => {} : undefined} />
+            {savedAds.length > 0 ? (
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {savedAds.map((ad) => (
+                  <div key={ad.id} className="flex-shrink-0 w-20">
+                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted/50 border border-border/50">
+                      <img src={ad.image_url} alt={ad.title} className="w-full h-full object-cover" />
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">{ad.title}</p>
+                    <p className="text-[10px] text-foreground mt-1 truncate">{ad.title}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{ad.subtitle}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No bookmarked advertisements yet.</p>
+              <EmptyState message="No bookmarked ads yet." />
             )}
-          </Section>
+          </div>
 
-          {/* --- Advertisers --- */}
-          <Section title="Advertisers who showed you ads" action="See all">
-            {loadingAdvertisers ? (
-              <div className="space-y-2">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
-              </div>
-            ) : adAdvertisers && adAdvertisers.length > 0 ? (
-              <div className="border border-border rounded-lg divide-y divide-border">
-                {adAdvertisers.slice(0, 5).map((adv) => (
-                  <button key={adv.id} className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={adv.icon || ''} />
-                        <AvatarFallback className="text-xs bg-muted">{adv.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm text-foreground">{adv.name}</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </button>
+          <Separator />
+
+          {/* Advertisers */}
+          <div>
+            <SectionHeader title="Brands that showed you ads" onSeeAll={advertisers.length > 0 ? () => {} : undefined} />
+            {advertisers.length > 0 ? (
+              <div className="rounded-lg border border-border/50 overflow-hidden">
+                {advertisers.map((adv, i) => (
+                  <React.Fragment key={adv.id}>
+                    <ListItem name={adv.name} icon={adv.icon} />
+                    {i < advertisers.length - 1 && <Separator />}
+                  </React.Fragment>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No advertiser records found.</p>
+              <EmptyState message="No advertisers to display yet." />
             )}
-          </Section>
+          </div>
 
-          {/* --- Ad topics --- */}
-          <Section title="Ad topics" subtitle="Manage subjects and browse what you prefer to view less of." action="See all">
-            {loadingTopics ? (
-              <div className="space-y-2">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
-              </div>
-            ) : adTopics && adTopics.length > 0 ? (
-              <div className="space-y-3">
-                <div className="h-36 rounded-lg bg-gradient-to-br from-primary/20 via-accent/30 to-secondary/40 flex items-center justify-center">
-                  <Target className="w-10 h-10 text-primary/60" />
-                </div>
-                <div className="border border-border rounded-lg divide-y divide-border">
-                  {adTopics.slice(0, 5).map((topic) => (
-                    <button key={topic.id} className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center">
-                          <span className="text-sm">{topic.icon || '📌'}</span>
-                        </div>
-                        <span className="text-sm text-foreground">{topic.name}</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  ))}
-                </div>
+          <Separator />
+
+          {/* Ad topics */}
+          <div>
+            <SectionHeader title="Ad subjects" onSeeAll={adTopics.length > 0 ? () => {} : undefined} />
+            <div className="rounded-xl overflow-hidden bg-accent/30 border border-border/50 mb-3 p-6 flex items-center justify-center">
+              <p className="text-xs text-muted-foreground">Browse ad subjects and explore what you'd like to see more of.</p>
+            </div>
+            {adTopics.length > 0 ? (
+              <div className="rounded-lg border border-border/50 overflow-hidden">
+                {adTopics.map((topic, i) => (
+                  <React.Fragment key={topic.id}>
+                    <ListItem name={topic.name} icon={topic.icon} />
+                    {i < adTopics.length - 1 && <Separator />}
+                  </React.Fragment>
+                ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No ad topics configured yet.</p>
+              <EmptyState message="No ad subjects recorded yet." />
             )}
-          </Section>
+          </div>
         </TabsContent>
 
-        {/* ========== MANAGE INFO TAB ========== */}
-        <TabsContent value="manage" className="space-y-8">
-          {loadingSettings ? (
-            <div className="space-y-4">
-              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+        <TabsContent value="manage" className="mt-6 space-y-6">
+          {/* Data used to display ads */}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Data utilized to present ads</h3>
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Segments applied to find you</p>
+                  <p className="text-xs text-muted-foreground">Details you share on your profile or other segments applied to find you.</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
+              </div>
+              <Separator />
+              <div
+                className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
+                onClick={() => updateSettings({ use_partner_data: !adSettings.use_partner_data })}
+              >
+                <div>
+                  <p className="text-sm font-medium text-foreground">Engagement data from ad collaborators</p>
+                  <p className="text-xs text-muted-foreground">Decide whether we leverage this to present ads that are more aligned to you.</p>
+                  <p className="text-xs text-primary font-medium mt-0.5">
+                    {adSettings.use_partner_data ? 'Leveraging this data' : 'Not leveraging this data'}
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Interest-driven promotion</p>
+                  <p className="text-xs text-muted-foreground">Promoters leveraging your engagement or details</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
+              </div>
             </div>
-          ) : (
-            <>
-              {/* --- Information used to display your ads --- */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-primary">Information used to display your ads</h3>
-                <div className="border border-border rounded-lg divide-y divide-border">
-                  <RowItem
-                    title="Categories utilized to target you"
-                    description="Information you provide on your profile or other classifications employed to target you."
-                    titleColor="text-green-400"
-                    onClick={() => setShowCategoriesDialog(true)}
-                  />
-                  <RowItem
-                    title="Activity data from ad partners"
-                    description="Select whether to utilize this data to present you ads that are more relevant to you."
-                    subtitle="View more details"
-                    titleColor="text-green-400"
-                    onClick={() => setShowPartnerDataDialog(true)}
-                  />
-                  <RowItem
-                    title="Audience-driven promotions"
-                    description="Advertisers leveraging your activity or data."
-                    titleColor="text-green-400"
-                    onClick={() => setShowAudienceAdDialog(true)}
-                  />
-                </div>
-              </div>
+          </div>
 
-              {/* --- Ads displayed outside of Tone --- */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-yellow-400">Ads displayed outside of Tone</h3>
-                <div className="border border-border rounded-lg divide-y divide-border">
-                  <RowItem
-                    title="Advertisements in other applications"
-                    description="Decide whether you encounter ads from Tone Audience Network in other applications."
-                    titleColor="text-yellow-400"
-                    onClick={() => setShowExternalAdsDialog(true)}
-                  />
-                  <RowItem
-                    title="Promotions about Tone on alternate platforms"
-                    description="Decide whether we harness your activity to present you ads regarding Tone on other platforms."
-                    titleColor="text-yellow-400"
-                    onClick={() => setShowToneAdsDialog(true)}
-                  />
-                </div>
-              </div>
+          <Separator />
 
-              {/* --- Other settings --- */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">Other settings</h3>
-                <div className="border border-border rounded-lg">
-                  <RowItem
-                    title="Social engagements"
-                    description="Determine who can observe your social engagements alongside advertisements."
-                    onClick={() => setShowSocialInteractionsDialog(true)}
-                  />
+          {/* Ads beyond the platform */}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Ads beyond the platform</h3>
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+              <div
+                className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
+                onClick={() => updateSettings({ show_ads_in_external_apps: !adSettings.show_ads_in_external_apps })}
+              >
+                <div>
+                  <p className="text-sm font-medium text-foreground">Ads in external apps</p>
+                  <p className="text-xs text-muted-foreground">Decide whether you view ads from the Audience Network in external apps.</p>
+                  <p className="text-xs text-primary font-medium mt-0.5">
+                    {adSettings.show_ads_in_external_apps ? 'Displaying ads in external apps' : 'Not displaying ads in external apps'}
+                  </p>
                 </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
               </div>
-
-              {/* --- Learn more about ads privacy --- */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">Learn more about ads privacy</h3>
-                <p className="text-xs text-muted-foreground">
-                  Find out more about what data is utilized to display you ads, and how you can manage your privacy.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="border border-border rounded-lg p-4 space-y-2">
-                    <h4 className="text-sm font-semibold text-foreground">What data is utilized to display me ads?</h4>
-                    <p className="text-xs text-muted-foreground">
-                      We present you ads based on your details and activity. You get to manage these settings.
-                    </p>
-                    <Button variant="default" size="sm" className="w-full text-xs mt-2">More details</Button>
-                  </div>
-                  <div className="border border-border rounded-lg p-4 space-y-2">
-                    <h4 className="text-sm font-semibold text-foreground">Does Tone sell my data?</h4>
-                    <p className="text-xs text-muted-foreground">
-                      No. We never sell your personal information.
-                    </p>
-                    <Button variant="default" size="sm" className="w-full text-xs mt-2">More details</Button>
-                  </div>
+              <Separator />
+              <div
+                className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
+                onClick={() => updateSettings({ use_activity_for_external_ads: !adSettings.use_activity_for_external_ads })}
+              >
+                <div>
+                  <p className="text-sm font-medium text-foreground">Ads regarding the platform</p>
+                  <p className="text-xs text-muted-foreground">Decide whether we leverage your engagement to display ads about the platform on other services.</p>
+                  <p className="text-xs text-primary font-medium mt-0.5">
+                    {adSettings.use_activity_for_external_ads ? 'Leveraging this data' : 'Not leveraging this data'}
+                  </p>
                 </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
               </div>
+            </div>
+          </div>
 
-              {/* --- Bottom links --- */}
-              <div className="space-y-3">
-                <Button variant="outline" className="w-full text-sm justify-center">
-                  Learn more in Privacy Center
-                </Button>
-                <Button variant="outline" className="w-full text-sm justify-center">
-                  Learn more about Tone Ads
-                </Button>
+          <Separator />
+
+          {/* Other settings */}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Additional preferences</h3>
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Social engagements</p>
+                  <p className="text-xs text-muted-foreground">Decide who can view your social engagements alongside ads.</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
               </div>
-            </>
-          )}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Learn more */}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-1">Discover more about ads privacy</h3>
+            <p className="text-xs text-muted-foreground mb-3">Explore what data is leveraged to present ads, and how you can manage your privacy.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-border/50 p-4 flex flex-col justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">What data is leveraged to present ads?</p>
+                  <p className="text-xs text-muted-foreground mt-1">We present ads based on your details and engagement. You have the ability to manage these preferences.</p>
+                </div>
+                <button className="w-full mt-3 text-xs font-medium text-primary-foreground bg-primary rounded-md py-2 hover:bg-primary/90 transition-colors">
+                  More details
+                </button>
+              </div>
+              <div className="rounded-lg border border-border/50 p-4 flex flex-col justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Do we sell your data?</p>
+                  <p className="text-xs text-muted-foreground mt-1">No. We never sell your personal data.</p>
+                </div>
+                <button className="w-full mt-3 text-xs font-medium text-primary-foreground bg-primary rounded-md py-2 hover:bg-primary/90 transition-colors">
+                  More details
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer links */}
+          <div className="space-y-2">
+            <button className="w-full text-xs font-medium text-muted-foreground border border-border/50 rounded-lg py-2.5 hover:bg-muted/40 transition-colors">
+              Discover more in Privacy Center
+            </button>
+            <button className="w-full text-xs font-medium text-muted-foreground border border-border/50 rounded-lg py-2.5 hover:bg-muted/40 transition-colors">
+              Discover more about Platform Ads
+            </button>
+          </div>
         </TabsContent>
       </Tabs>
-
-      {/* Categories Dialog */}
-      <Dialog open={showCategoriesDialog} onOpenChange={setShowCategoriesDialog}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-foreground">Categories utilized to target you</DialogTitle>
-            <p className="text-xs text-muted-foreground">Employed for your account</p>
-          </DialogHeader>
-
-          <div className="space-y-6 mt-2">
-            {/* Profile Information Section */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-foreground">Select profile information</h4>
-              <p className="text-xs text-muted-foreground">
-                Pick which profile details are employed to tailor your advertisements.
-              </p>
-
-              {loadingProfileCats ? (
-                <div className="space-y-2">
-                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
-                </div>
-              ) : profileCategories && profileCategories.length > 0 ? (
-                <div className="border border-border rounded-lg divide-y divide-border">
-                  {profileCategories.map((cat) => (
-                    <div key={cat.id} className="flex items-center justify-between p-3">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{cat.label}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{cat.category_type.replace('_', ' ')}</p>
-                      </div>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        {cat.is_used ? 'Employed' : 'Unused'} <ChevronRight className="w-3 h-3" />
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground py-2">No profile classifications recorded yet.</p>
-              )}
-
-              <Button variant="outline" className="w-full text-sm mt-2">
-                Modify Tone profile
-              </Button>
-            </div>
-
-            {/* Associated Categories Section */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-foreground">Categories linked to you</h4>
-              <p className="text-xs text-muted-foreground">
-                Advertisers can target you based on additional categories we link to you. You may exclude yourself from any of these classifications.
-              </p>
-
-              {loadingAssocCats ? (
-                <div className="space-y-2">
-                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
-                </div>
-              ) : associatedCategories && associatedCategories.length > 0 ? (
-                <div className="border border-border rounded-lg divide-y divide-border">
-                  {associatedCategories.map((cat) => (
-                    <div key={cat.id} className="flex items-center justify-between p-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground">{cat.title}</p>
-                        {cat.description && (
-                          <p className="text-xs text-muted-foreground">{cat.description}</p>
-                        )}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs ml-3 flex-shrink-0"
-                        onClick={() => removeAssociatedCategory(cat.id)}
-                      >
-                        Dismiss
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground py-2">No linked categories found.</p>
-              )}
-
-              <Button variant="default" className="w-full text-sm mt-2" onClick={() => setShowBrowseAllCategories(true)}>
-                Browse all
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Browse All Associated Categories Dialog */}
-      <Dialog open={showBrowseAllCategories} onOpenChange={setShowBrowseAllCategories}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-foreground">Classifications associated with you</DialogTitle>
-          </DialogHeader>
-
-          <p className="text-xs text-muted-foreground mt-1">
-            Ad providers can also employ these additional classifications of information you share with Tone to reach you with advertisements.
-          </p>
-
-          <div className="space-y-1 mt-3">
-            {loadingAssocCats ? (
-              <div className="space-y-2">
-                {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
-              </div>
-            ) : associatedCategories && associatedCategories.length > 0 ? (
-              <div className="border border-border rounded-lg divide-y divide-border">
-                {associatedCategories.map((cat) => (
-                  <div key={cat.id} className="flex items-center justify-between p-3">
-                    <div className="flex-1 min-w-0 pr-3">
-                      <p className="text-sm font-semibold text-foreground">{cat.title}</p>
-                      {cat.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{cat.description}</p>
-                      )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs flex-shrink-0"
-                      onClick={() => removeAssociatedCategory(cat.id)}
-                    >
-                      Dismiss
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">No classifications found for your account.</p>
-            )}
-          </div>
-
-          {/* Removed categories link */}
-          <button className="flex items-center gap-2 w-full p-3 mt-2 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-            <span className="text-sm text-foreground">Removed classifications</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
-          </button>
-        </DialogContent>
-      </Dialog>
-      {/* Partner Data Dialog */}
-      <Dialog open={showPartnerDataDialog} onOpenChange={setShowPartnerDataDialog}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-foreground">Activity information from ad partners</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-5 mt-2">
-            <div className="rounded-lg overflow-hidden">
-              <img
-                src={adPartnersIllustration}
-                alt="Ad partners illustration"
-                className="w-full h-48 object-cover rounded-lg"
-              />
-            </div>
-
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              To present you advertisements that assist you in uncovering new things, it is beneficial to understand what you already enjoy. When you browse an ad partner's website, application, or make a purchase in their outlets, they may transmit us data about that interaction and what you engaged with.{' '}
-              <button className="text-primary hover:underline font-medium">Discover more about ad partners</button>
-            </p>
-
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              This enables us to display advertisements that are pertinent to you and are as captivating as your regular content. However, we'll only employ it for this objective if you permit us to.
-            </p>
-
-            <p className="text-sm font-semibold text-foreground">
-              You have the option to decide if we utilize this data to assist in presenting the most suitable ads for you.
-            </p>
-
-            <Button
-              variant="default"
-              className="w-full text-sm font-medium"
-              onClick={() => {
-                setShowPartnerDataDialog(false);
-                setShowReviewSettingDialog(true);
-              }}
-            >
-              Review setting
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Review Setting Dialog */}
-      <Dialog open={showReviewSettingDialog} onOpenChange={setShowReviewSettingDialog}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <div className="space-y-6">
-            <div>
-              <button
-                className="text-primary hover:underline text-sm mb-3 flex items-center gap-1"
-                onClick={() => {
-                  setShowReviewSettingDialog(false);
-                  setShowPartnerDataDialog(true);
-                }}
-              >
-                ← Back
-              </button>
-              <h2 className="text-lg font-semibold text-foreground leading-snug">
-                Do you want us to use your activity information from ad partners to show you ads?
-              </h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                Used for {2} accounts{' '}
-                <button className="text-primary hover:underline font-medium">View</button>
-              </p>
-            </div>
-
-            {/* Option: Yes */}
-            <div
-              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                (adSettings?.use_partner_data ?? false)
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:bg-muted/50'
-              }`}
-              onClick={() => updateSetting('use_partner_data', true)}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1 flex-1">
-                  <p className="text-sm font-semibold text-foreground">
-                    Yes, show me ads that are more relevant by using this information
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    You'll get ads that are more relevant to you based on what you already like.
-                  </p>
-                  {(adSettings?.use_partner_data ?? false) && (
-                    <p className="text-xs text-primary font-medium mt-1">Your current experience</p>
-                  )}
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
-                  (adSettings?.use_partner_data ?? false)
-                    ? 'border-primary'
-                    : 'border-muted-foreground'
-                }`}>
-                  {(adSettings?.use_partner_data ?? false) && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  )}
-                </div>
-              </div>
-              <button className="text-xs text-primary hover:underline mt-2 font-medium">
-                How this affects your ads
-              </button>
-            </div>
-
-            {/* Option: No */}
-            <div
-              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                !(adSettings?.use_partner_data ?? false)
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:bg-muted/50'
-              }`}
-              onClick={() => updateSetting('use_partner_data', false)}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1 flex-1">
-                  <p className="text-sm font-semibold text-foreground">
-                    No, don't make my ads more relevant by using this information
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Your ads will use less of your information and be more likely to apply to other people.
-                  </p>
-                  {!(adSettings?.use_partner_data ?? false) && (
-                    <p className="text-xs text-primary font-medium mt-1">Your current experience</p>
-                  )}
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
-                  !(adSettings?.use_partner_data ?? false)
-                    ? 'border-primary'
-                    : 'border-muted-foreground'
-                }`}>
-                  {!(adSettings?.use_partner_data ?? false) && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  )}
-                </div>
-              </div>
-              <button className="text-xs text-primary hover:underline mt-2 font-medium">
-                How this affects your ads
-              </button>
-            </div>
-
-            {/* Info bullets */}
-            <div className="space-y-3 pt-2">
-              <InfoBullet icon="⚙️" text="You can change your choice at any time" />
-              <InfoBullet icon="🔒" text="We always use strict security standards to keep your information safe" />
-              <InfoBullet icon="📄" text={<>Some information may be anonymized and used to improve our products as described in our <button className="text-primary hover:underline">Privacy Policy</button>, regardless of your choice</>} />
-              <InfoBullet icon="📋" text={<>This isn't the only kind of information from ad partners that can affect your ads. See details about <button className="text-primary hover:underline">audience based advertising</button></>} />
-              <InfoBullet icon="ℹ️" text={<>Learn more about <button className="text-primary hover:underline">ad partners</button></>} />
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Audience-based Advertising Dialog */}
-      <Dialog open={showAudienceAdDialog} onOpenChange={setShowAudienceAdDialog}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-foreground">Audience-driven promotions</DialogTitle>
-            <p className="text-sm text-muted-foreground">Advertisers employing your activity or details</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Applied for {1} account{' '}
-              <button className="text-primary hover:underline font-medium">View</button>
-            </p>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-2">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Advertisers may opt to display their ads to specific audiences. You might encounter ads because an advertiser has placed you in an audience derived from your details or off-Tone activity. Advertisers can utilize or submit a roster of data that we can cross-reference with your profile to present you ads. You can also be incorporated in an audience based on your engagements with an advertiser's site, application, or shop.{' '}
-              <button className="text-primary hover:underline font-medium">Discover more</button>
-            </p>
-
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              You can browse the advertisers whose audiences you have been included in based on your details or activity and determine whether we can display you ads based on this data.
-            </p>
-
-            {loadingAdvertisers ? (
-              <div className="space-y-2">
-                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
-              </div>
-            ) : adAdvertisers && adAdvertisers.length > 0 ? (
-              <div className="border border-border rounded-lg divide-y divide-border">
-                {(audienceShowAll ? adAdvertisers : adAdvertisers.slice(0, 4)).map((adv) => (
-                  <button
-                    key={adv.id}
-                    className="w-full flex items-center justify-between p-3.5 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={adv.icon || ''} />
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
-                          {adv.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="text-left">
-                        <p className="text-sm font-medium text-foreground">{adv.name}</p>
-                        <p className="text-xs text-muted-foreground">@{adv.name.toLowerCase().replace(/\s+/g, '')}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                ))}
-                {!audienceShowAll && adAdvertisers.length > 4 && (
-                  <button
-                    className="w-full p-3 text-sm text-primary hover:underline font-medium text-left"
-                    onClick={() => setAudienceShowAll(true)}
-                  >
-                    View more
-                  </button>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-4">No advertisers have included you in their audiences yet.</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Ads in External Apps Dialog */}
-      <Dialog open={showExternalAdsDialog} onOpenChange={setShowExternalAdsDialog}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-foreground">Advertisements in other applications</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-2">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              You can decide whether you encounter ads from Tone Audience Network in other applications.
-            </p>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              For instance, we can present you an ad from one of our ad partners in a different company's gaming application.{' '}
-              <button className="text-primary hover:underline font-medium">Discover more</button>
-            </p>
-
-            {/* Option: Allow */}
-            <div
-              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                (adSettings?.show_ads_in_external_apps ?? false)
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:bg-muted/50'
-              }`}
-              onClick={() => updateSetting('show_ads_in_external_apps', true)}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm font-medium text-foreground">Permit us to display you ads in other applications</p>
-                  <p className="text-xs text-muted-foreground">
-                    Explore products and brands via ads in other applications.
-                  </p>
-                  {(adSettings?.show_ads_in_external_apps ?? false) && (
-                    <p className="text-xs text-green-500 font-medium">Your current preference</p>
-                  )}
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
-                  (adSettings?.show_ads_in_external_apps ?? false)
-                    ? 'border-primary'
-                    : 'border-muted-foreground'
-                }`}>
-                  {(adSettings?.show_ads_in_external_apps ?? false) && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Option: Don't allow */}
-            <div
-              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                !(adSettings?.show_ads_in_external_apps ?? false)
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:bg-muted/50'
-              }`}
-              onClick={() => updateSetting('show_ads_in_external_apps', false)}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm font-medium text-foreground">Do not permit us to display you ads in other applications</p>
-                  <p className="text-xs text-muted-foreground">
-                    You may still encounter the same volume of ads, but these ads won't be presented by Tone.
-                  </p>
-                  {!(adSettings?.show_ads_in_external_apps ?? false) && (
-                    <p className="text-xs text-green-500 font-medium">Your current preference</p>
-                  )}
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
-                  !(adSettings?.show_ads_in_external_apps ?? false)
-                    ? 'border-primary'
-                    : 'border-muted-foreground'
-                }`}>
-                  {!(adSettings?.show_ads_in_external_apps ?? false) && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Promotions about Tone on alternate platforms Dialog */}
-      <Dialog open={showToneAdsDialog} onOpenChange={setShowToneAdsDialog}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-foreground">Ads regarding Tone on alternate platforms</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-1">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                You can decide if we harness your activity on Tone technologies to present you advertisements
-                regarding Tone on alternate platforms.
-              </p>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                If you opt not to allow us to harness this activity, you may still encounter ads regarding Tone on
-                alternate platforms, but they won't be presented to you by leveraging this activity.
-              </p>
-            </div>
-
-            {/* Option: Use activity */}
-            <div
-              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                (adSettings?.use_activity_for_external_ads ?? false)
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:bg-muted/50'
-              }`}
-              onClick={() => updateSetting('use_activity_for_external_ads', true)}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm font-medium text-foreground">Harness my activity to present me ads regarding Tone</p>
-                  <p className="text-xs text-muted-foreground">
-                    Harness my activity on Tone technologies to present me advertisements regarding Tone on alternate platforms.
-                  </p>
-                  {(adSettings?.use_activity_for_external_ads ?? false) && (
-                    <p className="text-xs text-green-500 font-medium">This is your current preference</p>
-                  )}
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
-                  (adSettings?.use_activity_for_external_ads ?? false)
-                    ? 'border-primary'
-                    : 'border-muted-foreground'
-                }`}>
-                  {(adSettings?.use_activity_for_external_ads ?? false) && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Option: Don't use activity */}
-            <div
-              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                !(adSettings?.use_activity_for_external_ads ?? false)
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:bg-muted/50'
-              }`}
-              onClick={() => updateSetting('use_activity_for_external_ads', false)}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm font-medium text-foreground">Do not harness my activity to present me ads regarding Tone</p>
-                  <p className="text-xs text-muted-foreground">
-                    Do not harness my activity on Tone technologies to present me advertisements regarding Tone on alternate platforms.
-                  </p>
-                  {!(adSettings?.use_activity_for_external_ads ?? false) && (
-                    <p className="text-xs text-green-500 font-medium">This is your current preference</p>
-                  )}
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
-                  !(adSettings?.use_activity_for_external_ads ?? false)
-                    ? 'border-primary'
-                    : 'border-muted-foreground'
-                }`}>
-                  {!(adSettings?.use_activity_for_external_ads ?? false) && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Social Interactions Dialog */}
-      <Dialog open={showSocialInteractionsDialog} onOpenChange={setShowSocialInteractionsDialog}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-foreground">Social Engagements</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-2">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              We may incorporate your social engagements alongside advertisements that your connections observe.
-              Social engagements encompass Page likes, account tags, application usage, event
-              responses and more. For instance, if you appreciate a Page that's running an ad, we
-              might inform your connections that you liked the Page when they encounter the ad. You
-              can determine whether your connections can observe your social engagements alongside the
-              advertisements they see.
-            </p>
-
-            <p className="text-sm font-semibold text-foreground leading-relaxed">
-              This does not encompass reactions to the ad itself. If you respond to an ad, your
-              connections will still be able to observe that activity.
-            </p>
-
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Social engagements are not displayed alongside advertisements about social issues, elections or politics
-              that have a label showing who funded the ad.{' '}
-              <button className="text-primary hover:underline font-medium">Discover more</button>
-            </p>
-
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              If you're under 18, your social engagements are not displayed alongside any advertisements. Modifying who
-              can observe your social engagements will not take effect until you're 18 years old.
-            </p>
-
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-foreground">Choose an account</h4>
-
-              {loadingSettings ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-16 w-full rounded-lg" />
-                </div>
-              ) : (
-                <div className="border border-border rounded-lg divide-y divide-border">
-                  <div className="p-3.5">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
-                          {user?.email?.charAt(0).toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="text-left">
-                        <p className="text-sm font-medium text-foreground">
-                          {user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Tone</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 pl-1">
-                      {[
-                        { value: 'Only Me', label: 'Only Me', desc: 'No one else can see your social engagements alongside ads.' },
-                        { value: 'Friends', label: 'Friends', desc: 'Only your friends can see your social engagements alongside ads.' },
-                        { value: 'Everyone', label: 'Everyone', desc: 'Anyone can see your social engagements alongside ads.' },
-                      ].map((option) => (
-                        <div
-                          key={option.value}
-                          className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                            (adSettings?.social_interactions_visibility || 'Only Me') === option.value
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:bg-muted/50'
-                          }`}
-                          onClick={() => updateSetting('social_interactions_visibility', option.value)}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground">{option.label}</p>
-                              <p className="text-xs text-muted-foreground">{option.desc}</p>
-                            </div>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                              (adSettings?.social_interactions_visibility || 'Only Me') === option.value
-                                ? 'border-primary'
-                                : 'border-muted-foreground'
-                            }`}>
-                              {(adSettings?.social_interactions_visibility || 'Only Me') === option.value && (
-                                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
-
-/* ---------- Section wrapper ---------- */
-const Section = ({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: string; children: React.ReactNode }) => (
-  <div className="space-y-3">
-    <div className="flex items-center justify-between">
-      <div>
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-      </div>
-      {action && <button className="text-xs text-primary hover:underline font-medium">{action}</button>}
-    </div>
-    {children}
-  </div>
-);
-
-/* ---------- Row item for Manage Info ---------- */
-const RowItem = ({
-  title,
-  description,
-  subtitle,
-  titleColor,
-  toggle,
-  checked,
-  onToggle,
-  onClick,
-}: {
-  title: string;
-  description: string;
-  subtitle?: string;
-  titleColor?: string;
-  toggle?: boolean;
-  checked?: boolean;
-  onToggle?: (val: boolean) => void;
-  onClick?: () => void;
-}) => (
-  <div
-    className={`flex items-start justify-between p-4 hover:bg-muted/50 transition-colors ${onClick ? 'cursor-pointer' : ''}`}
-    onClick={!toggle ? onClick : undefined}
-  >
-    <div className="flex-1 min-w-0 space-y-0.5">
-      <p className={`text-sm font-medium ${titleColor || 'text-foreground'}`}>{title}</p>
-      <p className="text-xs text-muted-foreground">{description}</p>
-      {subtitle && (
-        <button className="text-xs text-primary hover:underline mt-1">{subtitle}</button>
-      )}
-    </div>
-    {toggle ? (
-      <Switch checked={checked} onCheckedChange={onToggle} className="ml-3 mt-1" />
-    ) : (
-      <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-2 mt-1" />
-    )}
-  </div>
-);
-
-/* ---------- Info bullet ---------- */
-const InfoBullet = ({ icon, text }: { icon: string; text: React.ReactNode }) => (
-  <div className="flex items-start gap-3">
-    <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
-    <p className="text-xs text-muted-foreground leading-relaxed">{text}</p>
-  </div>
-);
 
 export default AdPreferences;

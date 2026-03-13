@@ -1,26 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Users, Tag, UserX, UserPlus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
+import whoCanSeeImg from '@/assets/privacy/who-can-see.png';
+import howPeopleFindImg from '@/assets/privacy/how-people-find.png';
+import dataSettingsImg from '@/assets/privacy/data-settings.png';
+import accountSecureImg from '@/assets/privacy/account-secure.png';
+import adPreferencesImg from '@/assets/privacy/ad-preferences.png';
 
 interface ProfileData {
   email: string;
   birthday: string;
   relationship: string;
-}
-
-interface PrivacySetting {
-  setting_name: string;
-  setting_value: string;
 }
 
 interface BlockedUser {
@@ -33,603 +32,369 @@ interface BlockedUser {
   };
 }
 
-type PrivacySection = 'profile' | 'audience' | 'tagging' | 'blocking' | 'friends';
+type ActiveView = null | 'sharing' | 'discoverability' | 'data' | 'security' | 'ads';
+
+const privacyOptions = [
+  { value: 'public', label: 'Everyone' },
+  { value: 'friends', label: 'Companions' },
+  { value: 'friends_of_friends', label: 'Extended Circle' },
+  { value: 'only_me', label: 'Just Me' }
+];
 
 const PrivacyCheckup = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeSection, setActiveSection] = useState<PrivacySection>('profile');
-  const [profileData, setProfileData] = useState<ProfileData>({
-    email: '',
-    birthday: '',
-    relationship: ''
-  });
+  const [activeView, setActiveView] = useState<ActiveView>(null);
+  const [profileData, setProfileData] = useState<ProfileData>({ email: '', birthday: '', relationship: '' });
   const [privacySettings, setPrivacySettings] = useState<Record<string, string>>({});
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      fetchUserData();
-    }
+    if (user) fetchUserData();
   }, [user]);
 
   const fetchUserData = async () => {
     try {
-      // Fetch profile data
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('email, birthday, relationship')
-        .eq('id', user?.id)
-        .single();
+      const [profileRes, settingsRes, blockedRes] = await Promise.all([
+        supabase.from('profiles').select('email, birthday, relationship').eq('id', user?.id).single(),
+        supabase.from('privacy_settings').select('setting_name, setting_value').eq('user_id', user?.id),
+        supabase.from('blocked_users').select('id, blocked_user_id').eq('user_id', user?.id)
+      ]);
 
-      if (profile) {
+      if (profileRes.data) {
         setProfileData({
-          email: profile.email || '',
-          birthday: profile.birthday || '',
-          relationship: profile.relationship || ''
+          email: profileRes.data.email || '',
+          birthday: profileRes.data.birthday || '',
+          relationship: profileRes.data.relationship || ''
         });
       }
 
-      // Fetch privacy settings
-      const { data: settings } = await supabase
-        .from('privacy_settings')
-        .select('setting_name, setting_value')
-        .eq('user_id', user?.id);
-
-      if (settings) {
-        const settingsObj = settings.reduce((acc, setting) => {
-          acc[setting.setting_name] = setting.setting_value;
+      if (settingsRes.data) {
+        const obj = settingsRes.data.reduce((acc: Record<string, string>, s: any) => {
+          acc[s.setting_name] = s.setting_value;
           return acc;
-        }, {} as Record<string, string>);
-        setPrivacySettings(settingsObj);
+        }, {});
+        setPrivacySettings(obj);
       }
 
-      // Fetch blocked users with profile information
-      const { data: blocked } = await supabase
-        .from('blocked_users')
-        .select(`
-          id,
-          blocked_user_id
-        `)
-        .eq('user_id', user?.id);
-
-      if (blocked && blocked.length > 0) {
-        // Fetch profile information for blocked users
-        const blockedUserIds = blocked.map(b => b.blocked_user_id);
-        const { data: blockedProfiles } = await supabase
-          .from('profiles')
-          .select('id, display_name, username, profile_pic')
-          .in('id', blockedUserIds);
-
-        const blockedUsersWithProfiles = blocked.map(blockedUser => ({
-          ...blockedUser,
-          profiles: blockedProfiles?.find(profile => profile.id === blockedUser.blocked_user_id) || {
-            display_name: 'Unknown User',
-            username: 'unknown',
-            profile_pic: null
-          }
-        }));
-
-        setBlockedUsers(blockedUsersWithProfiles);
+      if (blockedRes.data && blockedRes.data.length > 0) {
+        const ids = blockedRes.data.map((b: any) => b.blocked_user_id);
+        const { data: profiles } = await supabase.from('profiles').select('id, display_name, username, profile_pic').in('id', ids);
+        setBlockedUsers(blockedRes.data.map((b: any) => ({
+          ...b,
+          profiles: profiles?.find((p: any) => p.id === b.blocked_user_id) || { display_name: 'Unknown', username: 'unknown', profile_pic: null }
+        })));
       }
-
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load privacy settings',
-        variant: 'destructive'
-      });
+    } catch {
+      toast({ title: 'Error', description: 'Unable to retrieve privacy preferences', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
   const updateProfile = async (field: keyof ProfileData, value: string) => {
-    try {
-      setProfileData(prev => ({ ...prev, [field]: value }));
-      
-      const { error } = await supabase
-        .from('profiles')
-        .update({ [field]: value })
-        .eq('id', user?.id);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Profile updated successfully'
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update profile',
-        variant: 'destructive'
-      });
-    }
+    setProfileData(prev => ({ ...prev, [field]: value }));
+    const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', user?.id);
+    if (error) toast({ title: 'Error', description: 'Could not save changes', variant: 'destructive' });
+    else toast({ title: 'Saved', description: 'Profile detail refreshed' });
   };
 
-  const updatePrivacySetting = async (settingName: string, settingValue: string) => {
-    try {
-      setPrivacySettings(prev => ({ ...prev, [settingName]: settingValue }));
-      
-      const { error } = await supabase
-        .from('privacy_settings')
-        .upsert({
-          user_id: user?.id,
-          setting_name: settingName,
-          setting_value: settingValue
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Privacy setting updated successfully'
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update privacy setting',
-        variant: 'destructive'
-      });
-    }
+  const updatePrivacySetting = async (name: string, value: string) => {
+    setPrivacySettings(prev => ({ ...prev, [name]: value }));
+    const { error } = await supabase.from('privacy_settings').upsert({ user_id: user?.id, setting_name: name, setting_value: value });
+    if (error) toast({ title: 'Error', description: 'Could not persist preference', variant: 'destructive' });
+    else toast({ title: 'Saved', description: 'Preference recorded' });
   };
 
   const unblockUser = async (blockedUserId: string) => {
-    try {
-      const { error } = await supabase
-        .from('blocked_users')
-        .delete()
-        .eq('user_id', user?.id)
-        .eq('blocked_user_id', blockedUserId);
-
-      if (error) throw error;
-
-      setBlockedUsers(prev => prev.filter(blocked => blocked.blocked_user_id !== blockedUserId));
-      
-      toast({
-        title: 'Success',
-        description: 'User unblocked successfully'
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Failed to unblock user',
-        variant: 'destructive'
-      });
+    const { error } = await supabase.from('blocked_users').delete().eq('user_id', user?.id).eq('blocked_user_id', blockedUserId);
+    if (error) toast({ title: 'Error', description: 'Could not lift restriction', variant: 'destructive' });
+    else {
+      setBlockedUsers(prev => prev.filter(b => b.blocked_user_id !== blockedUserId));
+      toast({ title: 'Done', description: 'Restriction removed' });
     }
   };
 
-  const sidebarItems = [
-    { id: 'profile' as PrivacySection, label: 'Profile Information', icon: Shield },
-    { id: 'audience' as PrivacySection, label: 'Audience', icon: Users },
-    { id: 'tagging' as PrivacySection, label: 'Tagging', icon: Tag },
-    { id: 'blocking' as PrivacySection, label: 'Blocking', icon: UserX },
-    { id: 'friends' as PrivacySection, label: 'Friend Requests', icon: UserPlus }
+  if (loading) return <div className="p-6 text-center text-muted-foreground">Loading privacy preferences...</div>;
+
+  const cards: { id: ActiveView; title: string; image: string; bg: string }[] = [
+    { id: 'sharing', title: 'Who can view what you post', image: whoCanSeeImg, bg: 'bg-sky-50 dark:bg-sky-950/30' },
+    { id: 'discoverability', title: 'How others can locate you on Tone', image: howPeopleFindImg, bg: 'bg-purple-50 dark:bg-purple-950/30' },
+    { id: 'data', title: 'Your information preferences on Tone', image: dataSettingsImg, bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+    { id: 'security', title: 'Ways to safeguard your account', image: accountSecureImg, bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
+    { id: 'ads', title: 'Your promotion choices on Tone', image: adPreferencesImg, bg: 'bg-pink-50 dark:bg-pink-950/30' },
   ];
 
-  const privacyOptions = [
-    { value: 'public', label: 'Public' },
-    { value: 'friends', label: 'Friends' },
-    { value: 'friends_of_friends', label: 'Friends of Friends' },
-    { value: 'only_me', label: 'Only Me' }
-  ];
+  // Landing page
+  if (!activeView) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <h2 className="text-2xl font-bold text-foreground mb-2">Privacy Checkup</h2>
+        <p className="text-muted-foreground mb-6">
+          We'll walk you through key configurations so you can make the ideal selections for your account.
+          Which subject would you like to begin with?
+        </p>
 
-  if (loading) {
-    return <div className="p-6 text-center">Loading privacy settings...</div>;
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {cards.slice(0, 2).map(card => (
+            <button
+              key={card.id}
+              onClick={() => setActiveView(card.id)}
+              className={`${card.bg} rounded-xl p-4 text-left transition-all hover:shadow-md hover:scale-[1.02] border border-border/40`}
+            >
+              <img src={card.image} alt={card.title} className="w-full h-32 object-contain mb-3 rounded-lg" />
+              <p className="font-semibold text-sm text-foreground">{card.title}</p>
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {cards.slice(2).map(card => (
+            <button
+              key={card.id}
+              onClick={() => setActiveView(card.id)}
+              className={`${card.bg} rounded-xl p-4 text-left transition-all hover:shadow-md hover:scale-[1.02] border border-border/40`}
+            >
+              <img src={card.image} alt={card.title} className="w-full h-28 object-contain mb-3 rounded-lg" />
+              <p className="font-semibold text-sm text-foreground">{card.title}</p>
+            </button>
+          ))}
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          You can review additional privacy configurations on Tone in{' '}
+          <span className="text-primary font-medium cursor-pointer">Preferences</span>
+        </p>
+      </div>
+    );
   }
 
-  const renderProfileSection = () => (
+  // Detail views
+  const renderBackButton = () => (
+    <Button variant="ghost" size="sm" onClick={() => setActiveView(null)} className="mb-4 -ml-2 text-muted-foreground hover:text-foreground">
+      <ArrowLeft className="h-4 w-4 mr-1" /> Return to overview
+    </Button>
+  );
+
+  const renderSharingView = () => (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email Address</Label>
-            <Input
-              id="email"
-              type="email"
-              value={profileData.email}
-              onChange={(e) => updateProfile('email', e.target.value)}
-              placeholder="Enter your email"
-            />
-          </div>
-          <div>
-            <Label htmlFor="birthday">Birthday</Label>
-            <Input
-              id="birthday"
-              type="date"
-              value={profileData.birthday}
-              onChange={(e) => updateProfile('birthday', e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="relationship">Relationship Status</Label>
-            <Select
-              value={profileData.relationship}
-              onValueChange={(value) => updateProfile('relationship', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select relationship status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="single">Single</SelectItem>
-                <SelectItem value="in_relationship">In a Relationship</SelectItem>
-                <SelectItem value="married">Married</SelectItem>
-                <SelectItem value="its_complicated">It's Complicated</SelectItem>
-                <SelectItem value="prefer_not_to_say">Prefer Not to Say</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      {renderBackButton()}
+      <h3 className="text-xl font-bold text-foreground">Who can view what you post</h3>
+
+      <div className="space-y-4">
+        <div>
+          <Label>Who can view your upcoming posts?</Label>
+          <Select value={privacySettings.future_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('future_posts_visibility', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Who can view your stories?</Label>
+          <Select value={privacySettings.stories_visibility || 'friends'} onValueChange={v => updatePrivacySetting('stories_visibility', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Restrict who can view previous posts</Label>
+          <Select value={privacySettings.past_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('past_posts_visibility', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Who can view your companions list?</Label>
+          <Select value={privacySettings.friends_list_visibility || 'friends'} onValueChange={v => updatePrivacySetting('friends_list_visibility', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Who can view posts you're tagged in on your profile?</Label>
+          <Select value={privacySettings.tagged_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('tagged_posts_visibility', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
       </div>
 
       <Separator />
 
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Privacy Controls</h3>
-        <div className="space-y-4">
+      <div className="space-y-4">
+        <h4 className="font-semibold text-foreground">Tag Oversight</h4>
+        <div className="flex items-center justify-between">
           <div>
-            <Label>Who can see your friends list?</Label>
-            <Select
-              value={privacySettings.friends_list_visibility || 'friends'}
-              onValueChange={(value) => updatePrivacySetting('friends_list_visibility', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {privacyOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-sm font-medium">Examine tags companions add before they show</Label>
+            <p className="text-sm text-muted-foreground">Tags will require your consent before appearing on your profile</p>
           </div>
+          <Switch checked={privacySettings.review_tags === 'true'} onCheckedChange={c => updatePrivacySetting('review_tags', c.toString())} />
+        </div>
+        <div className="flex items-center justify-between">
           <div>
-            <Label>Who can see the people, Pages, and lists you follow?</Label>
-            <Select
-              value={privacySettings.following_visibility || 'friends'}
-              onValueChange={(value) => updatePrivacySetting('following_visibility', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {privacyOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-sm font-medium">Examine posts you're tagged in before they show on your profile</Label>
+            <p className="text-sm text-muted-foreground">Tagged posts will require consent to appear on your timeline</p>
           </div>
+          <Switch checked={privacySettings.review_tagged_posts === 'true'} onCheckedChange={c => updatePrivacySetting('review_tagged_posts', c.toString())} />
         </div>
       </div>
     </div>
   );
 
-  const renderAudienceSection = () => (
+  const renderDiscoverabilityView = () => (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Post Visibility</h3>
-        <div className="space-y-4">
-          <div>
-            <Label>Who can see your future posts?</Label>
-            <Select
-              value={privacySettings.future_posts_visibility || 'friends'}
-              onValueChange={(value) => updatePrivacySetting('future_posts_visibility', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {privacyOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Who can see your stories?</Label>
-            <Select
-              value={privacySettings.stories_visibility || 'friends'}
-              onValueChange={(value) => updatePrivacySetting('stories_visibility', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {privacyOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      {renderBackButton()}
+      <h3 className="text-xl font-bold text-foreground">How others can locate you on Tone</h3>
+
+      <div className="space-y-4">
+        <div>
+          <Label>Who can dispatch you companion requests?</Label>
+          <Select value={privacySettings.friend_requests_from || 'everyone'} onValueChange={v => updatePrivacySetting('friend_requests_from', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="everyone">Everyone</SelectItem>
+              <SelectItem value="friends_of_friends">Extended Circle</SelectItem>
+              <SelectItem value="no_one">Nobody</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </div>
-
-      <Separator />
-
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Past Posts</h3>
-        <div className="space-y-4">
+        <div>
+          <Label>Who can locate your profile via your email address?</Label>
+          <Select value={privacySettings.findable_by_email || 'friends'} onValueChange={v => updatePrivacySetting('findable_by_email', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="everyone">Everyone</SelectItem>
+              <SelectItem value="friends">Companions</SelectItem>
+              <SelectItem value="no_one">Nobody</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Who can locate your profile via your phone number?</Label>
+          <Select value={privacySettings.findable_by_phone || 'friends'} onValueChange={v => updatePrivacySetting('findable_by_phone', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="everyone">Everyone</SelectItem>
+              <SelectItem value="friends">Companions</SelectItem>
+              <SelectItem value="no_one">Nobody</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center justify-between">
           <div>
-            <Label>Limit who can see past posts</Label>
-            <Select
-              value={privacySettings.past_posts_visibility || 'friends'}
-              onValueChange={(value) => updatePrivacySetting('past_posts_visibility', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {privacyOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-sm font-medium">Permit search engines to link to your profile</Label>
+            <p className="text-sm text-muted-foreground">Allow search engines outside of Tone to reference your profile</p>
           </div>
+          <Switch checked={privacySettings.search_engine_indexing === 'true'} onCheckedChange={c => updatePrivacySetting('search_engine_indexing', c.toString())} />
         </div>
       </div>
     </div>
   );
 
-  const renderTaggingSection = () => (
+  const renderDataView = () => (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Tag Visibility</h3>
-        <div className="space-y-4">
-          <div>
-            <Label>Who can see posts you're tagged in on your profile?</Label>
-            <Select
-              value={privacySettings.tagged_posts_visibility || 'friends'}
-              onValueChange={(value) => updatePrivacySetting('tagged_posts_visibility', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {privacyOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>When you're tagged in a post, who can be added to the audience?</Label>
-            <Select
-              value={privacySettings.tag_audience_expansion || 'friends'}
-              onValueChange={(value) => updatePrivacySetting('tag_audience_expansion', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {privacyOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      {renderBackButton()}
+      <h3 className="text-xl font-bold text-foreground">Your information preferences on Tone</h3>
+
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="email">Email Address</Label>
+          <Input id="email" type="email" value={profileData.email} onChange={e => updateProfile('email', e.target.value)} placeholder="Enter your email" />
         </div>
-      </div>
-
-      <Separator />
-
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Tag Review</h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-medium">Review tags friends add before they appear</Label>
-              <p className="text-sm text-muted-foreground">Tags will need your approval before showing on your profile</p>
-            </div>
-            <Switch
-              checked={privacySettings.review_tags === 'true'}
-              onCheckedChange={(checked) => updatePrivacySetting('review_tags', checked.toString())}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-medium">Review posts you're tagged in before they appear on your profile</Label>
-              <p className="text-sm text-muted-foreground">Tagged posts will need approval to appear on your timeline</p>
-            </div>
-            <Switch
-              checked={privacySettings.review_tagged_posts === 'true'}
-              onCheckedChange={(checked) => updatePrivacySetting('review_tagged_posts', checked.toString())}
-            />
-          </div>
+        <div>
+          <Label htmlFor="birthday">Date of Birth</Label>
+          <Input id="birthday" type="date" value={profileData.birthday} onChange={e => updateProfile('birthday', e.target.value)} />
+        </div>
+        <div>
+          <Label htmlFor="relationship">Partnership Status</Label>
+          <Select value={profileData.relationship} onValueChange={v => updateProfile('relationship', v)}>
+            <SelectTrigger><SelectValue placeholder="Choose partnership status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="single">Unattached</SelectItem>
+              <SelectItem value="in_relationship">In a Partnership</SelectItem>
+              <SelectItem value="married">Wedded</SelectItem>
+              <SelectItem value="its_complicated">It's Nuanced</SelectItem>
+              <SelectItem value="prefer_not_to_say">Rather Not Disclose</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Who can view the people, Pages, and lists you follow?</Label>
+          <Select value={privacySettings.following_visibility || 'friends'} onValueChange={v => updatePrivacySetting('following_visibility', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
       </div>
     </div>
   );
 
-  const renderBlockingSection = () => (
+  const renderSecurityView = () => (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Blocked Users</h3>
+      {renderBackButton()}
+      <h3 className="text-xl font-bold text-foreground">Ways to safeguard your account</h3>
+
+      <div className="space-y-4">
+        <h4 className="font-semibold text-foreground">Restricted Users</h4>
         {blockedUsers.length === 0 ? (
-          <p className="text-muted-foreground">No blocked users</p>
+          <p className="text-muted-foreground">No restricted users at this time</p>
         ) : (
           <div className="space-y-3">
-            {blockedUsers.map((blocked) => (
-              <div key={blocked.id} className="flex items-center justify-between p-3 border rounded-lg">
+            {blockedUsers.map(blocked => (
+              <div key={blocked.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={blocked.profiles?.profile_pic || ''} />
-                    <AvatarFallback>
-                      {blocked.profiles?.display_name?.charAt(0)?.toUpperCase()}
-                    </AvatarFallback>
+                    <AvatarFallback>{blocked.profiles?.display_name?.charAt(0)?.toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{blocked.profiles?.display_name}</p>
+                    <p className="font-medium text-foreground">{blocked.profiles?.display_name}</p>
                     <p className="text-sm text-muted-foreground">@{blocked.profiles?.username}</p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => unblockUser(blocked.blocked_user_id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Unblock
+                <Button variant="outline" size="sm" onClick={() => unblockUser(blocked.blocked_user_id)} className="text-destructive hover:text-destructive/80">
+                  <Trash2 className="h-4 w-4 mr-2" /> Lift Restriction
                 </Button>
               </div>
             ))}
           </div>
         )}
       </div>
-    </div>
-  );
-
-  const renderFriendsSection = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Friend Request Settings</h3>
-        <div className="space-y-4">
-          <div>
-            <Label>Who can send you friend requests?</Label>
-            <Select
-              value={privacySettings.friend_requests_from || 'everyone'}
-              onValueChange={(value) => updatePrivacySetting('friend_requests_from', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="everyone">Everyone</SelectItem>
-                <SelectItem value="friends_of_friends">Friends of Friends</SelectItem>
-                <SelectItem value="no_one">No One</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
 
       <Separator />
 
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Discoverability</h3>
-        <div className="space-y-4">
-          <div>
-            <Label>Who can find your profile using your email address?</Label>
-            <Select
-              value={privacySettings.findable_by_email || 'friends'}
-              onValueChange={(value) => updatePrivacySetting('findable_by_email', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="everyone">Everyone</SelectItem>
-                <SelectItem value="friends">Friends</SelectItem>
-                <SelectItem value="no_one">No One</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Who can find your profile using your phone number?</Label>
-            <Select
-              value={privacySettings.findable_by_phone || 'friends'}
-              onValueChange={(value) => updatePrivacySetting('findable_by_phone', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="everyone">Everyone</SelectItem>
-                <SelectItem value="friends">Friends</SelectItem>
-                <SelectItem value="no_one">No One</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-medium">Allow search engines to link to your profile</Label>
-              <p className="text-sm text-muted-foreground">Let search engines outside of Tone link to your profile</p>
-            </div>
-            <Switch
-              checked={privacySettings.search_engine_indexing === 'true'}
-              onCheckedChange={(checked) => updatePrivacySetting('search_engine_indexing', checked.toString())}
-            />
-          </div>
+      <div className="space-y-4">
+        <h4 className="font-semibold text-foreground">Tag Audience Expansion</h4>
+        <div>
+          <Label>When you're tagged in a post, who can be added to the audience?</Label>
+          <Select value={privacySettings.tag_audience_expansion || 'friends'} onValueChange={v => updatePrivacySetting('tag_audience_expansion', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
       </div>
     </div>
   );
 
-  const renderContent = () => {
-    switch (activeSection) {
-      case 'profile':
-        return renderProfileSection();
-      case 'audience':
-        return renderAudienceSection();
-      case 'tagging':
-        return renderTaggingSection();
-      case 'blocking':
-        return renderBlockingSection();
-      case 'friends':
-        return renderFriendsSection();
-      default:
-        return renderProfileSection();
-    }
+  const renderAdsView = () => (
+    <div className="space-y-6">
+      {renderBackButton()}
+      <h3 className="text-xl font-bold text-foreground">Your promotion choices on Tone</h3>
+      <p className="text-muted-foreground text-sm">
+        Manage how promotions are tailored for you. Visit the Ad Preferences section in Preferences for comprehensive controls.
+      </p>
+    </div>
+  );
+
+  const views: Record<string, () => JSX.Element> = {
+    sharing: renderSharingView,
+    discoverability: renderDiscoverabilityView,
+    data: renderDataView,
+    security: renderSecurityView,
+    ads: renderAdsView,
   };
 
-  return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5" />
-          Privacy Checkup
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex gap-6">
-          {/* Sidebar */}
-          <div className="w-64 space-y-1">
-            {sidebarItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeSection === item.id;
-              
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveSection(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Content */}
-          <div className="flex-1">
-            {renderContent()}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return <div className="max-w-2xl mx-auto">{views[activeView]?.()}</div>;
 };
 
 export default PrivacyCheckup;
