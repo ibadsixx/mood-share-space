@@ -264,7 +264,7 @@ const PrivacyCheckup = () => {
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="everyone">Everyone</SelectItem>
-              <SelectItem value="friends">Companions</SelectItem>
+              <SelectItem value="friends">Allies</SelectItem>
               <SelectItem value="no_one">Nobody</SelectItem>
             </SelectContent>
           </Select>
