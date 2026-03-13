@@ -244,7 +244,7 @@ const PrivacyCheckup = () => {
   const renderDiscoverabilityView = () => (
     <div className="space-y-6">
       {renderBackButton()}
-      <h3 className="text-xl font-bold text-foreground">How others can locate you on Tone</h3>
+      <h3 className="text-xl font-bold text-foreground">How others can discover you on Tone</h3>
 
       <div className="space-y-4">
         <div>
