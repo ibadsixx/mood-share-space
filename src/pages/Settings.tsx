@@ -809,7 +809,7 @@ const Settings = () => {
         return <ActivityLog />;
 
       case 'blocked':
-        return <BlockedUsersManager />;
+        return <BlockingSettings />;
 
       case 'notifications':
         return <NotificationSettings />;
