@@ -208,12 +208,12 @@ const BlockingSettings = () => {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-foreground">Obstructing</h2>
+      <h2 className="text-2xl font-bold text-foreground">Blocklists</h2>
 
       <Card className="border-border/50">
         <CardContent className="p-0">
           <div className="px-6 py-4">
-            <h3 className="text-lg font-semibold text-foreground">Administer Obstructing</h3>
+            <h3 className="text-lg font-semibold text-foreground">Manage Blocklists</h3>
           </div>
           <Separator />
 
