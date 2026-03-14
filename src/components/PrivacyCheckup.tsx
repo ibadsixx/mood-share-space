@@ -9,8 +9,9 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Trash2, User, Monitor, Tag, ShieldBan, X } from 'lucide-react';
+import { ArrowLeft, Trash2, User, Monitor, Tag, ShieldBan, X, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
 import whoCanSeeImg from '@/assets/privacy/who-can-see.png';
 import howPeopleFindImg from '@/assets/privacy/how-people-find.png';
 import dataSettingsImg from '@/assets/privacy/data-settings.png';
@@ -21,6 +22,12 @@ interface ProfileData {
   email: string;
   birthday: string;
   relationship: string;
+  email_visibility: string;
+  birth_date_visibility: string;
+  birth_year_visibility: string;
+  relationship_visibility: string;
+  friends_visibility: string;
+  following_visibility: string;
 }
 
 interface BlockedUser {
@@ -33,7 +40,7 @@ interface BlockedUser {
 }
 
 type ActiveView = null | 'sharing' | 'discoverability' | 'data' | 'security' | 'ads';
-type SharingStep = 'intro' | 'details';
+type SharingStep = 'intro' | 'profile_info' | 'audience' | 'mentioning' | 'restricting';
 
 const privacyOptions = [
   { value: 'public', label: 'Everyone' },
@@ -41,6 +48,12 @@ const privacyOptions = [
   { value: 'friends_of_friends', label: 'Wider Circle' },
   { value: 'only_me', label: 'Only Me' }
 ];
+
+const visibilityLabel = (val: string | null | undefined) => {
+  if (!val) return 'Allies';
+  const found = privacyOptions.find(o => o.value === val);
+  return found?.label || val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
 
 const fallbackBlockedProfile = {
   display_name: 'Unknown Ally',
@@ -54,10 +67,17 @@ const PrivacyCheckup = () => {
   const [activeView, setActiveView] = useState<ActiveView>(null);
   const [sharingStep, setSharingStep] = useState<SharingStep>('intro');
   const [showSharingIntro, setShowSharingIntro] = useState(false);
-  const [profileData, setProfileData] = useState<ProfileData>({ email: '', birthday: '', relationship: '' });
+  const [showSharingWizard, setShowSharingWizard] = useState(false);
+  const [profileData, setProfileData] = useState<ProfileData>({
+    email: '', birthday: '', relationship: '',
+    email_visibility: 'only_me', birth_date_visibility: 'friends',
+    birth_year_visibility: 'friends', relationship_visibility: 'friends',
+    friends_visibility: 'only_me', following_visibility: 'only_me',
+  });
   const [privacySettings, setPrivacySettings] = useState<Record<string, string>>({});
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingField, setEditingField] = useState<string | null>(null);
 
   const fetchUserData = useCallback(async () => {
     if (!user?.id) {
@@ -71,7 +91,7 @@ const PrivacyCheckup = () => {
       const [profileRes, settingsRes, blocksRes, legacyBlocksRes] = await Promise.all([
         supabase
           .from('profiles')
-          .select('email, birthday, relationship')
+          .select('email, birthday, relationship, email_visibility, birth_date_visibility, birth_year_visibility, relationship_visibility, friends_visibility, following_visibility')
           .eq('id', user.id)
           .maybeSingle(),
         supabase
@@ -97,6 +117,12 @@ const PrivacyCheckup = () => {
         email: profileRes.data?.email || '',
         birthday: profileRes.data?.birthday || '',
         relationship: profileRes.data?.relationship || '',
+        email_visibility: profileRes.data?.email_visibility || 'only_me',
+        birth_date_visibility: profileRes.data?.birth_date_visibility || 'friends',
+        birth_year_visibility: profileRes.data?.birth_year_visibility || 'friends',
+        relationship_visibility: profileRes.data?.relationship_visibility || 'friends',
+        friends_visibility: profileRes.data?.friends_visibility || 'only_me',
+        following_visibility: String(profileRes.data?.following_visibility ?? 'only_me'),
       });
 
       const settingsObject = (settingsRes.data ?? []).reduce((acc: Record<string, string>, setting) => {
@@ -142,7 +168,7 @@ const PrivacyCheckup = () => {
     fetchUserData();
   }, [fetchUserData]);
 
-  const saveProfileField = async (field: keyof ProfileData, value: string) => {
+  const saveProfileField = async (field: string, value: string) => {
     if (!user?.id) return;
 
     const { error } = await supabase
@@ -156,7 +182,25 @@ const PrivacyCheckup = () => {
       return;
     }
 
-    toast({ title: 'Saved', description: 'Profile detail refreshed' });
+    toast({ title: 'Saved', description: 'Preference recorded' });
+  };
+
+  const updateProfileVisibility = async (field: string, value: string) => {
+    if (!user?.id) return;
+    setProfileData(prev => ({ ...prev, [field]: value }));
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({ [field]: value })
+      .eq('id', user.id);
+
+    if (error) {
+      toast({ title: 'Error', description: 'Could not save visibility', variant: 'destructive' });
+      await fetchUserData();
+      return;
+    }
+
+    toast({ title: 'Saved', description: 'Visibility updated' });
   };
 
   const updatePrivacySetting = async (name: string, value: string) => {
@@ -168,24 +212,15 @@ const PrivacyCheckup = () => {
     const { error } = await supabase
       .from('privacy_settings')
       .upsert(
-        {
-          user_id: user.id,
-          setting_name: name,
-          setting_value: value,
-        },
-        {
-          onConflict: 'user_id,setting_name',
-        }
+        { user_id: user.id, setting_name: name, setting_value: value },
+        { onConflict: 'user_id,setting_name' }
       );
 
     if (error) {
       setPrivacySettings(prev => {
         const next = { ...prev };
-        if (previousValue === undefined) {
-          delete next[name];
-        } else {
-          next[name] = previousValue;
-        }
+        if (previousValue === undefined) delete next[name];
+        else next[name] = previousValue;
         return next;
       });
       toast({ title: 'Error', description: 'Could not persist preference', variant: 'destructive' });
@@ -199,16 +234,8 @@ const PrivacyCheckup = () => {
     if (!user?.id) return;
 
     const [blocksDelete, legacyBlocksDelete] = await Promise.all([
-      supabase
-        .from('blocks')
-        .delete()
-        .eq('blocker_id', user.id)
-        .eq('blocked_id', blockedUserId),
-      supabase
-        .from('blocked_users')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('blocked_user_id', blockedUserId),
+      supabase.from('blocks').delete().eq('blocker_id', user.id).eq('blocked_id', blockedUserId),
+      supabase.from('blocked_users').delete().eq('user_id', user.id).eq('blocked_user_id', blockedUserId),
     ]);
 
     if (blocksDelete.error && legacyBlocksDelete.error) {
@@ -221,6 +248,257 @@ const PrivacyCheckup = () => {
   };
 
   if (loading) return <div className="p-6 text-center text-muted-foreground">Loading privacy preferences...</div>;
+
+  // Format birthday display
+  const formatBirthdayDate = (birthday: string) => {
+    if (!birthday) return 'Not set';
+    const date = new Date(birthday);
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  };
+
+  const formatBirthdayYear = (birthday: string) => {
+    if (!birthday) return 'Not set';
+    const date = new Date(birthday);
+    return date.getFullYear().toString();
+  };
+
+  const getRelationshipLabel = (value: string) => {
+    const map: Record<string, string> = {
+      single: 'Uncommitted',
+      in_relationship: 'In a Union',
+      married: 'Married',
+      engaged: 'Betrothed',
+      divorced: 'Separated',
+      widowed: 'Widowed',
+      its_complicated: 'Complex',
+      prefer_not_to_say: 'Undisclosed',
+    };
+    return map[value] || value || 'Not set';
+  };
+
+  const sharingSteps: SharingStep[] = ['profile_info', 'audience', 'mentioning', 'restricting'];
+  const currentStepIndex = sharingSteps.indexOf(sharingStep);
+  const progressPercent = sharingStep === 'intro' ? 0 : ((currentStepIndex + 1) / sharingSteps.length) * 100;
+
+  const handleSharingNext = () => {
+    const idx = sharingSteps.indexOf(sharingStep);
+    if (idx < sharingSteps.length - 1) {
+      setSharingStep(sharingSteps[idx + 1]);
+    } else {
+      setShowSharingWizard(false);
+      setSharingStep('intro');
+    }
+  };
+
+  const handleSharingBack = () => {
+    const idx = sharingSteps.indexOf(sharingStep);
+    if (idx > 0) {
+      setSharingStep(sharingSteps[idx - 1]);
+    } else {
+      setShowSharingWizard(false);
+      setShowSharingIntro(true);
+    }
+  };
+
+  // Inline visibility editor row
+  const VisibilityRow = ({ label, sublabel, field, value }: { label: string; sublabel: string; field: string; value: string }) => (
+    <div className="relative">
+      <button
+        className="w-full flex items-center justify-between py-3 px-1 hover:bg-muted/50 rounded-lg transition-colors text-left"
+        onClick={() => setEditingField(editingField === field ? null : field)}
+      >
+        <div>
+          <p className="text-sm font-semibold text-foreground">{label}</p>
+          <p className="text-xs text-muted-foreground">{sublabel}</p>
+        </div>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </button>
+      {editingField === field && (
+        <div className="pb-3 px-1">
+          <Select value={value} onValueChange={(v) => { updateProfileVisibility(field, v); setEditingField(null); }}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {privacyOptions.map(o => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  );
+
+  // Sharing wizard step: Profile Particulars
+  const renderProfileInfoStep = () => (
+    <div className="space-y-1">
+      {/* Email Section */}
+      <div>
+        <h4 className="text-sm font-bold text-foreground px-1 pt-2 pb-1">Email address</h4>
+        <VisibilityRow
+          label={profileData.email || 'No email set'}
+          sublabel={visibilityLabel(profileData.email_visibility)}
+          field="email_visibility"
+          value={profileData.email_visibility}
+        />
+      </div>
+
+      {/* Birthday Section */}
+      <div>
+        <h4 className="text-sm font-bold text-foreground px-1 pt-2 pb-1">Date of Birth</h4>
+        <VisibilityRow
+          label={formatBirthdayDate(profileData.birthday)}
+          sublabel={visibilityLabel(profileData.birth_date_visibility)}
+          field="birth_date_visibility"
+          value={profileData.birth_date_visibility}
+        />
+        <VisibilityRow
+          label={formatBirthdayYear(profileData.birthday)}
+          sublabel={visibilityLabel(profileData.birth_year_visibility)}
+          field="birth_year_visibility"
+          value={profileData.birth_year_visibility}
+        />
+      </div>
+
+      {/* Relationship Section */}
+      <div>
+        <h4 className="text-sm font-bold text-foreground px-1 pt-2 pb-1">Union Status</h4>
+        <VisibilityRow
+          label={getRelationshipLabel(profileData.relationship)}
+          sublabel={visibilityLabel(profileData.relationship_visibility)}
+          field="relationship_visibility"
+          value={profileData.relationship_visibility}
+        />
+      </div>
+
+      {/* Friends and following Section */}
+      <div>
+        <h4 className="text-sm font-bold text-foreground px-1 pt-2 pb-1">Allies and Tracking</h4>
+        <VisibilityRow
+          label="Who can observe your allies list?"
+          sublabel={visibilityLabel(profileData.friends_visibility)}
+          field="friends_visibility"
+          value={profileData.friends_visibility}
+        />
+        <VisibilityRow
+          label="Who can observe the people and Pages you track?"
+          sublabel={visibilityLabel(profileData.following_visibility)}
+          field="following_visibility"
+          value={profileData.following_visibility === 'true' ? 'public' : profileData.following_visibility === 'false' ? 'only_me' : profileData.following_visibility}
+        />
+      </div>
+    </div>
+  );
+
+  // Sharing wizard step: Audience
+  const renderAudienceStep = () => (
+    <div className="space-y-4">
+      <div>
+        <Label>Who can observe your upcoming posts?</Label>
+        <Select value={privacySettings.future_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('future_posts_visibility', v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label>Who can observe your stories?</Label>
+        <Select value={privacySettings.stories_visibility || 'friends'} onValueChange={v => updatePrivacySetting('stories_visibility', v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label>Restrict who can observe prior posts</Label>
+        <Select value={privacySettings.past_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('past_posts_visibility', v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
+  // Sharing wizard step: Mentioning
+  const renderMentioningStep = () => (
+    <div className="space-y-4">
+      <div>
+        <Label>Who can observe posts where you&apos;re mentioned on your profile?</Label>
+        <Select value={privacySettings.tagged_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('tagged_posts_visibility', v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-sm font-medium">Examine mentions allies add before they appear</Label>
+          <p className="text-sm text-muted-foreground">Mentions need your approval before they show on your profile</p>
+        </div>
+        <Switch checked={privacySettings.review_tags === 'true'} onCheckedChange={c => updatePrivacySetting('review_tags', c.toString())} />
+      </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-sm font-medium">Examine posts where you&apos;re cited before they appear on your profile</Label>
+          <p className="text-sm text-muted-foreground">Cited posts need approval before appearing on your timeline</p>
+        </div>
+        <Switch checked={privacySettings.review_tagged_posts === 'true'} onCheckedChange={c => updatePrivacySetting('review_tagged_posts', c.toString())} />
+      </div>
+    </div>
+  );
+
+  // Sharing wizard step: Restricting
+  const renderRestrictingStep = () => (
+    <div className="space-y-4">
+      <h4 className="font-semibold text-foreground">Barred Users</h4>
+      {blockedUsers.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No barred users at present</p>
+      ) : (
+        <div className="space-y-3">
+          {blockedUsers.map(blocked => (
+            <div key={blocked.blocked_user_id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={blocked.profiles?.profile_pic || ''} />
+                  <AvatarFallback>{blocked.profiles?.display_name?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-foreground">{blocked.profiles?.display_name}</p>
+                  <p className="text-sm text-muted-foreground">@{blocked.profiles?.username}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => unblockUser(blocked.blocked_user_id)} className="text-destructive hover:text-destructive/80">
+                <Trash2 className="h-4 w-4 mr-2" /> Lift Restriction
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Separator />
+
+      <div>
+        <h4 className="font-semibold text-foreground mb-2">Mention Audience Expansion</h4>
+        <Label>When you&apos;re cited in a post, who can be appended to the audience?</Label>
+        <Select value={privacySettings.tag_audience_expansion || 'friends'} onValueChange={v => updatePrivacySetting('tag_audience_expansion', v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
+  const sharingStepTitles: Record<string, string> = {
+    profile_info: 'Profile Particulars',
+    audience: 'Audience',
+    mentioning: 'Mentioning',
+    restricting: 'Restricting',
+  };
+
+  const sharingStepRenderers: Record<string, () => JSX.Element> = {
+    profile_info: renderProfileInfoStep,
+    audience: renderAudienceStep,
+    mentioning: renderMentioningStep,
+    restricting: renderRestrictingStep,
+  };
 
   const cards: { id: ActiveView; title: string; image: string; bg: string }[] = [
     { id: 'sharing', title: 'Who can observe what you share', image: whoCanSeeImg, bg: 'bg-amber-100 dark:bg-amber-950/30' },
@@ -301,7 +579,7 @@ const PrivacyCheckup = () => {
                   <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
                     <User className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <span className="text-sm font-medium text-foreground">Profile Details</span>
+                  <span className="text-sm font-medium text-foreground">Profile Particulars</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
@@ -326,11 +604,49 @@ const PrivacyCheckup = () => {
                 className="w-full"
                 onClick={() => {
                   setShowSharingIntro(false);
-                  setActiveView('sharing');
+                  setSharingStep('profile_info');
+                  setShowSharingWizard(true);
                 }}
               >
                 Continue
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Sharing Wizard Modal */}
+        <Dialog open={showSharingWizard} onOpenChange={(open) => {
+          setShowSharingWizard(open);
+          if (!open) setSharingStep('intro');
+        }}>
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl border-border max-h-[85vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <button onClick={handleSharingBack} className="p-1 hover:bg-muted rounded-full transition-colors">
+                <ArrowLeft className="h-5 w-5 text-foreground" />
+              </button>
+              <h3 className="text-base font-bold text-foreground">{sharingStepTitles[sharingStep] || 'Profile Particulars'}</h3>
+              <button onClick={() => { setShowSharingWizard(false); setSharingStep('intro'); }} className="p-1 hover:bg-muted rounded-full transition-colors">
+                <X className="h-5 w-5 text-foreground" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              {sharingStepRenderers[sharingStep]?.()}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-border px-4 py-3 space-y-3">
+              <Progress value={progressPercent} className="h-1.5" />
+              <div className="flex items-center justify-between">
+                <Button variant="ghost" onClick={handleSharingBack}>
+                  Back
+                </Button>
+                <Button onClick={handleSharingNext}>
+                  {currentStepIndex === sharingSteps.length - 1 ? 'Finish' : 'Next'}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -343,71 +659,6 @@ const PrivacyCheckup = () => {
     <Button variant="ghost" size="sm" onClick={() => setActiveView(null)} className="mb-4 -ml-2 text-muted-foreground hover:text-foreground">
       <ArrowLeft className="h-4 w-4 mr-1" /> Back to overview
     </Button>
-  );
-
-  const renderSharingView = () => (
-    <div className="space-y-6">
-      {renderBackButton()}
-      <h3 className="text-xl font-bold text-foreground">Who can observe what you share</h3>
-
-      <div className="space-y-4">
-        <div>
-          <Label>Who can observe your future posts?</Label>
-          <Select value={privacySettings.future_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('future_posts_visibility', v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Who can observe your stories?</Label>
-          <Select value={privacySettings.stories_visibility || 'friends'} onValueChange={v => updatePrivacySetting('stories_visibility', v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Limit who can observe older posts</Label>
-          <Select value={privacySettings.past_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('past_posts_visibility', v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Who can observe your allies list?</Label>
-          <Select value={privacySettings.friends_list_visibility || 'friends'} onValueChange={v => updatePrivacySetting('friends_list_visibility', v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Who can observe posts where you&apos;re mentioned on your profile?</Label>
-          <Select value={privacySettings.tagged_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('tagged_posts_visibility', v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <Separator />
-
-      <div className="space-y-4">
-        <h4 className="font-semibold text-foreground">Tag Review</h4>
-        <div className="flex items-center justify-between">
-          <div>
-            <Label className="text-sm font-medium">Review tags allies add before they appear</Label>
-            <p className="text-sm text-muted-foreground">Tags need your approval before they show on your profile</p>
-          </div>
-          <Switch checked={privacySettings.review_tags === 'true'} onCheckedChange={c => updatePrivacySetting('review_tags', c.toString())} />
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <Label className="text-sm font-medium">Review posts where you&apos;re mentioned before they appear on your profile</Label>
-            <p className="text-sm text-muted-foreground">Mentioned posts need approval before appearing on your timeline</p>
-          </div>
-          <Switch checked={privacySettings.review_tagged_posts === 'true'} onCheckedChange={c => updatePrivacySetting('review_tagged_posts', c.toString())} />
-        </div>
-      </div>
-    </div>
   );
 
   const renderDiscoverabilityView = () => (
@@ -478,7 +729,7 @@ const PrivacyCheckup = () => {
           />
         </div>
         <div>
-          <Label htmlFor="birthday">Birth Date</Label>
+          <Label htmlFor="birthday">Date of Birth</Label>
           <Input
             id="birthday"
             type="date"
@@ -507,7 +758,7 @@ const PrivacyCheckup = () => {
           </Select>
         </div>
         <div>
-          <Label>Who can observe people, Pages, and lists you follow?</Label>
+          <Label>Who can observe people, Pages, and lists you track?</Label>
           <Select value={privacySettings.following_visibility || 'friends'} onValueChange={v => updatePrivacySetting('following_visibility', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -552,9 +803,9 @@ const PrivacyCheckup = () => {
       <Separator />
 
       <div className="space-y-4">
-        <h4 className="font-semibold text-foreground">Tag Audience Expansion</h4>
+        <h4 className="font-semibold text-foreground">Mention Audience Expansion</h4>
         <div>
-          <Label>When you&apos;re mentioned in a post, who can be added to the audience?</Label>
+          <Label>When you&apos;re cited in a post, who can be appended to the audience?</Label>
           <Select value={privacySettings.tag_audience_expansion || 'friends'} onValueChange={v => updatePrivacySetting('tag_audience_expansion', v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -575,7 +826,15 @@ const PrivacyCheckup = () => {
   );
 
   const views: Record<string, () => JSX.Element> = {
-    sharing: renderSharingView,
+    sharing: () => {
+      // If sharing is selected as activeView directly, open the wizard
+      if (!showSharingWizard) {
+        setSharingStep('profile_info');
+        setShowSharingWizard(true);
+        setActiveView(null);
+      }
+      return <div />;
+    },
     discoverability: renderDiscoverabilityView,
     data: renderDataView,
     security: renderSecurityView,
