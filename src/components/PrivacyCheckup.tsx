@@ -244,7 +244,14 @@ const PrivacyCheckup = () => {
           {cards.slice(0, 2).map(card => (
             <button
               key={card.id}
-              onClick={() => setActiveView(card.id)}
+              onClick={() => {
+                if (card.id === 'sharing') {
+                  setSharingStep('intro');
+                  setShowSharingIntro(true);
+                } else {
+                  setActiveView(card.id);
+                }
+              }}
               className={`${card.bg} rounded-xl overflow-hidden text-left transition-all hover:shadow-lg hover:scale-[1.02] border border-border/30`}
             >
               <img src={card.image} alt={card.title} className="w-full h-36 object-cover" />
