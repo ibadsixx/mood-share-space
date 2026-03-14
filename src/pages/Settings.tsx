@@ -39,7 +39,7 @@ import {
   Settings as SettingsIcon,
   Hash
 } from 'lucide-react';
-import BlockedUsersManager from '@/components/BlockedUsersManager';
+import BlockingSettings from '@/components/BlockingSettings';
 import { AdminReportsManager } from '@/components/AdminReportsManager';
 import { useHashtagNotificationSettings } from '@/hooks/useHashtagNotificationSettings';
 import NotificationSettings from '@/components/NotificationSettings';
@@ -211,7 +211,7 @@ const Settings = () => {
     { id: 'privacy', title: 'Privacy Checkup', icon: Eye },
     { id: 'activity', title: 'Your activity', icon: Activity },
     { id: 'notifications', title: 'Notification Settings', icon: Hash },
-    { id: 'blocked', title: 'Blocked Users', icon: UserX },
+    { id: 'blocked', title: 'Obstructing', icon: UserX },
     ...(isAdmin ? [{ id: 'admin', title: 'Admin Reports', icon: SettingsIcon }] : [])
   ];
 
@@ -809,7 +809,7 @@ const Settings = () => {
         return <ActivityLog />;
 
       case 'blocked':
-        return <BlockedUsersManager />;
+        return <BlockingSettings />;
 
       case 'notifications':
         return <NotificationSettings />;
