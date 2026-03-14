@@ -188,10 +188,10 @@ const BlockingSettings = () => {
     try {
       const { error } = await supabase.from('blocks').delete().eq('id', blockId);
       if (error) throw error;
-      toast({ title: 'User unobstructed', description: 'The user has been unobstructed.' });
+      toast({ title: 'User unblocked', description: 'The user has been unblocked.' });
       fetchBlockedUsers();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'Failed to unobstruct user', variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to unblock user', variant: 'destructive' });
     }
   };
 
