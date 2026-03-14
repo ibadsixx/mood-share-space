@@ -340,7 +340,7 @@ const BlockingSettings = () => {
 
                           {sectionBlocked.length === 0 && results.length === 0 && query.length < 2 && (
                             <p className="text-sm text-muted-foreground text-center py-2">
-                              No obstructed users in this category.
+                              No blocked users in this category.
                             </p>
                           )}
                         </div>
