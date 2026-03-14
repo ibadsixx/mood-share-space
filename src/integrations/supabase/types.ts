@@ -1896,6 +1896,66 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_delivery_settings: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          category: string
+          created_at: string
+          email_enabled: boolean
+          id: string
+          push_enabled: boolean
+          sms_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          push_enabled?: boolean
+          sms_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          push_enabled?: boolean
+          sms_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           actor_id: string
