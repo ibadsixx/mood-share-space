@@ -174,13 +174,13 @@ const BlockingSettings = () => {
         p_block_type: blockType === 'full' || blockType === 'messaging' ? blockType : 'full',
       });
       if (error) throw error;
-      toast({ title: 'User obstructed', description: 'The user has been obstructed successfully.' });
+      toast({ title: 'User blocked', description: 'The user has been blocked successfully.' });
       // Clear search
       setSearchQueries((prev) => ({ ...prev, [blockType]: '' }));
       setSearchResults((prev) => ({ ...prev, [blockType]: [] }));
       fetchBlockedUsers();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'Failed to obstruct user', variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to block user', variant: 'destructive' });
     }
   };
 
