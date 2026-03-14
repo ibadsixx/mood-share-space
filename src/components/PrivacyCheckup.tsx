@@ -33,6 +33,7 @@ interface BlockedUser {
 }
 
 type ActiveView = null | 'sharing' | 'discoverability' | 'data' | 'security' | 'ads';
+type SharingStep = 'intro' | 'details';
 
 const privacyOptions = [
   { value: 'public', label: 'Everyone' },
