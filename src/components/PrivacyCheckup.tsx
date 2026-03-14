@@ -280,7 +280,7 @@ const PrivacyCheckup = () => {
         {/* Sharing Intro Modal */}
         <Dialog open={showSharingIntro} onOpenChange={setShowSharingIntro}>
           <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl border-border">
-            <div className="bg-amber-500 relative">
+            <div className="bg-primary/80 relative">
               <img src={whoCanSeeImg} alt="Who can observe what you share" className="w-full h-48 object-cover" />
               <button
                 onClick={() => setShowSharingIntro(false)}
