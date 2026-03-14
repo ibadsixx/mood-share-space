@@ -43,43 +43,43 @@ const sections: BlockSection[] = [
   },
   {
     id: 'profiles',
-    title: 'Obstruct profiles and Pages',
+    title: 'Block profiles and Pages',
     description:
-      'Once you obstruct a profile or Page, you can no longer engage with each other\'s profiles, posts, remarks, or dispatches. This doesn\'t encompass apps, games, or groups you both take part in. If you are presently linked with that profile or Page, obstructing it will remove the bond, unlike, and unfollow it.',
+      'Once you block a profile or Page, you can no longer engage with each other\'s profiles, posts, comments, or dispatches. This doesn\'t encompass apps, games, or groups you both take part in. If you are presently linked with that profile or Page, blocking it will remove the bond, unlike, and unfollow it.',
     blockType: 'full',
-    searchPlaceholder: 'Search by name to obstruct...',
+    searchPlaceholder: 'Search by name to block...',
   },
   {
     id: 'nicknames',
-    title: 'Obstructed aliases',
+    title: 'Blocked aliases',
     description:
-      'They can\'t label you or engage with your content. In certain cases, they may still be able to view your content. Obstructing may not prevent all communications or engagements.',
+      'They can\'t label you or engage with your content. In certain cases, they may still be able to view your content. Blocking may not prevent all communications or engagements.',
     blockType: 'nickname',
-    searchPlaceholder: 'Search by alias to obstruct...',
+    searchPlaceholder: 'Search by alias to block...',
   },
   {
     id: 'messages',
-    title: 'Obstruct dispatches',
+    title: 'Block dispatches',
     description:
-      'If you obstruct someone\'s profile on the platform, they won\'t be able to reach you in Messenger either. Unless you obstruct someone\'s profile and any others they may establish, they may be able to post on your timeline, label you, and remark on your posts or remarks.',
+      'If you block someone\'s profile on the platform, they won\'t be able to reach you in Messenger either. Unless you block someone\'s profile and any others they may establish, they may be able to post on your timeline, label you, and comment on your posts or comments.',
     blockType: 'messaging',
-    searchPlaceholder: 'Search by name to obstruct dispatches...',
+    searchPlaceholder: 'Search by name to block dispatches...',
   },
   {
     id: 'app_invites',
-    title: 'Obstruct app solicitations',
+    title: 'Block app solicitations',
     description:
-      'Once you obstruct app solicitations from someone\'s profile, you\'ll automatically disregard future app requests from that person\'s profile. To obstruct solicitations from a specific companion\'s profile, click the "Disregard All Solicitations From This Profile" link under your most recent request.',
+      'Once you block app solicitations from someone\'s profile, you\'ll automatically disregard future app requests from that person\'s profile. To block solicitations from a specific companion\'s profile, click the "Disregard All Solicitations From This Profile" link under your most recent request.',
     blockType: 'app_invite',
-    searchPlaceholder: 'Search by name to obstruct app solicitations...',
+    searchPlaceholder: 'Search by name to block app solicitations...',
   },
   {
     id: 'event_invites',
-    title: 'Obstruct occasion solicitations',
+    title: 'Block occasion solicitations',
     description:
-      'Once you obstruct occasion solicitations from someone\'s profile, you\'ll automatically disregard future occasion requests from that profile.',
+      'Once you block occasion solicitations from someone\'s profile, you\'ll automatically disregard future occasion requests from that profile.',
     blockType: 'event_invite',
-    searchPlaceholder: 'Search by name to obstruct occasion solicitations...',
+    searchPlaceholder: 'Search by name to block occasion solicitations...',
   },
 ];
 
@@ -174,13 +174,13 @@ const BlockingSettings = () => {
         p_block_type: blockType === 'full' || blockType === 'messaging' ? blockType : 'full',
       });
       if (error) throw error;
-      toast({ title: 'User obstructed', description: 'The user has been obstructed successfully.' });
+      toast({ title: 'User blocked', description: 'The user has been blocked successfully.' });
       // Clear search
       setSearchQueries((prev) => ({ ...prev, [blockType]: '' }));
       setSearchResults((prev) => ({ ...prev, [blockType]: [] }));
       fetchBlockedUsers();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'Failed to obstruct user', variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to block user', variant: 'destructive' });
     }
   };
 
@@ -188,17 +188,17 @@ const BlockingSettings = () => {
     try {
       const { error } = await supabase.from('blocks').delete().eq('id', blockId);
       if (error) throw error;
-      toast({ title: 'User unobstructed', description: 'The user has been unobstructed.' });
+      toast({ title: 'User unblocked', description: 'The user has been unblocked.' });
       fetchBlockedUsers();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'Failed to unobstruct user', variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to unblock user', variant: 'destructive' });
     }
   };
 
   if (loading) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Obstructing</h2>
+        <h2 className="text-2xl font-bold text-foreground">Blocklists</h2>
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-24 w-full rounded-lg" />
         ))}
@@ -208,12 +208,12 @@ const BlockingSettings = () => {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-foreground">Obstructing</h2>
+      <h2 className="text-2xl font-bold text-foreground">Blocklists</h2>
 
       <Card className="border-border/50">
         <CardContent className="p-0">
           <div className="px-6 py-4">
-            <h3 className="text-lg font-semibold text-foreground">Administer Obstructing</h3>
+            <h3 className="text-lg font-semibold text-foreground">Manage Blocklists</h3>
           </div>
           <Separator />
 
@@ -291,7 +291,7 @@ const BlockingSettings = () => {
                                     variant="destructive"
                                     onClick={() => blockUser(profile.id, section.blockType)}
                                   >
-                                    Obstruct
+                                    Block
                                   </Button>
                                 </div>
                               ))}
@@ -302,7 +302,7 @@ const BlockingSettings = () => {
                           {sectionBlocked.length > 0 && (
                             <div className="space-y-2">
                               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                Obstructed ({sectionBlocked.length})
+                                Blocked ({sectionBlocked.length})
                               </p>
                               {sectionBlocked.map((block) => (
                                 <div
@@ -331,7 +331,7 @@ const BlockingSettings = () => {
                                     onClick={() => unblockUser(block.id)}
                                     className="hover:bg-destructive/10 hover:text-destructive"
                                   >
-                                    Unobstruct
+                                    Unblock
                                   </Button>
                                 </div>
                               ))}
@@ -340,7 +340,7 @@ const BlockingSettings = () => {
 
                           {sectionBlocked.length === 0 && results.length === 0 && query.length < 2 && (
                             <p className="text-sm text-muted-foreground text-center py-2">
-                              No obstructed users in this category.
+                              No blocked users in this category.
                             </p>
                           )}
                         </div>
