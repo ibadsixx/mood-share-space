@@ -52,6 +52,8 @@ const PrivacyCheckup = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeView, setActiveView] = useState<ActiveView>(null);
+  const [sharingStep, setSharingStep] = useState<SharingStep>('intro');
+  const [showSharingIntro, setShowSharingIntro] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData>({ email: '', birthday: '', relationship: '' });
   const [privacySettings, setPrivacySettings] = useState<Record<string, string>>({});
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
