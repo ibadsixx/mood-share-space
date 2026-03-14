@@ -211,7 +211,7 @@ const Settings = () => {
     { id: 'privacy', title: 'Privacy Checkup', icon: Eye },
     { id: 'activity', title: 'Your activity', icon: Activity },
     { id: 'notifications', title: 'Notification Settings', icon: Hash },
-    { id: 'blocked', title: 'Blocked Users', icon: UserX },
+    { id: 'blocked', title: 'Obstructing', icon: UserX },
     ...(isAdmin ? [{ id: 'admin', title: 'Admin Reports', icon: SettingsIcon }] : [])
   ];
 
