@@ -588,45 +588,74 @@ const PrivacyCheckup = () => {
   };
 
   // Sharing wizard step: Restricting
-  const renderRestrictingStep = () => (
-    <div className="space-y-4">
-      <h4 className="font-semibold text-foreground">Barred Users</h4>
-      {blockedUsers.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No barred users at present</p>
-      ) : (
+  const [showBlockedList, setShowBlockedList] = useState(false);
+
+  const renderRestrictingStep = () => {
+    if (showBlockedList) {
+      return (
         <div className="space-y-3">
-          {blockedUsers.map(blocked => (
-            <div key={blocked.blocked_user_id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-              <div className="flex items-center space-x-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={blocked.profiles?.profile_pic || ''} />
-                  <AvatarFallback>{blocked.profiles?.display_name?.charAt(0)?.toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium text-foreground">{blocked.profiles?.display_name}</p>
-                  <p className="text-sm text-muted-foreground">@{blocked.profiles?.username}</p>
+          <button
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setShowBlockedList(false)}
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Restricting
+          </button>
+          <h4 className="font-semibold text-foreground">Barred Users</h4>
+          {blockedUsers.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No barred users at present</p>
+          ) : (
+            <div className="space-y-3">
+              {blockedUsers.map(blocked => (
+                <div key={blocked.blocked_user_id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={blocked.profiles?.profile_pic || ''} />
+                      <AvatarFallback>{blocked.profiles?.display_name?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium text-foreground">{blocked.profiles?.display_name}</p>
+                      <p className="text-sm text-muted-foreground">@{blocked.profiles?.username}</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => unblockUser(blocked.blocked_user_id)} className="text-destructive hover:text-destructive/80">
+                    <Trash2 className="h-4 w-4 mr-2" /> Lift Restriction
+                  </Button>
                 </div>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => unblockUser(blocked.blocked_user_id)} className="text-destructive hover:text-destructive/80">
-                <Trash2 className="h-4 w-4 mr-2" /> Lift Restriction
-              </Button>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      )}
+      );
+    }
 
-      <Separator />
+    return (
+      <div className="space-y-1">
+        {/* Intro text */}
+        <p className="text-sm text-muted-foreground px-1 pb-2">
+          When you bar someone, they will no longer observe things you post on your profile, cite you, invite you to events or groups, initiate a conversation with you or add you as an ally.
+        </p>
 
-      <div>
-        <h4 className="font-semibold text-foreground mb-2">Mention Audience Expansion</h4>
-        <Label>When you&apos;re cited in a post, who can be appended to the audience?</Label>
-        <Select value={privacySettings.tag_audience_expansion || 'friends'} onValueChange={v => updatePrivacySetting('tag_audience_expansion', v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-        </Select>
+        {/* Tip */}
+        <div className="flex items-start gap-3 bg-muted/50 rounded-lg p-3 mx-1">
+          <span className="text-lg">💡</span>
+          <p className="text-xs text-muted-foreground">
+            Tip: When you bar someone, we won&apos;t notify them that you&apos;ve barred them.
+          </p>
+        </div>
+
+        <Separator className="my-2" />
+
+        {/* Blocking link */}
+        <button
+          className="w-full flex items-center justify-between py-4 px-1 hover:bg-muted/50 rounded-lg transition-colors text-left"
+          onClick={() => setShowBlockedList(true)}
+        >
+          <p className="text-sm font-semibold text-foreground">Restricting</p>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </button>
       </div>
-    </div>
-  );
+    );
+  };
 
   const sharingStepTitles: Record<string, string> = {
     profile_info: 'Profile Particulars',
