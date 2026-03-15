@@ -277,9 +277,9 @@ const PrivacyCheckup = () => {
     return map[value] || value || 'Not set';
   };
 
-  const sharingSteps: SharingStep[] = ['profile_info', 'audience', 'mentioning', 'blocking'];
+  const sharingSteps: SharingStep[] = ['profile_info', 'audience', 'mentioning', 'blocking', 'completion'];
   const currentStepIndex = sharingSteps.indexOf(sharingStep);
-  const progressPercent = sharingStep === 'intro' ? 0 : ((currentStepIndex + 1) / sharingSteps.length) * 100;
+  const progressPercent = sharingStep === 'intro' ? 0 : sharingStep === 'completion' ? 100 : ((currentStepIndex + 1) / (sharingSteps.length - 1)) * 100;
 
   const handleSharingNext = () => {
     const idx = sharingSteps.indexOf(sharingStep);
