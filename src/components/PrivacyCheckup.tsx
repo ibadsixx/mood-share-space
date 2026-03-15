@@ -667,7 +667,7 @@ const PrivacyCheckup = () => {
     profile_info: renderProfileInfoStep,
     audience: renderAudienceStep,
     mentioning: renderMentioningStep,
-    restricting: renderRestrictingStep,
+    blocking: renderBlockingStep,
   };
 
   const cards: { id: ActiveView; title: string; image: string; bg: string }[] = [
