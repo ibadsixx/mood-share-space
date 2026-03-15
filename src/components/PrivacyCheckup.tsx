@@ -660,7 +660,7 @@ const PrivacyCheckup = () => {
     profile_info: 'Profile Particulars',
     audience: 'Audience',
     mentioning: 'Mentioning',
-    restricting: 'Restricting',
+    blocking: 'Blocking',
   };
 
   const sharingStepRenderers: Record<string, () => JSX.Element> = {
