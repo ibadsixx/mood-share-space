@@ -767,7 +767,7 @@ const PrivacyCheckup = () => {
                   <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
                     <ShieldBan className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <span className="text-sm font-medium text-foreground">Restricting</span>
+                  <span className="text-sm font-medium text-foreground">Blocking</span>
                 </div>
               </div>
               <Button
