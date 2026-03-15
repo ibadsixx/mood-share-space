@@ -838,14 +838,22 @@ const PrivacyCheckup = () => {
 
             {/* Footer */}
             <div className="border-t border-border px-4 py-3 space-y-3">
-              <Progress value={progressPercent} className="h-1.5" />
+              {sharingStep !== 'completion' && <Progress value={progressPercent} className="h-1.5" />}
               <div className="flex items-center justify-between">
-                <Button variant="ghost" onClick={handleSharingBack}>
-                  Back
-                </Button>
-                <Button onClick={handleSharingNext}>
-                  {currentStepIndex === sharingSteps.length - 1 ? 'Finish' : 'Next'}
-                </Button>
+                {sharingStep === 'completion' ? (
+                  <Button className="w-full" onClick={() => { setShowSharingWizard(false); setSharingStep('intro'); }}>
+                    Review another topic
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="ghost" onClick={handleSharingBack}>
+                      Back
+                    </Button>
+                    <Button onClick={handleSharingNext}>
+                      {currentStepIndex === sharingSteps.length - 2 ? 'Finish' : 'Next'}
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </DialogContent>
