@@ -40,7 +40,7 @@ interface BlockedUser {
 }
 
 type ActiveView = null | 'sharing' | 'discoverability' | 'data' | 'security' | 'ads';
-type SharingStep = 'intro' | 'profile_info' | 'audience' | 'mentioning' | 'restricting';
+type SharingStep = 'intro' | 'profile_info' | 'audience' | 'mentioning' | 'blocking';
 
 const privacyOptions = [
   { value: 'public', label: 'Everyone' },
@@ -277,7 +277,7 @@ const PrivacyCheckup = () => {
     return map[value] || value || 'Not set';
   };
 
-  const sharingSteps: SharingStep[] = ['profile_info', 'audience', 'mentioning', 'restricting'];
+  const sharingSteps: SharingStep[] = ['profile_info', 'audience', 'mentioning', 'blocking'];
   const currentStepIndex = sharingSteps.indexOf(sharingStep);
   const progressPercent = sharingStep === 'intro' ? 0 : ((currentStepIndex + 1) / sharingSteps.length) * 100;
 
@@ -588,9 +588,8 @@ const PrivacyCheckup = () => {
     );
   };
 
-  // Sharing wizard step: Restricting
-
-  const renderRestrictingStep = () => {
+  // Sharing wizard step: Blocking
+  const renderBlockingStep = () => {
     if (showBlockedList) {
       return (
         <div className="space-y-3">
@@ -598,7 +597,7 @@ const PrivacyCheckup = () => {
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setShowBlockedList(false)}
           >
-            <ArrowLeft className="h-4 w-4" /> Back to Restricting
+            <ArrowLeft className="h-4 w-4" /> Back to Blocking
           </button>
           <h4 className="font-semibold text-foreground">Barred Users</h4>
           {blockedUsers.length === 0 ? (
@@ -650,7 +649,7 @@ const PrivacyCheckup = () => {
           className="w-full flex items-center justify-between py-4 px-1 hover:bg-muted/50 rounded-lg transition-colors text-left"
           onClick={() => setShowBlockedList(true)}
         >
-          <p className="text-sm font-semibold text-foreground">Restricting</p>
+          <p className="text-sm font-semibold text-foreground">Blocking</p>
           <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </button>
       </div>
@@ -661,14 +660,14 @@ const PrivacyCheckup = () => {
     profile_info: 'Profile Particulars',
     audience: 'Audience',
     mentioning: 'Mentioning',
-    restricting: 'Restricting',
+    blocking: 'Blocking',
   };
 
   const sharingStepRenderers: Record<string, () => JSX.Element> = {
     profile_info: renderProfileInfoStep,
     audience: renderAudienceStep,
     mentioning: renderMentioningStep,
-    restricting: renderRestrictingStep,
+    blocking: renderBlockingStep,
   };
 
   const cards: { id: ActiveView; title: string; image: string; bg: string }[] = [
@@ -768,7 +767,7 @@ const PrivacyCheckup = () => {
                   <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
                     <ShieldBan className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <span className="text-sm font-medium text-foreground">Restricting</span>
+                  <span className="text-sm font-medium text-foreground">Blocking</span>
                 </div>
               </div>
               <Button
