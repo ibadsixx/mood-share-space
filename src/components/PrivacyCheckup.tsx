@@ -589,7 +589,6 @@ const PrivacyCheckup = () => {
   };
 
   // Sharing wizard step: Restricting
-  const [showBlockedList, setShowBlockedList] = useState(false);
 
   const renderRestrictingStep = () => {
     if (showBlockedList) {
