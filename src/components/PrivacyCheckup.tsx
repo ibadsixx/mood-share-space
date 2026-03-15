@@ -588,9 +588,8 @@ const PrivacyCheckup = () => {
     );
   };
 
-  // Sharing wizard step: Restricting
-
-  const renderRestrictingStep = () => {
+  // Sharing wizard step: Blocking
+  const renderBlockingStep = () => {
     if (showBlockedList) {
       return (
         <div className="space-y-3">
