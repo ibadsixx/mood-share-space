@@ -78,6 +78,7 @@ const PrivacyCheckup = () => {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
+  const [showBlockedList, setShowBlockedList] = useState(false);
 
   const fetchUserData = useCallback(async () => {
     if (!user?.id) {
