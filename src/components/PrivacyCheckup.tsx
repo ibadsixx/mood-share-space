@@ -649,7 +649,7 @@ const PrivacyCheckup = () => {
           className="w-full flex items-center justify-between py-4 px-1 hover:bg-muted/50 rounded-lg transition-colors text-left"
           onClick={() => setShowBlockedList(true)}
         >
-          <p className="text-sm font-semibold text-foreground">Restricting</p>
+          <p className="text-sm font-semibold text-foreground">Blocking</p>
           <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </button>
       </div>
