@@ -40,7 +40,7 @@ interface BlockedUser {
 }
 
 type ActiveView = null | 'sharing' | 'discoverability' | 'data' | 'security' | 'ads';
-type SharingStep = 'intro' | 'profile_info' | 'audience' | 'mentioning' | 'restricting';
+type SharingStep = 'intro' | 'profile_info' | 'audience' | 'mentioning' | 'blocking';
 
 const privacyOptions = [
   { value: 'public', label: 'Everyone' },
