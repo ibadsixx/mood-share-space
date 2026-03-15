@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Trash2, User, Monitor, Tag, ShieldBan, X, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Trash2, User, Monitor, Tag, ShieldBan, X, ChevronRight, Check } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import whoCanSeeImg from '@/assets/privacy/who-can-see.png';
@@ -40,7 +40,7 @@ interface BlockedUser {
 }
 
 type ActiveView = null | 'sharing' | 'discoverability' | 'data' | 'security' | 'ads';
-type SharingStep = 'intro' | 'profile_info' | 'audience' | 'mentioning' | 'blocking';
+type SharingStep = 'intro' | 'profile_info' | 'audience' | 'mentioning' | 'blocking' | 'completion';
 
 const privacyOptions = [
   { value: 'public', label: 'Everyone' },
@@ -277,9 +277,9 @@ const PrivacyCheckup = () => {
     return map[value] || value || 'Not set';
   };
 
-  const sharingSteps: SharingStep[] = ['profile_info', 'audience', 'mentioning', 'blocking'];
+  const sharingSteps: SharingStep[] = ['profile_info', 'audience', 'mentioning', 'blocking', 'completion'];
   const currentStepIndex = sharingSteps.indexOf(sharingStep);
-  const progressPercent = sharingStep === 'intro' ? 0 : ((currentStepIndex + 1) / sharingSteps.length) * 100;
+  const progressPercent = sharingStep === 'intro' ? 0 : sharingStep === 'completion' ? 100 : ((currentStepIndex + 1) / (sharingSteps.length - 1)) * 100;
 
   const handleSharingNext = () => {
     const idx = sharingSteps.indexOf(sharingStep);
@@ -656,11 +656,40 @@ const PrivacyCheckup = () => {
     );
   };
 
+  const renderCompletionStep = () => {
+    const completedItems = [
+      { label: 'Profile Particulars', done: true },
+      { label: 'Audience', done: true },
+      { label: 'Mentioning', done: true },
+      { label: 'Blocking', done: true },
+    ];
+
+    return (
+      <div className="flex flex-col items-center text-center py-6 space-y-5">
+        <h3 className="text-xl font-bold text-foreground">You're all set!</h3>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          Thank you for reviewing Who can observe what you share. You can make adjustments at any time in settings.
+        </p>
+        <div className="w-full space-y-3 text-left">
+          {completedItems.map((item) => (
+            <div key={item.label} className="flex items-center gap-3">
+              <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                <Check className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-sm text-foreground">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const sharingStepTitles: Record<string, string> = {
     profile_info: 'Profile Particulars',
     audience: 'Audience',
     mentioning: 'Mentioning',
     blocking: 'Blocking',
+    completion: 'Complete',
   };
 
   const sharingStepRenderers: Record<string, () => JSX.Element> = {
@@ -668,6 +697,7 @@ const PrivacyCheckup = () => {
     audience: renderAudienceStep,
     mentioning: renderMentioningStep,
     blocking: renderBlockingStep,
+    completion: renderCompletionStep,
   };
 
   const cards: { id: ActiveView; title: string; image: string; bg: string }[] = [
@@ -808,14 +838,22 @@ const PrivacyCheckup = () => {
 
             {/* Footer */}
             <div className="border-t border-border px-4 py-3 space-y-3">
-              <Progress value={progressPercent} className="h-1.5" />
+              {sharingStep !== 'completion' && <Progress value={progressPercent} className="h-1.5" />}
               <div className="flex items-center justify-between">
-                <Button variant="ghost" onClick={handleSharingBack}>
-                  Back
-                </Button>
-                <Button onClick={handleSharingNext}>
-                  {currentStepIndex === sharingSteps.length - 1 ? 'Finish' : 'Next'}
-                </Button>
+                {sharingStep === 'completion' ? (
+                  <Button className="w-full" onClick={() => { setShowSharingWizard(false); setSharingStep('intro'); }}>
+                    Review another topic
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="ghost" onClick={handleSharingBack}>
+                      Back
+                    </Button>
+                    <Button onClick={handleSharingNext}>
+                      {currentStepIndex === sharingSteps.length - 2 ? 'Finish' : 'Next'}
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </DialogContent>
