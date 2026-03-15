@@ -480,31 +480,112 @@ const PrivacyCheckup = () => {
   };
 
   // Sharing wizard step: Mentioning
-  const renderMentioningStep = () => (
-    <div className="space-y-4">
-      <div>
-        <Label>Who can observe posts where you&apos;re mentioned on your profile?</Label>
-        <Select value={privacySettings.tagged_posts_visibility || 'friends'} onValueChange={v => updatePrivacySetting('tagged_posts_visibility', v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{privacyOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-      <div className="flex items-center justify-between">
-        <div>
-          <Label className="text-sm font-medium">Examine mentions allies add before they appear</Label>
-          <p className="text-sm text-muted-foreground">Mentions need your approval before they show on your profile</p>
+  const renderMentioningStep = () => {
+    const taggedPostsVal = privacySettings.tagged_posts_visibility || 'friends';
+    const tagAudienceVal = privacySettings.tag_audience_expansion || 'friends';
+
+    return (
+      <div className="space-y-1">
+        {/* Intro text */}
+        <p className="text-xs text-muted-foreground px-1 pb-2">
+          If you&apos;re cited in a post, it will be visible to the audience chosen by the post creator, as well as the audiences you select for these preferences.
+        </p>
+
+        {/* Who can see tagged posts */}
+        <div className="relative">
+          <button
+            className="w-full flex items-center justify-between py-4 px-1 hover:bg-muted/50 rounded-lg transition-colors text-left"
+            onClick={() => setEditingField(editingField === 'tagged_posts_visibility' ? null : 'tagged_posts_visibility')}
+          >
+            <div>
+              <p className="text-sm font-semibold text-foreground">Who can observe posts you&apos;re cited in on your profile?</p>
+              <p className="text-xs text-muted-foreground">{visibilityLabel(taggedPostsVal)}</p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </button>
+          {editingField === 'tagged_posts_visibility' && (
+            <div className="pb-3 px-1">
+              <Select value={taggedPostsVal} onValueChange={(v) => { updatePrivacySetting('tagged_posts_visibility', v); setEditingField(null); }}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {privacyOptions.map(o => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
-        <Switch checked={privacySettings.review_tags === 'true'} onCheckedChange={c => updatePrivacySetting('review_tags', c.toString())} />
-      </div>
-      <div className="flex items-center justify-between">
-        <div>
-          <Label className="text-sm font-medium">Examine posts where you&apos;re cited before they appear on your profile</Label>
-          <p className="text-sm text-muted-foreground">Cited posts need approval before appearing on your timeline</p>
+
+        <Separator />
+
+        {/* Tag audience expansion */}
+        <div className="relative">
+          <button
+            className="w-full flex items-center justify-between py-4 px-1 hover:bg-muted/50 rounded-lg transition-colors text-left"
+            onClick={() => setEditingField(editingField === 'tag_audience_expansion' ? null : 'tag_audience_expansion')}
+          >
+            <div className="pr-4">
+              <p className="text-sm font-semibold text-foreground">When you&apos;re cited in a post, who do you want to include in the audience if they can&apos;t already observe it?</p>
+              <p className="text-xs text-muted-foreground">{visibilityLabel(tagAudienceVal)}</p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+          </button>
+          {editingField === 'tag_audience_expansion' && (
+            <div className="pb-3 px-1">
+              <Select value={tagAudienceVal} onValueChange={(v) => { updatePrivacySetting('tag_audience_expansion', v); setEditingField(null); }}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {privacyOptions.map(o => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
-        <Switch checked={privacySettings.review_tagged_posts === 'true'} onCheckedChange={c => updatePrivacySetting('review_tagged_posts', c.toString())} />
+
+        <Separator />
+
+        {/* Review tags toggle */}
+        <div className="flex items-start justify-between py-4 px-1 gap-4">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">Examine citations others append to your posts before they appear on Tone?</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              If someone you&apos;re not allies with appends a citation to your post, you&apos;ll still be prompted to examine it.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Remember: When you approve a citation, the person cited and their allies may be able to observe your post.
+            </p>
+          </div>
+          <Switch
+            checked={privacySettings.review_tags === 'true'}
+            onCheckedChange={c => updatePrivacySetting('review_tags', c.toString())}
+          />
+        </div>
+
+        <Separator />
+
+        {/* Review tagged posts toggle */}
+        <div className="flex items-start justify-between py-4 px-1 gap-4">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">Examine posts you&apos;re cited in before the post surfaces on your profile?</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              This only governs what&apos;s permitted on your profile. Posts you&apos;re cited in still surface in search, Feed and other areas on Tone.
+            </p>
+          </div>
+          <Switch
+            checked={privacySettings.review_tagged_posts === 'true'}
+            onCheckedChange={c => updatePrivacySetting('review_tagged_posts', c.toString())}
+          />
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Sharing wizard step: Restricting
   const renderRestrictingStep = () => (
