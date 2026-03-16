@@ -69,6 +69,9 @@ const PrivacyCheckup = () => {
   const [sharingStep, setSharingStep] = useState<SharingStep>('intro');
   const [showSharingIntro, setShowSharingIntro] = useState(false);
   const [showSharingWizard, setShowSharingWizard] = useState(false);
+  const [discoverStep, setDiscoverStep] = useState<DiscoverStep>('intro');
+  const [showDiscoverIntro, setShowDiscoverIntro] = useState(false);
+  const [showDiscoverWizard, setShowDiscoverWizard] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData>({
     email: '', birthday: '', relationship: '',
     email_visibility: 'only_me', birth_date_visibility: 'friends',
