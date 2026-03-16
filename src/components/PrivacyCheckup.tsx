@@ -865,6 +865,104 @@ const PrivacyCheckup = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Discover Intro Modal */}
+        <Dialog open={showDiscoverIntro} onOpenChange={setShowDiscoverIntro}>
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl border-border">
+            <div className="bg-primary/80 relative">
+              <img src={howPeopleFindImg} alt="How others can discover you on Tone" className="w-full h-48 object-cover" />
+              <button
+                onClick={() => setShowDiscoverIntro(false)}
+                className="absolute top-3 right-3 bg-background/80 hover:bg-background rounded-full p-1.5 transition-colors"
+              >
+                <X className="h-4 w-4 text-foreground" />
+              </button>
+            </div>
+            <div className="p-6 pt-4 space-y-4">
+              <div>
+                <h3 className="text-lg font-bold text-foreground">How others can discover you on Tone</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Thank you for reviewing How others can discover you on Tone. You can make adjustments at any time in settings.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                    <UserPlus className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Ally solicitations</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Phone number and email</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Search engines</span>
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setShowDiscoverIntro(false);
+                  setDiscoverStep('ally_requests');
+                  setShowDiscoverWizard(true);
+                }}
+              >
+                Continue
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Discover Wizard Modal */}
+        <Dialog open={showDiscoverWizard} onOpenChange={(open) => {
+          setShowDiscoverWizard(open);
+          if (!open) setDiscoverStep('intro');
+        }}>
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl border-border max-h-[85vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <button onClick={handleDiscoverBack} className="p-1 hover:bg-muted rounded-full transition-colors">
+                <ArrowLeft className="h-5 w-5 text-foreground" />
+              </button>
+              <h3 className="text-base font-bold text-foreground">{discoverStepTitles[discoverStep] || 'Ally Solicitations'}</h3>
+              <button onClick={() => { setShowDiscoverWizard(false); setDiscoverStep('intro'); }} className="p-1 hover:bg-muted rounded-full transition-colors">
+                <X className="h-5 w-5 text-foreground" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              {discoverStepRenderers[discoverStep]?.()}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-border px-4 py-3 space-y-3">
+              {discoverStep !== 'completion' && <Progress value={discoverProgressPercent} className="h-1.5" />}
+              <div className="flex items-center justify-between">
+                {discoverStep === 'completion' ? (
+                  <Button className="w-full" onClick={() => { setShowDiscoverWizard(false); setDiscoverStep('intro'); }}>
+                    Review another topic
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="ghost" onClick={handleDiscoverBack}>
+                      Back
+                    </Button>
+                    <Button onClick={handleDiscoverNext}>
+                      {discoverCurrentStepIndex === discoverSteps.length - 2 ? 'Finish' : 'Next'}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
