@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Trash2, User, Monitor, Tag, ShieldBan, X, ChevronRight, Check } from 'lucide-react';
+import { ArrowLeft, Trash2, User, Monitor, Tag, ShieldBan, X, ChevronRight, Check, UserPlus, Phone, Search } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import whoCanSeeImg from '@/assets/privacy/who-can-see.png';
@@ -41,6 +41,7 @@ interface BlockedUser {
 
 type ActiveView = null | 'sharing' | 'discoverability' | 'data' | 'security' | 'ads';
 type SharingStep = 'intro' | 'profile_info' | 'audience' | 'mentioning' | 'blocking' | 'completion';
+type DiscoverStep = 'intro' | 'ally_requests' | 'contact_lookup' | 'search_engines' | 'completion';
 
 const privacyOptions = [
   { value: 'public', label: 'Everyone' },
@@ -68,6 +69,9 @@ const PrivacyCheckup = () => {
   const [sharingStep, setSharingStep] = useState<SharingStep>('intro');
   const [showSharingIntro, setShowSharingIntro] = useState(false);
   const [showSharingWizard, setShowSharingWizard] = useState(false);
+  const [discoverStep, setDiscoverStep] = useState<DiscoverStep>('intro');
+  const [showDiscoverIntro, setShowDiscoverIntro] = useState(false);
+  const [showDiscoverWizard, setShowDiscoverWizard] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData>({
     email: '', birthday: '', relationship: '',
     email_visibility: 'only_me', birth_date_visibility: 'friends',
@@ -700,6 +704,196 @@ const PrivacyCheckup = () => {
     completion: renderCompletionStep,
   };
 
+  // === Discover wizard logic ===
+  const discoverSteps: DiscoverStep[] = ['ally_requests', 'contact_lookup', 'search_engines', 'completion'];
+  const discoverCurrentStepIndex = discoverSteps.indexOf(discoverStep);
+  const discoverProgressPercent = discoverStep === 'intro' ? 0 : discoverStep === 'completion' ? 100 : ((discoverCurrentStepIndex + 1) / (discoverSteps.length - 1)) * 100;
+
+  const handleDiscoverNext = () => {
+    const idx = discoverSteps.indexOf(discoverStep);
+    if (idx < discoverSteps.length - 1) {
+      setDiscoverStep(discoverSteps[idx + 1]);
+    } else {
+      setShowDiscoverWizard(false);
+      setDiscoverStep('intro');
+    }
+  };
+
+  const handleDiscoverBack = () => {
+    const idx = discoverSteps.indexOf(discoverStep);
+    if (idx > 0) {
+      setDiscoverStep(discoverSteps[idx - 1]);
+    } else {
+      setShowDiscoverWizard(false);
+      setShowDiscoverIntro(true);
+    }
+  };
+
+  const renderAllyRequestsStep = () => {
+    const friendRequestsVal = privacySettings.friend_requests_from || 'everyone';
+    return (
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground px-1 pb-2">
+          Choose who is permitted to send you ally solicitations on Tone.
+        </p>
+        <div className="relative">
+          <button
+            className="w-full flex items-center justify-between py-4 px-1 hover:bg-muted/50 rounded-lg transition-colors text-left"
+            onClick={() => setEditingField(editingField === 'friend_requests_from' ? null : 'friend_requests_from')}
+          >
+            <div>
+              <p className="text-sm font-semibold text-foreground">Who can send you ally solicitations?</p>
+              <p className="text-xs text-muted-foreground">
+                {friendRequestsVal === 'everyone' ? 'Everyone' : friendRequestsVal === 'friends_of_friends' ? 'Wider Circle' : 'Nobody'}
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </button>
+          {editingField === 'friend_requests_from' && (
+            <div className="pb-3 px-1">
+              <Select value={friendRequestsVal} onValueChange={(v) => { updatePrivacySetting('friend_requests_from', v); setEditingField(null); }}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="everyone">Everyone</SelectItem>
+                  <SelectItem value="friends_of_friends">Wider Circle</SelectItem>
+                  <SelectItem value="no_one">Nobody</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderContactLookupStep = () => {
+    const findByEmailVal = privacySettings.findable_by_email || 'friends';
+    const findByPhoneVal = privacySettings.findable_by_phone || 'friends';
+    return (
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground px-1 pb-2">
+          Decide who can locate your profile using your phone number or email address.
+        </p>
+        <div className="relative">
+          <button
+            className="w-full flex items-center justify-between py-4 px-1 hover:bg-muted/50 rounded-lg transition-colors text-left"
+            onClick={() => setEditingField(editingField === 'findable_by_email' ? null : 'findable_by_email')}
+          >
+            <div>
+              <p className="text-sm font-semibold text-foreground">Who can locate you via your email address?</p>
+              <p className="text-xs text-muted-foreground">
+                {findByEmailVal === 'everyone' ? 'Everyone' : findByEmailVal === 'friends' ? 'Allies' : 'Nobody'}
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </button>
+          {editingField === 'findable_by_email' && (
+            <div className="pb-3 px-1">
+              <Select value={findByEmailVal} onValueChange={(v) => { updatePrivacySetting('findable_by_email', v); setEditingField(null); }}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="everyone">Everyone</SelectItem>
+                  <SelectItem value="friends">Allies</SelectItem>
+                  <SelectItem value="no_one">Nobody</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+        <div className="relative">
+          <button
+            className="w-full flex items-center justify-between py-4 px-1 hover:bg-muted/50 rounded-lg transition-colors text-left"
+            onClick={() => setEditingField(editingField === 'findable_by_phone' ? null : 'findable_by_phone')}
+          >
+            <div>
+              <p className="text-sm font-semibold text-foreground">Who can locate you via your phone number?</p>
+              <p className="text-xs text-muted-foreground">
+                {findByPhoneVal === 'everyone' ? 'Everyone' : findByPhoneVal === 'friends' ? 'Allies' : 'Nobody'}
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </button>
+          {editingField === 'findable_by_phone' && (
+            <div className="pb-3 px-1">
+              <Select value={findByPhoneVal} onValueChange={(v) => { updatePrivacySetting('findable_by_phone', v); setEditingField(null); }}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="everyone">Everyone</SelectItem>
+                  <SelectItem value="friends">Allies</SelectItem>
+                  <SelectItem value="no_one">Nobody</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSearchEnginesStep = () => (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground px-1 pb-2">
+        Determine whether search engines beyond Tone are permitted to reference your profile.
+      </p>
+      <div className="flex items-start justify-between py-4 px-1 gap-4">
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-foreground">Permit search engines beyond Tone to reference your profile?</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Disabling this may take some time since search engines maintain their own catalogues.
+          </p>
+        </div>
+        <Switch
+          checked={privacySettings.search_engine_indexing === 'true'}
+          onCheckedChange={c => updatePrivacySetting('search_engine_indexing', c.toString())}
+        />
+      </div>
+    </div>
+  );
+
+  const renderDiscoverCompletionStep = () => {
+    const completedItems = [
+      { label: 'Ally Solicitations', done: true },
+      { label: 'Phone number and email', done: true },
+      { label: 'Search engines', done: true },
+    ];
+
+    return (
+      <div className="flex flex-col items-center text-center py-6 space-y-5">
+        <h3 className="text-xl font-bold text-foreground">You're all set!</h3>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          Thank you for reviewing How others can discover you on Tone. You can make adjustments at any time in settings.
+        </p>
+        <div className="w-full space-y-3 text-left">
+          {completedItems.map((item) => (
+            <div key={item.label} className="flex items-center gap-3">
+              <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                <Check className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-sm text-foreground">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const discoverStepTitles: Record<string, string> = {
+    ally_requests: 'Ally Solicitations',
+    contact_lookup: 'Phone number and email',
+    search_engines: 'Search engines',
+    completion: 'Complete',
+  };
+
+  const discoverStepRenderers: Record<string, () => JSX.Element> = {
+    ally_requests: renderAllyRequestsStep,
+    contact_lookup: renderContactLookupStep,
+    search_engines: renderSearchEnginesStep,
+    completion: renderDiscoverCompletionStep,
+  };
+
   const cards: { id: ActiveView; title: string; image: string; bg: string }[] = [
     { id: 'sharing', title: 'Who can observe what you share', image: whoCanSeeImg, bg: 'bg-amber-100 dark:bg-amber-950/30' },
     { id: 'discoverability', title: 'How others can discover you on Tone', image: howPeopleFindImg, bg: 'bg-sky-100 dark:bg-sky-950/30' },
@@ -726,6 +920,9 @@ const PrivacyCheckup = () => {
                 if (card.id === 'sharing') {
                   setSharingStep('intro');
                   setShowSharingIntro(true);
+                } else if (card.id === 'discoverability') {
+                  setDiscoverStep('intro');
+                  setShowDiscoverIntro(true);
                 } else {
                   setActiveView(card.id);
                 }
@@ -851,6 +1048,104 @@ const PrivacyCheckup = () => {
                     </Button>
                     <Button onClick={handleSharingNext}>
                       {currentStepIndex === sharingSteps.length - 2 ? 'Finish' : 'Next'}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Discover Intro Modal */}
+        <Dialog open={showDiscoverIntro} onOpenChange={setShowDiscoverIntro}>
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl border-border">
+            <div className="bg-primary/80 relative">
+              <img src={howPeopleFindImg} alt="How others can discover you on Tone" className="w-full h-48 object-cover" />
+              <button
+                onClick={() => setShowDiscoverIntro(false)}
+                className="absolute top-3 right-3 bg-background/80 hover:bg-background rounded-full p-1.5 transition-colors"
+              >
+                <X className="h-4 w-4 text-foreground" />
+              </button>
+            </div>
+            <div className="p-6 pt-4 space-y-4">
+              <div>
+                <h3 className="text-lg font-bold text-foreground">How others can discover you on Tone</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Thank you for reviewing How others can discover you on Tone. You can make adjustments at any time in settings.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                    <UserPlus className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Ally solicitations</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Phone number and email</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Search engines</span>
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setShowDiscoverIntro(false);
+                  setDiscoverStep('ally_requests');
+                  setShowDiscoverWizard(true);
+                }}
+              >
+                Continue
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Discover Wizard Modal */}
+        <Dialog open={showDiscoverWizard} onOpenChange={(open) => {
+          setShowDiscoverWizard(open);
+          if (!open) setDiscoverStep('intro');
+        }}>
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl border-border max-h-[85vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <button onClick={handleDiscoverBack} className="p-1 hover:bg-muted rounded-full transition-colors">
+                <ArrowLeft className="h-5 w-5 text-foreground" />
+              </button>
+              <h3 className="text-base font-bold text-foreground">{discoverStepTitles[discoverStep] || 'Ally Solicitations'}</h3>
+              <button onClick={() => { setShowDiscoverWizard(false); setDiscoverStep('intro'); }} className="p-1 hover:bg-muted rounded-full transition-colors">
+                <X className="h-5 w-5 text-foreground" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              {discoverStepRenderers[discoverStep]?.()}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-border px-4 py-3 space-y-3">
+              {discoverStep !== 'completion' && <Progress value={discoverProgressPercent} className="h-1.5" />}
+              <div className="flex items-center justify-between">
+                {discoverStep === 'completion' ? (
+                  <Button className="w-full" onClick={() => { setShowDiscoverWizard(false); setDiscoverStep('intro'); }}>
+                    Review another topic
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="ghost" onClick={handleDiscoverBack}>
+                      Back
+                    </Button>
+                    <Button onClick={handleDiscoverNext}>
+                      {discoverCurrentStepIndex === discoverSteps.length - 2 ? 'Finish' : 'Next'}
                     </Button>
                   </>
                 )}
@@ -1035,7 +1330,6 @@ const PrivacyCheckup = () => {
 
   const views: Record<string, () => JSX.Element> = {
     sharing: () => {
-      // If sharing is selected as activeView directly, open the wizard
       if (!showSharingWizard) {
         setSharingStep('profile_info');
         setShowSharingWizard(true);
@@ -1043,7 +1337,14 @@ const PrivacyCheckup = () => {
       }
       return <div />;
     },
-    discoverability: renderDiscoverabilityView,
+    discoverability: () => {
+      if (!showDiscoverWizard) {
+        setDiscoverStep('ally_requests');
+        setShowDiscoverWizard(true);
+        setActiveView(null);
+      }
+      return <div />;
+    },
     data: renderDataView,
     security: renderSecurityView,
     ads: renderAdsView,
