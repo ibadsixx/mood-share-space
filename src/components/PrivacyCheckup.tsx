@@ -1330,7 +1330,6 @@ const PrivacyCheckup = () => {
 
   const views: Record<string, () => JSX.Element> = {
     sharing: () => {
-      // If sharing is selected as activeView directly, open the wizard
       if (!showSharingWizard) {
         setSharingStep('profile_info');
         setShowSharingWizard(true);
@@ -1338,7 +1337,14 @@ const PrivacyCheckup = () => {
       }
       return <div />;
     },
-    discoverability: renderDiscoverabilityView,
+    discoverability: () => {
+      if (!showDiscoverWizard) {
+        setDiscoverStep('ally_requests');
+        setShowDiscoverWizard(true);
+        setActiveView(null);
+      }
+      return <div />;
+    },
     data: renderDataView,
     security: renderSecurityView,
     ads: renderAdsView,
