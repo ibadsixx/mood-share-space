@@ -730,6 +730,9 @@ const PrivacyCheckup = () => {
                 if (card.id === 'sharing') {
                   setSharingStep('intro');
                   setShowSharingIntro(true);
+                } else if (card.id === 'discoverability') {
+                  setDiscoverStep('intro');
+                  setShowDiscoverIntro(true);
                 } else {
                   setActiveView(card.id);
                 }
