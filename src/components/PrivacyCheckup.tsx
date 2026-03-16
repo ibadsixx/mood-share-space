@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Trash2, User, Monitor, Tag, ShieldBan, X, ChevronRight, Check } from 'lucide-react';
+import { ArrowLeft, Trash2, User, Monitor, Tag, ShieldBan, X, ChevronRight, Check, UserPlus, Phone, Search } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import whoCanSeeImg from '@/assets/privacy/who-can-see.png';
