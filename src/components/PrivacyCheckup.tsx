@@ -1120,7 +1120,7 @@ const PrivacyCheckup = () => {
               <button onClick={handleDiscoverBack} className="p-1 hover:bg-muted rounded-full transition-colors">
                 <ArrowLeft className="h-5 w-5 text-foreground" />
               </button>
-              <h3 className="text-base font-bold text-foreground">{discoverStepTitles[discoverStep] || 'Ally Solicitations'}</h3>
+              <h3 className="text-base font-bold text-foreground">{discoverStepTitles[discoverStep] || 'Companion Appeals'}</h3>
               <button onClick={() => { setShowDiscoverWizard(false); setDiscoverStep('intro'); }} className="p-1 hover:bg-muted rounded-full transition-colors">
                 <X className="h-5 w-5 text-foreground" />
               </button>
