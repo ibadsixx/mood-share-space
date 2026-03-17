@@ -881,7 +881,7 @@ const PrivacyCheckup = () => {
   };
 
   const discoverStepTitles: Record<string, string> = {
-    ally_requests: 'Ally Solicitations',
+    ally_requests: 'Companion Appeals',
     contact_lookup: 'Phone number and email',
     search_engines: 'Search engines',
     completion: 'Complete',
