@@ -734,7 +734,7 @@ const PrivacyCheckup = () => {
     return (
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground px-1 pb-2">
-          Choose who is permitted to send you ally solicitations on Tone.
+          Specify who is authorized to dispatch companion appeals on Tone.
         </p>
         <div className="relative">
           <button
@@ -742,7 +742,7 @@ const PrivacyCheckup = () => {
             onClick={() => setEditingField(editingField === 'friend_requests_from' ? null : 'friend_requests_from')}
           >
             <div>
-              <p className="text-sm font-semibold text-foreground">Who can send you ally solicitations?</p>
+              <p className="text-sm font-semibold text-foreground">Who can dispatch you companion appeals?</p>
               <p className="text-xs text-muted-foreground">
                 {friendRequestsVal === 'everyone' ? 'Everyone' : friendRequestsVal === 'friends_of_friends' ? 'Wider Circle' : 'Nobody'}
               </p>
