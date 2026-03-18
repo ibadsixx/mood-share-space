@@ -16,6 +16,7 @@ import {
   FileText, CalendarDays, Camera
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import InviteToGroupDialog from '@/components/groups/InviteToGroupDialog';
 
 interface GroupDetail {
   id: string;
@@ -52,6 +53,7 @@ const GroupDetailPage = () => {
   const [activeTab, setActiveTab] = useState('discussion');
   const [uploadingCover, setUploadingCover] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
     if (groupId) fetchGroupDetail();
@@ -319,7 +321,7 @@ const GroupDetailPage = () => {
               </Button>
             ) : (
               <>
-                <Button variant="outline" onClick={() => toast({ title: 'Invite', description: 'Invite link copied!' })}>
+                <Button variant="outline" onClick={() => setInviteOpen(true)}>
                   <UserPlus className="h-4 w-4 mr-2" /> Invite
                 </Button>
                 <Button variant="outline" onClick={() => toast({ title: 'Shared', description: 'Group link copied!' })}>
@@ -514,6 +516,14 @@ const GroupDetailPage = () => {
       </div>
 
       <div className="h-8" />
+
+      <InviteToGroupDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        groupId={groupId!}
+        existingMemberIds={members.map(m => m.user_id)}
+        onInvitesSent={fetchGroupDetail}
+      />
     </div>
   );
 };
