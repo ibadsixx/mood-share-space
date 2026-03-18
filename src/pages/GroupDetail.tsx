@@ -16,6 +16,7 @@ import {
   FileText, CalendarDays, Camera
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import InviteToGroupDialog from '@/components/groups/InviteToGroupDialog';
 
 interface GroupDetail {
   id: string;
