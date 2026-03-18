@@ -516,6 +516,14 @@ const GroupDetailPage = () => {
       </div>
 
       <div className="h-8" />
+
+      <InviteToGroupDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        groupId={groupId!}
+        existingMemberIds={members.map(m => m.user_id)}
+        onInvitesSent={fetchGroupDetail}
+      />
     </div>
   );
 };
