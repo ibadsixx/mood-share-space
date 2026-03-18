@@ -53,6 +53,7 @@ const GroupDetailPage = () => {
   const [activeTab, setActiveTab] = useState('discussion');
   const [uploadingCover, setUploadingCover] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
     if (groupId) fetchGroupDetail();
