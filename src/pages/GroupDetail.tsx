@@ -1,0 +1,433 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Users, Globe, Lock, Share2, ChevronDown,
+  UserPlus, Search, MoreHorizontal, ArrowLeft,
+  MessageSquare, Image, SmilePlus, BarChart3,
+  FileText, CalendarDays
+} from 'lucide-react';
+import { motion } from 'framer-motion';
+
+interface GroupDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  privacy: string;
+  created_at: string;
+  created_by: string | null;
+  invite_followers: boolean;
+}
+
+interface GroupMember {
+  user_id: string;
+  role: string;
+  created_at: string;
+  profiles?: {
+    username: string;
+    display_name: string;
+    profile_pic: string | null;
+  };
+}
+
+const GroupDetailPage = () => {
+  const { groupId } = useParams<{ groupId: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [group, setGroup] = useState<GroupDetail | null>(null);
+  const [members, setMembers] = useState<GroupMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isMember, setIsMember] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('discussion');
+
+  useEffect(() => {
+    if (groupId) fetchGroupDetail();
+  }, [groupId, user]);
+
+  const fetchGroupDetail = async () => {
+    try {
+      setLoading(true);
+      const { data: groupData, error: groupError } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('id', groupId!)
+        .single();
+
+      if (groupError) throw groupError;
+      setGroup(groupData);
+
+      const { data: membersData, error: membersError } = await supabase
+        .from('group_members')
+        .select(`
+          user_id,
+          role,
+          created_at,
+          profiles:user_id (
+            username,
+            display_name,
+            profile_pic
+          )
+        `)
+        .eq('group_id', groupId!);
+
+      if (membersError) throw membersError;
+      setMembers(membersData || []);
+
+      if (user) {
+        const membership = membersData?.find(m => m.user_id === user.id);
+        setIsMember(!!membership);
+        setUserRole(membership?.role || null);
+      }
+    } catch (error: any) {
+      console.error('Failed to load group:', error);
+      toast({ title: 'Error', description: 'Failed to load group', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleJoin = async () => {
+    if (!user || !groupId) return;
+    try {
+      const { error } = await supabase
+        .from('group_members')
+        .insert({ group_id: groupId, user_id: user.id, role: 'member' });
+      if (error) throw error;
+      toast({ title: 'Joined!', description: 'You are now a member of this group.' });
+      fetchGroupDetail();
+    } catch (error: any) {
+      toast({ title: 'Error', description: 'Failed to join group', variant: 'destructive' });
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!user || !groupId) return;
+    try {
+      const { error } = await supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', groupId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      toast({ title: 'Left group', description: 'You have left this group.' });
+      fetchGroupDetail();
+    } catch (error: any) {
+      toast({ title: 'Error', description: 'Failed to leave group', variant: 'destructive' });
+    }
+  };
+
+  const formatMemberCount = (count: number) => {
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+    return count.toString();
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <Skeleton className="w-full h-64 rounded-b-xl" />
+        <div className="px-6 py-4 space-y-3">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-5 w-48" />
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!group) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 text-center">
+        <Card>
+          <CardContent className="py-12">
+            <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="text-muted-foreground">Group not found</p>
+            <Button variant="outline" className="mt-4" onClick={() => navigate('/groups')}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Groups
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      {/* Cover Photo Area */}
+      <div className="relative w-full h-56 md:h-72 bg-gradient-to-br from-primary/30 via-primary/10 to-muted rounded-b-xl overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA2MCAwIEwgMCAwIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-4 left-4 bg-background/60 backdrop-blur-sm hover:bg-background/80"
+          onClick={() => navigate('/groups')}
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* Group Info Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="px-4 md:px-6 -mt-4"
+      >
+        <div className="bg-card rounded-xl border p-5 shadow-sm">
+          <h1 className="text-2xl md:text-3xl font-bold">{group.name}</h1>
+
+          <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+            {group.privacy === 'public' ? (
+              <Globe className="h-4 w-4" />
+            ) : (
+              <Lock className="h-4 w-4" />
+            )}
+            <span className="capitalize">{group.privacy} group</span>
+            <span>·</span>
+            <span>{formatMemberCount(members.length)} members</span>
+          </div>
+
+          {/* Member Avatars */}
+          <div className="flex items-center mt-4">
+            <div className="flex -space-x-2">
+              {members.slice(0, 10).map((member) => (
+                <Avatar key={member.user_id} className="h-8 w-8 border-2 border-card">
+                  {member.profiles?.profile_pic ? (
+                    <img src={member.profiles.profile_pic} alt="" className="object-cover" />
+                  ) : (
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                      {(member.profiles?.display_name || '?')[0]}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+              ))}
+              {members.length > 10 && (
+                <Avatar className="h-8 w-8 border-2 border-card">
+                  <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                    +{members.length - 10}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 mt-4 flex-wrap">
+            {!isMember ? (
+              <Button onClick={handleJoin}>
+                <UserPlus className="h-4 w-4 mr-2" /> Join Group
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => toast({ title: 'Invite', description: 'Invite link copied!' })}>
+                  <UserPlus className="h-4 w-4 mr-2" /> Invite
+                </Button>
+                <Button variant="outline" onClick={() => toast({ title: 'Shared', description: 'Group link copied!' })}>
+                  <Share2 className="h-4 w-4 mr-2" /> Share
+                </Button>
+                <Button variant="secondary">
+                  Joined <ChevronDown className="h-4 w-4 ml-1" />
+                </Button>
+              </>
+            )}
+            <Button variant="ghost" size="icon">
+              <Search className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Tabs */}
+      <div className="px-4 md:px-6 mt-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full justify-start bg-card border overflow-x-auto">
+            <TabsTrigger value="about">About</TabsTrigger>
+            <TabsTrigger value="discussion">Discussion</TabsTrigger>
+            <TabsTrigger value="people">People</TabsTrigger>
+            <TabsTrigger value="media">Media</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
+          </TabsList>
+
+          {/* Discussion Tab */}
+          <TabsContent value="discussion" className="mt-4 space-y-4">
+            {isMember && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {user?.email?.[0]?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div
+                      className="flex-1 bg-muted rounded-full px-4 py-2.5 text-sm text-muted-foreground cursor-pointer hover:bg-muted/80 transition-colors"
+                      onClick={() => toast({ title: 'Coming soon', description: 'Group posting will be available soon.' })}
+                    >
+                      Write something...
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-around mt-3 pt-3 border-t">
+                    <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
+                      <Image className="h-4 w-4 text-green-500" /> Photo/Video
+                    </button>
+                    <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
+                      <SmilePlus className="h-4 w-4 text-yellow-500" /> Feeling/Activity
+                    </button>
+                    <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
+                      <BarChart3 className="h-4 w-4 text-red-500" /> Poll
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardContent className="py-12 text-center">
+                <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <p className="text-muted-foreground">No posts yet. Be the first to post!</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* About Tab */}
+          <TabsContent value="about" className="mt-4">
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                <h3 className="text-lg font-semibold">About this group</h3>
+                {group.description ? (
+                  <p className="text-muted-foreground">{group.description}</p>
+                ) : (
+                  <p className="text-muted-foreground italic">No description provided.</p>
+                )}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center gap-3 text-sm">
+                    {group.privacy === 'public' ? (
+                      <>
+                        <Globe className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">Public</p>
+                          <p className="text-muted-foreground">Anyone can see who's in the group and what they post.</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">Private</p>
+                          <p className="text-muted-foreground">Only members can see who's in the group and what they post.</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <CalendarDays className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Created</p>
+                      <p className="text-muted-foreground">
+                        {new Date(group.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric', month: 'long', day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Users className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{formatMemberCount(members.length)} members</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* People Tab */}
+          <TabsContent value="people" className="mt-4 space-y-3">
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-4">Members · {members.length}</h3>
+                <div className="space-y-3">
+                  {members.map((member) => (
+                    <div
+                      key={member.user_id}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer"
+                      onClick={() => navigate(`/profile/${member.profiles?.username || member.user_id}`)}
+                    >
+                      <Avatar className="h-10 w-10">
+                        {member.profiles?.profile_pic ? (
+                          <img src={member.profiles.profile_pic} alt="" className="object-cover" />
+                        ) : (
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {(member.profiles?.display_name || '?')[0]}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          {member.profiles?.display_name || 'Unknown User'}
+                        </p>
+                        {member.profiles?.username && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            @{member.profiles.username}
+                          </p>
+                        )}
+                      </div>
+                      {member.role === 'admin' && (
+                        <Badge variant="secondary" className="text-xs">Admin</Badge>
+                      )}
+                      {member.role === 'moderator' && (
+                        <Badge variant="outline" className="text-xs">Mod</Badge>
+                      )}
+                    </div>
+                  ))}
+                  {members.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">No members yet</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Media Tab */}
+          <TabsContent value="media" className="mt-4">
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Image className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <p className="text-muted-foreground">No media shared yet</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Files Tab */}
+          <TabsContent value="files" className="mt-4">
+            <Card>
+              <CardContent className="py-12 text-center">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <p className="text-muted-foreground">No files shared yet</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <div className="h-8" />
+    </div>
+  );
+};
+
+export default GroupDetailPage;
