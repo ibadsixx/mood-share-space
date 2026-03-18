@@ -321,7 +321,7 @@ const GroupDetailPage = () => {
               </Button>
             ) : (
               <>
-                <Button variant="outline" onClick={() => toast({ title: 'Invite', description: 'Invite link copied!' })}>
+                <Button variant="outline" onClick={() => setInviteOpen(true)}>
                   <UserPlus className="h-4 w-4 mr-2" /> Invite
                 </Button>
                 <Button variant="outline" onClick={() => toast({ title: 'Shared', description: 'Group link copied!' })}>
