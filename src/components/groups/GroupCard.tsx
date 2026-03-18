@@ -33,7 +33,12 @@ export const GroupCard = ({ group, onJoin, onLeave, showManageButtons }: GroupCa
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h3 className="font-semibold text-lg mb-1 line-clamp-1">{group.name}</h3>
+              <h3
+                className="font-semibold text-lg mb-1 line-clamp-1 cursor-pointer hover:underline"
+                onClick={() => navigate(`/groups/${group.id}`)}
+              >
+                {group.name}
+              </h3>
               <div className="flex items-center gap-2 text-muted-foreground text-sm">
                 <Users className="h-4 w-4" />
                 <span>{group.member_count || 0} members</span>
