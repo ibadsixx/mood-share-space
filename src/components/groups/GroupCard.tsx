@@ -14,6 +14,7 @@ interface GroupCardProps {
 }
 
 export const GroupCard = ({ group, onJoin, onLeave, showManageButtons }: GroupCardProps) => {
+  const navigate = useNavigate();
   const handleJoinClick = () => {
     if (onJoin) onJoin(group.id);
   };
