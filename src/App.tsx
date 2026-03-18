@@ -56,6 +56,7 @@ const App = () => (
                 <Route path="messages/:conversationId" element={<ConversationPage />} />
                 <Route path="search" element={<Search />} />
                 <Route path="groups" element={<Groups />} />
+                <Route path="groups/:groupId" element={<GroupDetail />} />
                 <Route path="pages" element={<Pages />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="saved" element={<Saved />} />

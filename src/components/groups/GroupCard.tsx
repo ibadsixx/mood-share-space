@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, UserMinus, Settings, FileText } from 'lucide-react';
 import { Group } from '@/hooks/useGroups';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 interface GroupCardProps {
   group: Group;
