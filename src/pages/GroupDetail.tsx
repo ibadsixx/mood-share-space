@@ -526,6 +526,13 @@ const GroupDetailPage = () => {
         existingMemberIds={members.map(m => m.user_id)}
         onInvitesSent={fetchGroupDetail}
       />
+
+      <ShareGroupDialog
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        groupId={groupId!}
+        groupName={group?.name || ''}
+      />
     </div>
   );
 };
