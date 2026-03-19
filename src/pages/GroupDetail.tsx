@@ -335,9 +335,27 @@ const GroupDetailPage = () => {
                 <Button variant="outline" onClick={() => setShareOpen(true)}>
                   <Share2 className="h-4 w-4 mr-2" /> Share
                 </Button>
-                <Button variant="secondary">
-                  Joined <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary">
+                      Joined <ChevronDown className="h-4 w-4 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Coming soon', description: 'Notification management will be available soon.' })}>
+                      <Bell className="h-4 w-4" />
+                      Manage notifications
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Coming soon', description: 'Unfollow feature will be available soon.' })}>
+                      <UserX className="h-4 w-4" />
+                      Unfollow group
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="gap-3 cursor-pointer" onClick={handleLeave}>
+                      <LogOut className="h-4 w-4" />
+                      Leave group
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
             <Button variant="ghost" size="icon">
