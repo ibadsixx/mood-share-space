@@ -559,6 +559,12 @@ const GroupDetailPage = () => {
         groupId={groupId!}
         groupName={group?.name || ''}
       />
+
+      <GroupSearchDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        groupName={group?.name || ''}
+      />
     </div>
   );
 };
