@@ -360,7 +360,7 @@ const GroupDetailPage = () => {
                 </DropdownMenu>
               </>
             )}
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)}>
               <Search className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon">
