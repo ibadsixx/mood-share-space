@@ -63,10 +63,11 @@ const ShareGroupDialog = ({ isOpen, onClose, groupId, groupName }: ShareGroupDia
     if (!user) return;
     setSharing(true);
     try {
-      await supabase.from('posts').insert({
+      await supabase.from('posts').insert([{
         user_id: user.id,
         content: message || `Check out this group: ${groupName}`,
         type: 'text',
+      }] as any);
       });
       toast({ title: 'Shared!', description: 'Group shared to your feed' });
       onClose();
