@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import InviteToGroupDialog from '@/components/groups/InviteToGroupDialog';
+import ShareGroupDialog from '@/components/groups/ShareGroupDialog';
 
 interface GroupDetail {
   id: string;
@@ -54,6 +55,7 @@ const GroupDetailPage = () => {
   const [uploadingCover, setUploadingCover] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (groupId) fetchGroupDetail();
@@ -324,7 +326,7 @@ const GroupDetailPage = () => {
                 <Button variant="outline" onClick={() => setInviteOpen(true)}>
                   <UserPlus className="h-4 w-4 mr-2" /> Invite
                 </Button>
-                <Button variant="outline" onClick={() => toast({ title: 'Shared', description: 'Group link copied!' })}>
+                <Button variant="outline" onClick={() => setShareOpen(true)}>
                   <Share2 className="h-4 w-4 mr-2" /> Share
                 </Button>
                 <Button variant="secondary">
@@ -523,6 +525,13 @@ const GroupDetailPage = () => {
         groupId={groupId!}
         existingMemberIds={members.map(m => m.user_id)}
         onInvitesSent={fetchGroupDetail}
+      />
+
+      <ShareGroupDialog
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        groupId={groupId!}
+        groupName={group?.name || ''}
       />
     </div>
   );
