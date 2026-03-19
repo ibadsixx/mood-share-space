@@ -24,6 +24,7 @@ import {
 import { motion } from 'framer-motion';
 import InviteToGroupDialog from '@/components/groups/InviteToGroupDialog';
 import ShareGroupDialog from '@/components/groups/ShareGroupDialog';
+import GroupSearchDialog from '@/components/groups/GroupSearchDialog';
 
 interface GroupDetail {
   id: string;
@@ -62,6 +63,7 @@ const GroupDetailPage = () => {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     if (groupId) fetchGroupDetail();
@@ -358,7 +360,7 @@ const GroupDetailPage = () => {
                 </DropdownMenu>
               </>
             )}
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)}>
               <Search className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon">
@@ -555,6 +557,12 @@ const GroupDetailPage = () => {
         isOpen={shareOpen}
         onClose={() => setShareOpen(false)}
         groupId={groupId!}
+        groupName={group?.name || ''}
+      />
+
+      <GroupSearchDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
         groupName={group?.name || ''}
       />
     </div>
