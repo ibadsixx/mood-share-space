@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import InviteToGroupDialog from '@/components/groups/InviteToGroupDialog';
+import ShareGroupDialog from '@/components/groups/ShareGroupDialog';
 
 interface GroupDetail {
   id: string;
