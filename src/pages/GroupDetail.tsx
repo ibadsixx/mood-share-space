@@ -19,7 +19,8 @@ import {
   Users, Globe, Lock, Share2, ChevronDown,
   UserPlus, Search, MoreHorizontal, ArrowLeft,
   MessageSquare, Image, SmilePlus, BarChart3,
-  FileText, CalendarDays, Camera, Bell, UserX, LogOut
+  FileText, CalendarDays, Camera, Bell, UserX, LogOut,
+  LayoutList, Pin, Flag, ChevronRight
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import InviteToGroupDialog from '@/components/groups/InviteToGroupDialog';
@@ -363,9 +364,38 @@ const GroupDetailPage = () => {
             <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)}>
               <Search className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Your content', description: 'View your posts and activity in this group.' })}>
+                  <LayoutList className="h-4 w-4" />
+                  Your content
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-3 cursor-pointer justify-between" onClick={() => setShareOpen(true)}>
+                  <div className="flex items-center gap-3">
+                    <Share2 className="h-4 w-4" />
+                    Share
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Manage notifications', description: 'Notification preferences updated.' })}>
+                  <Bell className="h-4 w-4" />
+                  Manage notifications
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Group pinned', description: 'This group has been pinned to your shortcuts.' })}>
+                  <Pin className="h-4 w-4" />
+                  Pin group
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Report submitted', description: 'Thank you for your feedback.' })}>
+                  <Flag className="h-4 w-4" />
+                  Report group
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </motion.div>
