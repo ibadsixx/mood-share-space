@@ -608,6 +608,10 @@ const GroupDetailPage = () => {
         onOpenChange={setSearchOpen}
         groupName={group?.name || ''}
       />
+      <GroupNotificationSettings
+        open={notifSettingsOpen}
+        onOpenChange={setNotifSettingsOpen}
+      />
     </div>
   );
 };
