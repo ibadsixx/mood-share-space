@@ -26,6 +26,7 @@ import { motion } from 'framer-motion';
 import InviteToGroupDialog from '@/components/groups/InviteToGroupDialog';
 import ShareGroupDialog from '@/components/groups/ShareGroupDialog';
 import GroupSearchDialog from '@/components/groups/GroupSearchDialog';
+import GroupYourContent from '@/components/groups/GroupYourContent';
 
 interface GroupDetail {
   id: string;
@@ -65,6 +66,7 @@ const GroupDetailPage = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showYourContent, setShowYourContent] = useState(false);
 
   useEffect(() => {
     if (groupId) fetchGroupDetail();
@@ -231,6 +233,15 @@ const GroupDetailPage = () => {
 
   const isAdmin = userRole === 'admin';
 
+  if (showYourContent) {
+    return (
+      <GroupYourContent
+        groupName={group.name}
+        onBack={() => setShowYourContent(false)}
+      />
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Cover Photo Area */}
@@ -371,7 +382,7 @@ const GroupDetailPage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Your content', description: 'View your posts and activity in this group.' })}>
+                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => setShowYourContent(true)}>
                   <LayoutList className="h-4 w-4" />
                   Your content
                 </DropdownMenuItem>
