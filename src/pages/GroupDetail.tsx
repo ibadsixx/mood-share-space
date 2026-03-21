@@ -395,7 +395,7 @@ const GroupDetailPage = () => {
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </DropdownMenuItem>
-                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Manage notifications', description: 'Notification preferences updated.' })}>
+                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => setNotifSettingsOpen(true)}>
                   <Bell className="h-4 w-4" />
                   Manage notifications
                 </DropdownMenuItem>
