@@ -66,6 +66,7 @@ const GroupDetailPage = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showYourContent, setShowYourContent] = useState(false);
 
   useEffect(() => {
     if (groupId) fetchGroupDetail();
