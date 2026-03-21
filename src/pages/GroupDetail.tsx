@@ -28,6 +28,7 @@ import ShareGroupDialog from '@/components/groups/ShareGroupDialog';
 import GroupSearchDialog from '@/components/groups/GroupSearchDialog';
 import GroupYourContent from '@/components/groups/GroupYourContent';
 import GroupNotificationSettings from '@/components/groups/GroupNotificationSettings';
+import ReportGroupDialog from '@/components/groups/ReportGroupDialog';
 
 interface GroupDetail {
   id: string;
@@ -69,6 +70,7 @@ const GroupDetailPage = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [showYourContent, setShowYourContent] = useState(false);
   const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
+  const [reportGroupOpen, setReportGroupOpen] = useState(false);
 
   useEffect(() => {
     if (groupId) fetchGroupDetail();
@@ -403,7 +405,7 @@ const GroupDetailPage = () => {
                   <Pin className="h-4 w-4" />
                   Pin group
                 </DropdownMenuItem>
-                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Report submitted', description: 'Thank you for your feedback.' })}>
+                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => setReportGroupOpen(true)}>
                   <Flag className="h-4 w-4" />
                   Report group
                 </DropdownMenuItem>
@@ -611,6 +613,11 @@ const GroupDetailPage = () => {
       <GroupNotificationSettings
         open={notifSettingsOpen}
         onOpenChange={setNotifSettingsOpen}
+      />
+      <ReportGroupDialog
+        open={reportGroupOpen}
+        onOpenChange={setReportGroupOpen}
+        groupName={group?.name}
       />
     </div>
   );
