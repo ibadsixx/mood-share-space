@@ -358,7 +358,7 @@ const GroupDetailPage = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Coming soon', description: 'Notification management will be available soon.' })}>
+                    <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => setNotifSettingsOpen(true)}>
                       <Bell className="h-4 w-4" />
                       Manage notifications
                     </DropdownMenuItem>
