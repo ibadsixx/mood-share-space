@@ -27,6 +27,7 @@ import InviteToGroupDialog from '@/components/groups/InviteToGroupDialog';
 import ShareGroupDialog from '@/components/groups/ShareGroupDialog';
 import GroupSearchDialog from '@/components/groups/GroupSearchDialog';
 import GroupYourContent from '@/components/groups/GroupYourContent';
+import GroupNotificationSettings from '@/components/groups/GroupNotificationSettings';
 
 interface GroupDetail {
   id: string;
