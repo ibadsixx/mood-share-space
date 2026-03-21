@@ -27,6 +27,7 @@ import InviteToGroupDialog from '@/components/groups/InviteToGroupDialog';
 import ShareGroupDialog from '@/components/groups/ShareGroupDialog';
 import GroupSearchDialog from '@/components/groups/GroupSearchDialog';
 import GroupYourContent from '@/components/groups/GroupYourContent';
+import GroupNotificationSettings from '@/components/groups/GroupNotificationSettings';
 
 interface GroupDetail {
   id: string;
@@ -67,6 +68,7 @@ const GroupDetailPage = () => {
   const [shareOpen, setShareOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [showYourContent, setShowYourContent] = useState(false);
+  const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (groupId) fetchGroupDetail();
@@ -356,7 +358,7 @@ const GroupDetailPage = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Coming soon', description: 'Notification management will be available soon.' })}>
+                    <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => setNotifSettingsOpen(true)}>
                       <Bell className="h-4 w-4" />
                       Manage notifications
                     </DropdownMenuItem>
@@ -393,7 +395,7 @@ const GroupDetailPage = () => {
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </DropdownMenuItem>
-                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Manage notifications', description: 'Notification preferences updated.' })}>
+                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => setNotifSettingsOpen(true)}>
                   <Bell className="h-4 w-4" />
                   Manage notifications
                 </DropdownMenuItem>
@@ -605,6 +607,10 @@ const GroupDetailPage = () => {
         open={searchOpen}
         onOpenChange={setSearchOpen}
         groupName={group?.name || ''}
+      />
+      <GroupNotificationSettings
+        open={notifSettingsOpen}
+        onOpenChange={setNotifSettingsOpen}
       />
     </div>
   );
