@@ -382,7 +382,7 @@ const GroupDetailPage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Your content', description: 'View your posts and activity in this group.' })}>
+                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => setShowYourContent(true)}>
                   <LayoutList className="h-4 w-4" />
                   Your content
                 </DropdownMenuItem>
