@@ -70,6 +70,7 @@ const GroupDetailPage = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [showYourContent, setShowYourContent] = useState(false);
   const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
+  const [reportGroupOpen, setReportGroupOpen] = useState(false);
 
   useEffect(() => {
     if (groupId) fetchGroupDetail();
