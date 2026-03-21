@@ -614,6 +614,11 @@ const GroupDetailPage = () => {
         open={notifSettingsOpen}
         onOpenChange={setNotifSettingsOpen}
       />
+      <ReportGroupDialog
+        open={reportGroupOpen}
+        onOpenChange={setReportGroupOpen}
+        groupName={group?.name}
+      />
     </div>
   );
 };
