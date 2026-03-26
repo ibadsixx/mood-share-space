@@ -18,7 +18,7 @@ import {
 import {
   Users, Globe, Lock, Share2, ChevronDown,
   UserPlus, Search, MoreHorizontal, ArrowLeft,
-  MessageSquare, Image, SmilePlus, BarChart3,
+  MessageSquare,
   FileText, CalendarDays, Camera, Bell, UserX, LogOut,
   LayoutList, Pin, Flag, ChevronRight
 } from 'lucide-react';
