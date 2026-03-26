@@ -122,7 +122,10 @@ const GroupDetailPage = () => {
   };
 
   useEffect(() => {
-    if (groupId) fetchGroupDetail();
+    if (groupId) {
+      fetchGroupDetail();
+      fetchGroupPosts();
+    }
   }, [groupId, user]);
 
   const fetchGroupDetail = async () => {
