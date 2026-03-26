@@ -83,6 +83,8 @@ interface PostProps {
   music_start?: number | null;
   music_video_id?: string | null;
   thumbnail?: string | null;
+  group_name?: string | null;
+  group_id?: string | null;
   profiles: {
     username: string;
     display_name: string;
