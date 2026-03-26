@@ -29,6 +29,9 @@ import GroupSearchDialog from '@/components/groups/GroupSearchDialog';
 import GroupYourContent from '@/components/groups/GroupYourContent';
 import GroupNotificationSettings from '@/components/groups/GroupNotificationSettings';
 import ReportGroupDialog from '@/components/groups/ReportGroupDialog';
+import NewPost from '@/components/NewPost';
+import { useHomeFeed } from '@/hooks/useHomeFeed';
+import Post from '@/components/Post';
 
 interface GroupDetail {
   id: string;
