@@ -478,45 +478,25 @@ const GroupDetailPage = () => {
             <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
 
-          {/* Discussion Tab */}
           <TabsContent value="discussion" className="mt-4 space-y-4">
             {isMember && (
+              <NewPost onCreatePost={handleGroupPost} />
+            )}
+
+            {postsLoading ? (
+              <Card><CardContent className="py-8 text-center"><p className="text-muted-foreground">Loading posts...</p></CardContent></Card>
+            ) : groupPosts.length > 0 ? (
+              groupPosts.map((gp: any) => gp.post && (
+                <Post key={gp.id} {...gp.post} onDelete={() => fetchGroupPosts()} />
+              ))
+            ) : (
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary/10 text-primary">
-                        {user?.email?.[0]?.toUpperCase() || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div
-                      className="flex-1 bg-muted rounded-full px-4 py-2.5 text-sm text-muted-foreground cursor-pointer hover:bg-muted/80 transition-colors"
-                      onClick={() => toast({ title: 'Coming soon', description: 'Group posting will be available soon.' })}
-                    >
-                      Write something...
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-around mt-3 pt-3 border-t">
-                    <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
-                      <Image className="h-4 w-4 text-green-500" /> Photo/Video
-                    </button>
-                    <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
-                      <SmilePlus className="h-4 w-4 text-yellow-500" /> Feeling/Activity
-                    </button>
-                    <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
-                      <BarChart3 className="h-4 w-4 text-red-500" /> Poll
-                    </button>
-                  </div>
+                <CardContent className="py-12 text-center">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p className="text-muted-foreground">No posts yet. Be the first to post!</p>
                 </CardContent>
               </Card>
             )}
-
-            <Card>
-              <CardContent className="py-12 text-center">
-                <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                <p className="text-muted-foreground">No posts yet. Be the first to post!</p>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* About Tab */}
