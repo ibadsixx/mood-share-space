@@ -83,6 +83,8 @@ interface PostProps {
   music_start?: number | null;
   music_video_id?: string | null;
   thumbnail?: string | null;
+  group_name?: string | null;
+  group_id?: string | null;
   profiles: {
     username: string;
     display_name: string;
@@ -140,6 +142,8 @@ const Post = ({
   location_provider,
   duration,
   aspect_ratio,
+  group_name,
+  group_id,
   profiles,
   post_media,
   shared_post,
@@ -352,8 +356,20 @@ const Post = ({
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="flex items-center space-x-2">
+                   <div className="flex items-center flex-wrap gap-x-1">
                     <p className="font-semibold text-sm text-foreground hover:underline">{profiles.display_name}</p>
+                    {group_name && group_id && (
+                      <>
+                        <span className="text-sm text-muted-foreground">›</span>
+                        <Link 
+                          to={`/groups/${group_id}`} 
+                          className="font-semibold text-sm text-foreground hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {group_name}
+                        </Link>
+                      </>
+                    )}
                     {feelingDisplay && (
                       <span className="text-sm text-muted-foreground">
                         {feeling_activity_target_text && feeling_activity_target_id ? (
