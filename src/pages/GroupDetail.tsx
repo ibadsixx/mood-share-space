@@ -74,6 +74,52 @@ const GroupDetailPage = () => {
   const [showYourContent, setShowYourContent] = useState(false);
   const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
   const [reportGroupOpen, setReportGroupOpen] = useState(false);
+  const { createPost } = useHomeFeed();
+  const [groupPosts, setGroupPosts] = useState<any[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+
+  const fetchGroupPosts = async () => {
+    if (!groupId) return;
+    try {
+      setPostsLoading(true);
+      const { data } = await supabase
+        .from('group_posts')
+        .select(`
+          id, message, created_at, shared_by,
+          post:post_id (
+            *,
+            profiles!posts_user_id_fkey (username, display_name, profile_pic),
+            likes (id, user_id),
+            comments (id, content, profiles:user_id (display_name))
+          )
+        `)
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: false });
+      setGroupPosts(data || []);
+    } catch (err) {
+      console.error('Error fetching group posts:', err);
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  const handleGroupPost = async (content: string, media?: File[], taggedUsers?: any[], audience?: any, feeling?: any, scheduledAt?: Date, location?: any) => {
+    try {
+      const postId = await createPost(content, media, taggedUsers, audience, feeling, scheduledAt, location);
+      if (postId && groupId) {
+        await supabase.from('group_posts').insert({
+          group_id: groupId,
+          post_id: postId,
+          shared_by: user!.id,
+        });
+        fetchGroupPosts();
+      }
+      return postId;
+    } catch (err) {
+      console.error('Error creating group post:', err);
+      return undefined;
+    }
+  };
 
   useEffect(() => {
     if (groupId) fetchGroupDetail();
