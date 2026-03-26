@@ -24,6 +24,8 @@ export interface HomeFeedPost {
   music_source?: string | null;
   music_start?: number | null;
   thumbnail?: string | null;
+  group_name?: string | null;
+  group_id?: string | null;
   profiles: {
     username: string;
     display_name: string;
