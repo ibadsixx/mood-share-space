@@ -156,16 +156,17 @@ const NewPost = ({ onCreatePost, className }: NewPostProps) => {
     textareaRef.current?.focus();
   };
 
-  const handleEmojiSelect = (emoji: { url: string; name: string }) => {
+  const handleEmojiSelect = (emoji: { url: string; name: string; emoji?: string }) => {
     if (!textareaRef.current) return;
     
     const textarea = textareaRef.current;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     
+    const emojiChar = emoji.emoji || '🙂';
     const beforeCursor = content.slice(0, start);
     const afterCursor = content.slice(end);
-    const newContent = beforeCursor + `🙂` + afterCursor; // Use a fallback emoji
+    const newContent = beforeCursor + emojiChar + afterCursor;
     
     setContent(newContent);
     
@@ -173,7 +174,8 @@ const NewPost = ({ onCreatePost, className }: NewPostProps) => {
     setTimeout(() => {
       if (textarea) {
         textarea.focus();
-        textarea.setSelectionRange(start + 2, start + 2); // 🙂 is 2 characters
+        const newPos = start + emojiChar.length;
+        textarea.setSelectionRange(newPos, newPos);
       }
     }, 0);
   };
