@@ -147,10 +147,10 @@ export const EmojiPickerPanel = ({ onEmojiSelect }: EmojiPickerProps) => {
               <TabsTrigger
                 key={category.id}
                 value={category.id}
-                className="h-7 px-2 text-xs data-[state=active]:bg-background"
+                className="h-7 px-1.5 text-xs data-[state=active]:bg-background"
                 title={category.label}
               >
-                {category.icon}
+                <img src={category.icon} alt={category.label} className="h-4 w-4 object-contain" />
               </TabsTrigger>
             ))}
           </TabsList>
