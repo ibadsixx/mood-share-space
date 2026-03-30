@@ -501,54 +501,13 @@ const GroupDetailPage = () => {
 
           {/* About Tab */}
           <TabsContent value="about" className="mt-4">
-            <Card>
-              <CardContent className="p-6 space-y-4">
-                <h3 className="text-lg font-semibold">About this group</h3>
-                {group.description ? (
-                  <p className="text-muted-foreground">{group.description}</p>
-                ) : (
-                  <p className="text-muted-foreground italic">No description provided.</p>
-                )}
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center gap-3 text-sm">
-                    {group.privacy === 'public' ? (
-                      <>
-                        <Globe className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">Public</p>
-                          <p className="text-muted-foreground">Anyone can see who's in the group and what they post.</p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">Private</p>
-                          <p className="text-muted-foreground">Only members can see who's in the group and what they post.</p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Created</p>
-                      <p className="text-muted-foreground">
-                        {new Date(group.created_at).toLocaleDateString('en-US', {
-                          year: 'numeric', month: 'long', day: 'numeric'
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <Users className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{formatMemberCount(members.length)} members</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <AboutTabContent
+              group={group}
+              members={members}
+              isAdmin={userRole === 'admin'}
+              onGroupUpdate={(updated) => setGroup(prev => prev ? { ...prev, ...updated } : prev)}
+              formatMemberCount={formatMemberCount}
+            />
           </TabsContent>
 
           {/* People Tab */}
