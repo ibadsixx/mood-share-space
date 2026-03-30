@@ -21,16 +21,16 @@ interface EmojiPickerProps {
 
 // Category configuration matching emoji.json categories
 const CATEGORIES = [
-  { id: 'Smileys', icon: '😀', label: 'Smileys' },
-  { id: 'People', icon: '👋', label: 'People' },
-  { id: 'Animals', icon: '🐼', label: 'Animals' },
-  { id: 'Nature', icon: '🌿', label: 'Nature' },
-  { id: 'Food', icon: '🍔', label: 'Food' },
-  { id: 'Travel', icon: '🚗', label: 'Travel' },
-  { id: 'Activities', icon: '⚽', label: 'Activities' },
-  { id: 'Objects', icon: '💡', label: 'Objects' },
-  { id: 'Symbols', icon: '❤️', label: 'Symbols' },
-  { id: 'Flags', icon: '🏳️', label: 'Flags' },
+  { id: 'Smileys', icon: '/emoji/1f600.png', label: 'Smileys' },
+  { id: 'People', icon: '/emoji/1f44b.png', label: 'People' },
+  { id: 'Animals', icon: '/emoji/1f43c.png', label: 'Animals' },
+  { id: 'Nature', icon: '/emoji/1f33f.png', label: 'Nature' },
+  { id: 'Food', icon: '/emoji/1f354.png', label: 'Food' },
+  { id: 'Travel', icon: '/emoji/1f697.png', label: 'Travel' },
+  { id: 'Activities', icon: '/emoji/26bd.png', label: 'Activities' },
+  { id: 'Objects', icon: '/emoji/1f4a1.png', label: 'Objects' },
+  { id: 'Symbols', icon: '/emoji/2764.png', label: 'Symbols' },
+  { id: 'Flags', icon: '/emoji/1f3f3.png', label: 'Flags' },
 ];
 
 const STORAGE_KEY = 'emoji-picker-last-category';
@@ -147,10 +147,10 @@ export const EmojiPickerPanel = ({ onEmojiSelect }: EmojiPickerProps) => {
               <TabsTrigger
                 key={category.id}
                 value={category.id}
-                className="h-7 px-2 text-xs data-[state=active]:bg-background"
+                className="h-7 px-1.5 text-xs data-[state=active]:bg-background"
                 title={category.label}
               >
-                {category.icon}
+                <img src={category.icon} alt={category.label} className="h-4 w-4 object-contain" />
               </TabsTrigger>
             ))}
           </TabsList>
