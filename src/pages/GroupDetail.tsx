@@ -20,8 +20,11 @@ import {
   UserPlus, Search, MoreHorizontal, ArrowLeft,
   MessageSquare, ImageIcon,
   FileText, CalendarDays, Camera, Bell, UserX, LogOut,
-  LayoutList, Pin, Flag, ChevronRight
+  LayoutList, Pin, Flag, ChevronRight, Pencil
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { motion } from 'framer-motion';
 import InviteToGroupDialog from '@/components/groups/InviteToGroupDialog';
 import ShareGroupDialog from '@/components/groups/ShareGroupDialog';
