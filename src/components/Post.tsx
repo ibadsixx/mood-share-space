@@ -491,7 +491,9 @@ const Post = ({
         <CardContent className="space-y-4">
           {/* Sharer's content (if any) */}
           {shared_post_id && content && (
-            <p className="text-sm leading-relaxed text-foreground">{content}</p>
+            <p className="text-sm leading-relaxed text-foreground">
+              <MentionText text={content} />
+            </p>
           )}
 
           {/* Shared Post */}
