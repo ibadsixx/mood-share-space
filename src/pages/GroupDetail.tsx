@@ -20,8 +20,11 @@ import {
   UserPlus, Search, MoreHorizontal, ArrowLeft,
   MessageSquare, ImageIcon,
   FileText, CalendarDays, Camera, Bell, UserX, LogOut,
-  LayoutList, Pin, Flag, ChevronRight
+  LayoutList, Pin, Flag, ChevronRight, Pencil
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { motion } from 'framer-motion';
 import InviteToGroupDialog from '@/components/groups/InviteToGroupDialog';
 import ShareGroupDialog from '@/components/groups/ShareGroupDialog';
@@ -54,6 +57,145 @@ interface GroupMember {
     profile_pic: string | null;
   };
 }
+
+// About Tab with inline editing for admins
+const AboutTabContent = ({
+  group,
+  members,
+  isAdmin,
+  onGroupUpdate,
+  formatMemberCount,
+}: {
+  group: GroupDetail;
+  members: GroupMember[];
+  isAdmin: boolean;
+  onGroupUpdate: (data: Partial<GroupDetail>) => void;
+  formatMemberCount: (count: number) => string;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(group.name);
+  const [description, setDescription] = useState(group.description || '');
+  const [privacy, setPrivacy] = useState(group.privacy);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from('groups')
+      .update({ name: name.trim(), description: description.trim(), privacy })
+      .eq('id', group.id);
+
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to update group info.', variant: 'destructive' });
+    } else {
+      onGroupUpdate({ name: name.trim(), description: description.trim(), privacy });
+      toast({ title: 'Updated', description: 'Group info has been updated.' });
+      setEditing(false);
+    }
+    setSaving(false);
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">About this group</h3>
+          {isAdmin && !editing && (
+            <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+              <Pencil className="h-4 w-4 mr-1" /> Edit
+            </Button>
+          )}
+        </div>
+
+        {editing ? (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Group name</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Description</label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                maxLength={1000}
+                placeholder="Describe what this group is about..."
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Privacy</label>
+              <Select value={privacy} onValueChange={setPrivacy}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="private">Private</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={handleSave} disabled={saving || !name.trim()}>
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+              <Button variant="ghost" onClick={() => { setEditing(false); setName(group.name); setDescription(group.description || ''); setPrivacy(group.privacy); }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {group.description ? (
+              <p className="text-muted-foreground">{group.description}</p>
+            ) : (
+              <p className="text-muted-foreground italic">No description provided.</p>
+            )}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-3 text-sm">
+                {group.privacy === 'public' ? (
+                  <>
+                    <Globe className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Public</p>
+                      <p className="text-muted-foreground">Anyone can see who's in the group and what they post.</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Private</p>
+                      <p className="text-muted-foreground">Only members can see who's in the group and what they post.</p>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <CalendarDays className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Created</p>
+                  <p className="text-muted-foreground">
+                    {new Date(group.created_at).toLocaleDateString('en-US', {
+                      year: 'numeric', month: 'long', day: 'numeric'
+                    })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <Users className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">{formatMemberCount(members.length)} members</p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const GroupDetailPage = () => {
   const { groupId } = useParams<{ groupId: string }>();
@@ -501,54 +643,13 @@ const GroupDetailPage = () => {
 
           {/* About Tab */}
           <TabsContent value="about" className="mt-4">
-            <Card>
-              <CardContent className="p-6 space-y-4">
-                <h3 className="text-lg font-semibold">About this group</h3>
-                {group.description ? (
-                  <p className="text-muted-foreground">{group.description}</p>
-                ) : (
-                  <p className="text-muted-foreground italic">No description provided.</p>
-                )}
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center gap-3 text-sm">
-                    {group.privacy === 'public' ? (
-                      <>
-                        <Globe className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">Public</p>
-                          <p className="text-muted-foreground">Anyone can see who's in the group and what they post.</p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">Private</p>
-                          <p className="text-muted-foreground">Only members can see who's in the group and what they post.</p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Created</p>
-                      <p className="text-muted-foreground">
-                        {new Date(group.created_at).toLocaleDateString('en-US', {
-                          year: 'numeric', month: 'long', day: 'numeric'
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <Users className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{formatMemberCount(members.length)} members</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <AboutTabContent
+              group={group}
+              members={members}
+              isAdmin={userRole === 'admin'}
+              onGroupUpdate={(updated) => setGroup(prev => prev ? { ...prev, ...updated } : prev)}
+              formatMemberCount={formatMemberCount}
+            />
           </TabsContent>
 
           {/* People Tab */}
