@@ -72,24 +72,36 @@ const ShareGroupDialog = ({ isOpen, onClose, groupId, groupName }: ShareGroupDia
 
   const fetchFriends = async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('friends')
-      .select('requester_id, receiver_id')
+      .select('requester_id, receiver_id, status')
       .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .eq('status', 'accepted')
-      .limit(10);
+      .limit(20);
 
-    if (!data) return;
+    console.debug('[ShareGroupDialog] friends rows:', data, 'error:', error);
 
-    const friendIds = data.map(f => f.requester_id === user.id ? f.receiver_id : f.requester_id);
-    if (friendIds.length === 0) return;
+    if (error || !data || data.length === 0) {
+      setFriends([]);
+      return;
+    }
 
-    const { data: profiles } = await supabase
+    const friendIds = data
+      .map(f => (f.requester_id === user.id ? f.receiver_id : f.requester_id))
+      .filter(Boolean);
+
+    if (friendIds.length === 0) {
+      setFriends([]);
+      return;
+    }
+
+    const { data: profiles, error: pErr } = await supabase
       .from('profiles')
       .select('id, username, display_name, profile_pic')
       .in('id', friendIds);
 
-    if (profiles) setFriends(profiles);
+    console.debug('[ShareGroupDialog] friend profiles:', profiles, 'error:', pErr);
+    setFriends(profiles || []);
   };
 
   const shareToFeed = async () => {
@@ -175,13 +187,14 @@ const ShareGroupDialog = ({ isOpen, onClose, groupId, groupName }: ShareGroupDia
         <Separator />
 
         {/* Send to section */}
-        {friends.length > 0 && (
-          <>
-            <div className="px-4 py-3">
-              <h4 className="font-semibold text-sm mb-3">Send to</h4>
-              <ScrollArea className="w-full">
-                <div className="flex gap-4">
-                  {friends.map((friend) => (
+        <div className="px-4 py-3">
+          <h4 className="font-semibold text-sm mb-3">Send to</h4>
+          {friends.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No friends to send to yet.</p>
+          ) : (
+            <ScrollArea className="w-full">
+              <div className="flex gap-4 pb-2">
+                {friends.map((friend) => (
                     <button
                       key={friend.id}
                       className="flex flex-col items-center gap-1 min-w-[64px] hover:opacity-80 transition-opacity"
@@ -199,13 +212,12 @@ const ShareGroupDialog = ({ isOpen, onClose, groupId, groupName }: ShareGroupDia
                         {friend.display_name || friend.username}
                       </span>
                     </button>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-            <Separator />
-          </>
-        )}
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </div>
+        <Separator />
 
         {/* Share to section */}
         <div className="px-4 py-3 pb-4">
