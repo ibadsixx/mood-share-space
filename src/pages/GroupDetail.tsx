@@ -207,6 +207,7 @@ const GroupDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [isMember, setIsMember] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isFollowing, setIsFollowing] = useState(true);
   const [activeTab, setActiveTab] = useState('discussion');
   const [uploadingCover, setUploadingCover] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -303,6 +304,18 @@ const GroupDetailPage = () => {
         const membership = membersData?.find(m => m.user_id === user.id);
         setIsMember(!!membership);
         setUserRole(membership?.role || null);
+
+        // Load follow state (default = following when row missing)
+        const { data: followRow } = await supabase
+          .from('group_follows' as any)
+          .select('id')
+          .eq('group_id', groupId!)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        setIsFollowing(!followRow ? true : true);
+        // We use presence of row to mean "explicitly unfollowed"
+        // Re-evaluate: row present => unfollowed
+        setIsFollowing(!followRow);
       }
     } catch (error: any) {
       console.error('Failed to load group:', error);
