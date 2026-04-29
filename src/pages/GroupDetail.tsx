@@ -353,6 +353,40 @@ const GroupDetailPage = () => {
     }
   };
 
+  const handleToggleFollow = async () => {
+    if (!user || !groupId) return;
+    try {
+      if (isFollowing) {
+        // Unfollow: insert a row marking explicit unfollow
+        const { error } = await supabase
+          .from('group_follows' as any)
+          .insert({ group_id: groupId, user_id: user.id });
+        if (error && (error as any).code !== '23505') throw error;
+        setIsFollowing(false);
+        toast({
+          title: 'Unfollowed',
+          description: "You won't see this group's posts in your feed. You're still a member.",
+        });
+      } else {
+        // Follow again: remove the unfollow marker
+        const { error } = await supabase
+          .from('group_follows' as any)
+          .delete()
+          .eq('group_id', groupId)
+          .eq('user_id', user.id);
+        if (error) throw error;
+        setIsFollowing(true);
+        toast({
+          title: 'Following',
+          description: "You'll see this group's posts in your feed again.",
+        });
+      }
+    } catch (error: any) {
+      console.error('[GroupDetail] toggle follow error:', error);
+      toast({ title: 'Error', description: 'Failed to update follow state', variant: 'destructive' });
+    }
+  };
+
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !groupId || !user) return;
@@ -569,9 +603,9 @@ const GroupDetailPage = () => {
                       <Bell className="h-4 w-4" />
                       Manage notifications
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Coming soon', description: 'Unfollow feature will be available soon.' })}>
+                    <DropdownMenuItem className="gap-3 cursor-pointer" onClick={handleToggleFollow}>
                       <UserX className="h-4 w-4" />
-                      Unfollow group
+                      {isFollowing ? 'Unfollow group' : 'Follow group'}
                     </DropdownMenuItem>
                     <DropdownMenuItem className="gap-3 cursor-pointer" onClick={handleLeave}>
                       <LogOut className="h-4 w-4" />
