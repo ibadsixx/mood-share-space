@@ -60,12 +60,13 @@ const Mentions = () => {
       <div className="space-y-4">
         {mentions.map((mention) => {
           const isPost = mention.source_type === 'post';
-          const content = isPost ? mention.post : mention.comment;
+          const isTag = mention.source_type === 'tag';
+          const content = isPost || isTag ? mention.post : mention.comment;
           const author = content?.author;
 
           if (!content || !author) return null;
 
-          const linkTo = isPost 
+          const linkTo = (isPost || isTag)
             ? `/post/${mention.source_id}`
             : `/post/${mention.comment?.post_id}`;
 
@@ -96,7 +97,9 @@ const Mentions = () => {
                         {author.display_name}
                       </Link>
                       <span className="text-muted-foreground">
-                        mentioned you in a {isPost ? 'post' : 'comment'}
+                        {isTag
+                          ? 'tagged you in a post'
+                          : `mentioned you in a ${isPost ? 'post' : 'comment'}`}
                       </span>
                       <span className="text-muted-foreground">·</span>
                       <span className="text-sm text-muted-foreground">
@@ -105,7 +108,7 @@ const Mentions = () => {
                     </div>
 
                     <div className="flex items-start gap-2">
-                      {isPost ? (
+                      {(isPost || isTag) ? (
                         <FileText className="w-4 h-4 mt-1 text-muted-foreground shrink-0" />
                       ) : (
                         <MessageSquare className="w-4 h-4 mt-1 text-muted-foreground shrink-0" />

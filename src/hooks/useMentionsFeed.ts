@@ -4,7 +4,7 @@ import { useAuth } from './useAuth';
 
 export interface MentionItem {
   id: string;
-  source_type: 'post' | 'comment';
+  source_type: 'post' | 'comment' | 'tag';
   source_id: string;
   created_at: string;
   created_by: string;
@@ -55,14 +55,36 @@ export const useMentionsFeed = () => {
 
       if (mentionsError) throw mentionsError;
 
-      if (!mentionsData || mentionsData.length === 0) {
+      // Fetch tags where current user was tagged in posts
+      const { data: tagsData, error: tagsError } = await supabase
+        .from('post_tags')
+        .select('id, post_id, tagged_by, created_at')
+        .eq('tagged_user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (tagsError) throw tagsError;
+
+      // Normalize tag rows into mention-shaped rows
+      const normalizedTags = (tagsData || []).map((t: any) => ({
+        id: `tag-${t.id}`,
+        source_type: 'tag' as const,
+        source_id: t.post_id,
+        created_at: t.created_at,
+        created_by: t.tagged_by,
+      }));
+
+      const allMentions = [...(mentionsData || []), ...normalizedTags].sort(
+        (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      if (allMentions.length === 0) {
         setMentions([]);
         return;
       }
 
       // Separate post and comment mentions
-      const postMentions = mentionsData.filter(m => m.source_type === 'post');
-      const commentMentions = mentionsData.filter(m => m.source_type === 'comment');
+      const postMentions = allMentions.filter((m: any) => m.source_type === 'post' || m.source_type === 'tag');
+      const commentMentions = allMentions.filter((m: any) => m.source_type === 'comment');
 
       // Fetch posts
       const postIds = postMentions.map(m => m.source_id);
@@ -115,8 +137,8 @@ export const useMentionsFeed = () => {
       }
 
       // Combine mentions with their content
-      const enrichedMentions = mentionsData.map(mention => {
-        if (mention.source_type === 'post') {
+      const enrichedMentions = allMentions.map((mention: any) => {
+        if (mention.source_type === 'post' || mention.source_type === 'tag') {
           const post = postsWithAuthors.find(p => p.id === mention.source_id);
           return { ...mention, post };
         } else {
@@ -146,6 +168,18 @@ export const useMentionsFeed = () => {
           schema: 'public',
           table: 'mentions',
           filter: `mentioned_user_id=eq.${user?.id}`,
+        },
+        () => {
+          fetchMentions();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'post_tags',
+          filter: `tagged_user_id=eq.${user?.id}`,
         },
         () => {
           fetchMentions();
