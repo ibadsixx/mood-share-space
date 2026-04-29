@@ -174,36 +174,38 @@ const ShareGroupDialog = ({ isOpen, onClose, groupId, groupName }: ShareGroupDia
 
         <Separator />
 
-        {/* Send in Messenger section */}
+        {/* Send to section */}
         {friends.length > 0 && (
-          <div className="px-4 py-3">
-            <h4 className="font-semibold text-sm mb-3">Send in Messenger</h4>
-            <ScrollArea className="w-full">
-              <div className="flex gap-4">
-                {friends.map((friend) => (
-                  <button
-                    key={friend.id}
-                    className="flex flex-col items-center gap-1 min-w-[64px] hover:opacity-80 transition-opacity"
-                    onClick={() => {
-                      toast({ title: 'Sent!', description: `Shared with ${friend.display_name || friend.username}` });
-                    }}
-                  >
-                    <Avatar className="h-14 w-14">
-                      <AvatarFallback className="bg-muted text-muted-foreground">
-                        {(friend.display_name || friend.username)?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs text-center line-clamp-2 max-w-[64px]">
-                      {friend.display_name || friend.username}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
+          <>
+            <div className="px-4 py-3">
+              <h4 className="font-semibold text-sm mb-3">Send to</h4>
+              <ScrollArea className="w-full">
+                <div className="flex gap-4">
+                  {friends.map((friend) => (
+                    <button
+                      key={friend.id}
+                      className="flex flex-col items-center gap-1 min-w-[64px] hover:opacity-80 transition-opacity"
+                      onClick={() => {
+                        toast({ title: 'Sent!', description: `Shared with ${friend.display_name || friend.username}` });
+                      }}
+                    >
+                      <Avatar className="h-14 w-14">
+                        {friend.profile_pic && <AvatarImage src={friend.profile_pic} />}
+                        <AvatarFallback className="bg-muted text-muted-foreground">
+                          {(friend.display_name || friend.username)?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs text-center line-clamp-2 max-w-[64px]">
+                        {friend.display_name || friend.username}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+            <Separator />
+          </>
         )}
-
-        <Separator />
 
         {/* Share to section */}
         <div className="px-4 py-3 pb-4">
