@@ -208,6 +208,7 @@ const GroupDetailPage = () => {
   const [isMember, setIsMember] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isFollowing, setIsFollowing] = useState(true);
+  const [isPinned, setIsPinned] = useState(false);
   const [activeTab, setActiveTab] = useState('discussion');
   const [uploadingCover, setUploadingCover] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -314,6 +315,15 @@ const GroupDetailPage = () => {
           .eq('user_id', user.id)
           .maybeSingle();
         setIsFollowing(!unfollowRow);
+
+        // Check if this group is pinned by the current user
+        const { data: pinRow } = await supabase
+          .from('group_pins' as any)
+          .select('id')
+          .eq('group_id', groupId!)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        setIsPinned(!!pinRow);
       }
     } catch (error: any) {
       console.error('Failed to load group:', error);
@@ -384,6 +394,32 @@ const GroupDetailPage = () => {
     } catch (error: any) {
       console.error('[GroupDetail] toggle follow error:', error);
       toast({ title: 'Error', description: 'Failed to update follow state', variant: 'destructive' });
+    }
+  };
+
+  const handleTogglePin = async () => {
+    if (!user || !groupId) return;
+    try {
+      if (isPinned) {
+        const { error } = await supabase
+          .from('group_pins' as any)
+          .delete()
+          .eq('group_id', groupId)
+          .eq('user_id', user.id);
+        if (error) throw error;
+        setIsPinned(false);
+        toast({ title: 'Group unpinned', description: 'This group has been removed from your shortcuts.' });
+      } else {
+        const { error } = await supabase
+          .from('group_pins' as any)
+          .insert({ group_id: groupId, user_id: user.id });
+        if (error && (error as any).code !== '23505') throw error;
+        setIsPinned(true);
+        toast({ title: 'Group pinned', description: 'This group has been pinned to your shortcuts.' });
+      }
+    } catch (error: any) {
+      console.error('[GroupDetail] toggle pin error:', error);
+      toast({ title: 'Error', description: 'Failed to update pin state', variant: 'destructive' });
     }
   };
 
@@ -634,9 +670,9 @@ const GroupDetailPage = () => {
                   <Bell className="h-4 w-4" />
                   Manage notifications
                 </DropdownMenuItem>
-                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => toast({ title: 'Group pinned', description: 'This group has been pinned to your shortcuts.' })}>
-                  <Pin className="h-4 w-4" />
-                  Pin group
+                <DropdownMenuItem className="gap-3 cursor-pointer" onClick={handleTogglePin}>
+                  <Pin className={`h-4 w-4 ${isPinned ? 'fill-current' : ''}`} />
+                  {isPinned ? 'Unpin group' : 'Pin group'}
                 </DropdownMenuItem>
                 <DropdownMenuItem className="gap-3 cursor-pointer" onClick={() => setReportGroupOpen(true)}>
                   <Flag className="h-4 w-4" />
