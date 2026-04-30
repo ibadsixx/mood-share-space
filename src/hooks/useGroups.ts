@@ -12,6 +12,7 @@ export interface Group {
   is_member?: boolean;
   role?: 'admin' | 'moderator' | 'member';
   joined_at?: string;
+  is_pinned?: boolean;
 }
 
 export const useGroups = () => {
@@ -44,6 +45,16 @@ export const useGroups = () => {
         throw error;
       }
 
+      // Fetch the user's pinned group ids
+      let pinnedIds = new Set<string>();
+      if (user) {
+        const { data: pinRows } = await supabase
+          .from('group_pins' as any)
+          .select('group_id')
+          .eq('user_id', user.id);
+        pinnedIds = new Set((pinRows || []).map((r: any) => r.group_id));
+      }
+
       const groupsWithMemberInfo = data?.map(group => {
         const memberCount = group.group_members?.length || 0;
         const userMembership = user ? group.group_members?.find(m => m.user_id === user.id) : null;
@@ -56,7 +67,8 @@ export const useGroups = () => {
           member_count: memberCount,
           is_member: !!userMembership,
           role: userMembership?.role,
-          joined_at: userMembership?.created_at
+          joined_at: userMembership?.created_at,
+          is_pinned: pinnedIds.has(group.id),
         };
       }) || [];
 
@@ -168,8 +180,10 @@ export const useGroups = () => {
   ).slice(0, 6);
   const getMostActiveGroups = () => groups.filter(g => !g.is_member)
     .sort((a, b) => (b.member_count || 0) - (a.member_count || 0)).slice(0, 6);
-  const getJoinedGroups = () => groups.filter(g => g.is_member && g.role !== 'admin');
-  const getManagedGroups = () => groups.filter(g => g.is_member && g.role === 'admin');
+  const sortPinnedFirst = (list: Group[]) =>
+    [...list].sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0));
+  const getJoinedGroups = () => sortPinnedFirst(groups.filter(g => g.is_member && g.role !== 'admin'));
+  const getManagedGroups = () => sortPinnedFirst(groups.filter(g => g.is_member && g.role === 'admin'));
 
   useEffect(() => {
     fetchGroups();
