@@ -113,7 +113,7 @@ const GroupYourContent = ({ groupId, groupName, onBack }: GroupYourContentProps)
           ) : (
             <div className="space-y-4 max-w-2xl mx-auto">
               {posts.map((row) => (
-                <Post key={row.id} post={row.post} onUpdate={() => {}} />
+                <Post key={row.id} {...row.post} />
               ))}
             </div>
           )}
