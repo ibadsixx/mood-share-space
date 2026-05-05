@@ -544,11 +544,57 @@ const PageDetail = () => {
                       </div>
                     )}
                     {aboutSection === 'transparency' && (
-                      <div className="space-y-2 text-sm text-muted-foreground">
-                        <p>Facebook is showing information to help you better understand the purpose of this page.</p>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" /> <span>Page created — {createdAt}</span>
+                      <div className="space-y-5 text-sm">
+                        <div>
+                          <h3 className="font-semibold text-foreground mb-1">Page transparency</h3>
+                          <p className="text-muted-foreground">
+                            We're showing information to help you understand the purpose of this Page.
+                          </p>
                         </div>
+                        <div className="flex items-start gap-3">
+                          <Hash className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div>
+                            <div className="text-foreground font-mono">{page.id}</div>
+                            <div className="text-xs text-muted-foreground">Page ID</div>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div>
+                            <div className="text-foreground">{createdAt}</div>
+                            <div className="text-xs text-muted-foreground">Creation date</div>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <UserCog className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div className="flex-1">
+                            <div className="text-foreground font-medium">Admin info</div>
+                            {adminProfile ? (
+                              <button
+                                onClick={() => navigate(`/profile/${adminProfile.username || adminProfile.id}`)}
+                                className="flex items-center gap-2 mt-1 hover:underline"
+                              >
+                                <Avatar className="h-6 w-6">
+                                  <AvatarFallback className="text-xs">
+                                    {(adminProfile.display_name || 'U').charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-foreground">
+                                  {adminProfile.display_name || adminProfile.username || 'Page admin'}
+                                </span>
+                              </button>
+                            ) : (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                This Page doesn't have any other admins.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <Megaphone className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div className="text-muted-foreground">This Page isn't currently running ads.</div>
+                        </div>
+                        <Button variant="secondary" className="w-full">See all</Button>
                       </div>
                     )}
                     {aboutSection === 'family' && (
@@ -607,8 +653,44 @@ const PageDetail = () => {
 
           <TabsContent value="followers" className="m-0 p-4">
             <Card>
-              <CardContent className="py-10 text-center text-muted-foreground">
-                {followerCount} {followerCount === 1 ? 'person follows' : 'people follow'} this page.
+              <CardHeader>
+                <CardTitle className="text-lg">Followers</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {followerCount} {followerCount === 1 ? 'person follows' : 'people follow'} this Page.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {followers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">No followers yet.</p>
+                ) : (
+                  followers.map((f) => (
+                    <div key={f.user_id} className="flex items-center justify-between gap-3">
+                      <button
+                        onClick={() => navigate(`/profile/${f.profiles?.username || f.user_id}`)}
+                        className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80"
+                      >
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback>
+                            {(f.profiles?.display_name || f.profiles?.username || 'U').charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 text-left">
+                          <div className="text-sm font-medium text-foreground truncate">
+                            {f.profiles?.display_name || f.profiles?.username || 'User'}
+                          </div>
+                          {f.role && f.role !== 'follower' && (
+                            <div className="text-xs text-muted-foreground capitalize">{f.role}</div>
+                          )}
+                        </div>
+                      </button>
+                      {user && f.user_id !== user.id && (
+                        <Button size="sm" variant="secondary">
+                          <MessageCircle className="h-4 w-4 mr-2" /> Message
+                        </Button>
+                      )}
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           </TabsContent>
