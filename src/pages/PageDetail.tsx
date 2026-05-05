@@ -32,6 +32,10 @@ import {
   MapPin,
   Phone,
   Image as ImageIcon,
+  ShieldCheck,
+  UserCog,
+  Megaphone,
+  Hash,
 } from 'lucide-react';
 import NewPost from '@/components/NewPost';
 import Post from '@/components/Post';
@@ -75,6 +79,8 @@ const PageDetail = () => {
   const [postsLoading, setPostsLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [adminProfile, setAdminProfile] = useState<any>(null);
   const { createPost } = useHomeFeed();
 
   const isAdmin = !!user && page?.admin_id === user.id;
@@ -130,6 +136,32 @@ const PageDetail = () => {
   useEffect(() => {
     if (id) fetchPagePosts();
   }, [id]);
+
+  // Fetch followers list + admin profile for transparency
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      const { data } = await supabase
+        .from('page_followers')
+        .select('user_id, role, followed_at, profiles:user_id (id, display_name, username, profile_pic)')
+        .eq('page_id', id)
+        .order('followed_at', { ascending: false })
+        .limit(50);
+      setFollowers(data || []);
+    })();
+  }, [id, followerCount]);
+
+  useEffect(() => {
+    if (!page?.admin_id) return;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, display_name, username, profile_pic')
+        .eq('id', page.admin_id)
+        .maybeSingle();
+      setAdminProfile(data);
+    })();
+  }, [page?.admin_id]);
 
   useEffect(() => {
     if (!id || !user) return;
