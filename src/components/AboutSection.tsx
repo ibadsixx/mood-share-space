@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Edit, Save, X, ChevronDown, CalendarIcon, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { buildSocialUrl } from '@/utils/socialLinks';
 import { format } from 'date-fns';
 import { LocationAutocomplete } from '@/components/LocationAutocomplete';
 import { CompanyAutocomplete } from '@/components/CompanyAutocomplete';
@@ -911,7 +912,7 @@ const AboutSection = ({ profileId, isOwnProfile }: AboutSectionProps) => {
                         <div key={index} className="flex items-center gap-2">
                           <span className="text-sm text-muted-foreground">{link.type}:</span>
                           <a 
-                            href={link.url}
+                            href={buildSocialUrl(link.type, link.url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-sm text-primary hover:underline"

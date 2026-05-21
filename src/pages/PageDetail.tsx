@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { buildSocialUrl } from '@/utils/socialLinks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft,
@@ -57,6 +58,7 @@ import {
   Navigation,
   Plus,
   X,
+  FileText,
 } from 'lucide-react';
 import NewPost from '@/components/NewPost';
 import Post from '@/components/Post';
@@ -143,6 +145,8 @@ interface PageRow {
   button_url: string | null;
   archived: boolean;
   links?: PageLink[] | null;
+  legal_info?: Record<string, string> | null;
+  work_education?: Record<string, string> | null;
 }
 
 const BUTTON_TYPES = [
@@ -187,6 +191,14 @@ const PageDetail = () => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<string>('');
   const [links, setLinks] = useState<PageLink[]>([]);
+  const defaultLegalInfo = { birthplace: '', location: '', birthday: '', quotes: '', languages: '' };
+  const [legalInfo, setLegalInfo] = useState<Record<string, string>>({ ...defaultLegalInfo });
+  const defaultWork = { company: '', position: '', start_date: '', end_date: '', region: '', description: '' };
+  const [workEducation, setWorkEducation] = useState<Record<string, string>>({ ...defaultWork });
+  const [workCurrent, setWorkCurrent] = useState(false);
+  const defaultEducation = { school: '', degree: '', field: '', start_date: '', end_date: '', grade: '', activities: '' };
+  const [educationState, setEducationState] = useState<Record<string, string>>({ ...defaultEducation });
+  const [educationCurrent, setEducationCurrent] = useState(false);
   const [activeTab, setActiveTab] = useState('posts');
   const [aboutSection, setAboutSection] = useState('contact');
   const [pagePosts, setPagePosts] = useState<any[]>([]);
@@ -272,6 +284,11 @@ const PageDetail = () => {
       setDescription(data.description ?? '');
       setCategory(data.category ?? '');
       setLinks((data as any).links ?? []);
+      setLegalInfo({ ...defaultLegalInfo, ...((data as any).legal_info ?? {}) });
+      setWorkEducation({ ...defaultWork, ...(((data as any).work_education?.work) ?? {}) });
+      setWorkCurrent(((data as any).work_education?.work?.current === true || (data as any).work_education?.work?.current === 'true'));
+      setEducationState({ ...defaultEducation, ...(((data as any).work_education?.education) ?? {}) });
+      setEducationCurrent(((data as any).work_education?.education?.current === true || (data as any).work_education?.education?.current === 'true'));
 
       const { count } = await supabase
         .from('page_followers')
@@ -395,21 +412,109 @@ const PageDetail = () => {
       return;
     }
     setSaving(true);
+
+    const cleanLegalInfo: Record<string, string> = {};
+    for (const [k, v] of Object.entries(legalInfo)) {
+      if (v) cleanLegalInfo[k] = v;
+    }
+    const hasLegalInfo = Object.keys(cleanLegalInfo).length > 0;
+
+    const cleanWork: Record<string, unknown> = { ...workEducation };
+    for (const k of Object.keys(cleanWork)) {
+      if (!cleanWork[k]) delete cleanWork[k];
+    }
+    if (workCurrent) cleanWork.current = true;
+    const hasWork = Object.keys(cleanWork).length > 0;
+
+    const cleanEducation: Record<string, unknown> = { ...educationState };
+    for (const k of Object.keys(cleanEducation)) {
+      if (!cleanEducation[k]) delete cleanEducation[k];
+    }
+    if (educationCurrent) cleanEducation.current = true;
+    const hasEducation = Object.keys(cleanEducation).length > 0;
+
+    const workPayload: Record<string, unknown> = {};
+    if (hasWork) workPayload.work = cleanWork;
+    if (hasEducation) workPayload.education = cleanEducation;
+
+    const updates: Record<string, unknown> = {
+      name: name.trim(),
+      description: description.trim() || null,
+      category: category || null,
+    };
+
+    if (hasLegalInfo) {
+      updates.legal_info = cleanLegalInfo;
+    }
+    if (hasWork || hasEducation) {
+      updates.work_education = workPayload;
+    }
+    if (links.length > 0) {
+      updates.links = links;
+    }
+
     const { error } = await supabase
       .from('pages')
-      .update({
-        name: name.trim(),
-        description: description.trim() || null,
-        category: category || null,
-        links: links.length > 0 ? links : null,
-      })
+      .update(updates)
       .eq('id', page.id);
-    setSaving(false);
+
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      const msg = error.message || '';
+      const missingColumn = msg.includes('links') || msg.includes('legal_info') || msg.includes('work_education');
+      if (missingColumn) {
+        const fallback: Record<string, unknown> = {
+          name: name.trim(),
+          description: description.trim() || null,
+          category: category || null,
+        };
+        if (links.length > 0 && !msg.includes('links')) {
+          fallback.links = links;
+        }
+        if (hasLegalInfo && !msg.includes('legal_info')) {
+          fallback.legal_info = cleanLegalInfo;
+        }
+        if ((hasWork || hasEducation) && !msg.includes('work_education')) {
+          fallback.work_education = workPayload;
+        }
+        const { error: fallbackErr } = await supabase
+          .from('pages')
+          .update(fallback)
+          .eq('id', page.id);
+
+        setSaving(false);
+
+        if (fallbackErr) {
+          toast({ title: 'Error', description: fallbackErr.message, variant: 'destructive' });
+          return;
+        }
+
+        setPage({
+          ...page,
+          name: name.trim(),
+          description: description.trim() || null,
+          category: category || null,
+          links: links.length > 0 ? links : null,
+          legal_info: hasLegalInfo ? cleanLegalInfo : null,
+          work_education: (hasWork || hasEducation) ? workPayload : null,
+        });
+        toast({ title: 'Saved' });
+      } else {
+        setSaving(false);
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      }
       return;
     }
-    setPage({ ...page, name: name.trim(), description: description.trim() || null, category: category || null, links: links.length > 0 ? links : null });
+
+    setSaving(false);
+    setPage({
+      ...page,
+      name: name.trim(),
+      description: description.trim() || null,
+      category: category || null,
+      links: links.length > 0 ? links : null,
+      legal_info: hasLegalInfo ? cleanLegalInfo : null,
+      work_education: (hasWork || hasEducation) ? workPayload : null,
+    });
     toast({ title: 'Saved', description: 'Page updated successfully' });
   };
 
@@ -833,7 +938,7 @@ const PageDetail = () => {
                       <div className="flex justify-end">
                         {aboutEditing ? (
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => { setAboutEditing(false); setDescription(page.description ?? ''); setCategory(page.category ?? ''); setLinks(page.links ?? []); }}>
+                            <Button variant="outline" size="sm" onClick={() => { setAboutEditing(false); setDescription(page.description ?? ''); setCategory(page.category ?? ''); setLinks(page.links ?? []); setLegalInfo({ ...defaultLegalInfo, ...(page.legal_info ?? {}) }); setWorkEducation({ ...defaultWork, ...((page.work_education?.work) ?? {}) }); setWorkCurrent(page.work_education?.work?.current === true || page.work_education?.work?.current === 'true'); setEducationState({ ...defaultEducation, ...((page.work_education?.education) ?? {}) }); setEducationCurrent(page.work_education?.education?.current === true || page.work_education?.education?.current === 'true'); }}>
                               Cancel
                             </Button>
                             <Button variant="default" size="sm" onClick={() => { handleSave(); setAboutEditing(false); }} disabled={saving}>
@@ -894,9 +999,10 @@ const PageDetail = () => {
                                 }
                                 return (
                                 <div key={i} className="flex items-start gap-2">
-                                  <Select
+                                  <select
                                     value={link.type}
-                                    onValueChange={(val) => {
+                                    onChange={(e) => {
+                                      const val = e.target.value;
                                       let nextUrl = link.url;
                                       if (val !== 'WhatsApp' && link.type === 'WhatsApp') {
                                         nextUrl = '';
@@ -908,35 +1014,28 @@ const PageDetail = () => {
                                       next[i] = { type: val, url: nextUrl };
                                       setLinks(next);
                                     }}
+                                    className="w-36 shrink-0 bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                                   >
-                                    <SelectTrigger className="w-36 shrink-0">
-                                      <SelectValue placeholder="Type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {LINK_TYPES.map((t) => (
-                                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                    {LINK_TYPES.map((t) => (
+                                      <option key={t} value={t}>{t}</option>
+                                    ))}
+                                  </select>
                                   {isWA ? (
                                     <div className="flex-1 flex gap-2">
-                                      <Select
+                                      <select
                                         value={waCode}
-                                        onValueChange={(code) => {
+                                        onChange={(e) => {
+                                          const code = e.target.value;
                                           const next = [...links];
                                           next[i] = { ...next[i], url: `https://wa.me/${code}${waPhone}` };
                                           setLinks(next);
                                         }}
+                                        className="bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                                       >
-                                        <SelectTrigger className="w-30 shrink-0">
-                                          <SelectValue placeholder="Code" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {COUNTRY_CODES.map((c) => (
-                                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                        {COUNTRY_CODES.map((c) => (
+                                          <option key={c.value} value={c.value}>{c.label}</option>
+                                        ))}
+                                      </select>
                                       <Input
                                         value={waPhone}
                                         onChange={(e) => {
@@ -986,7 +1085,7 @@ const PageDetail = () => {
                                 links.map((link, i) => (
                                   <a
                                     key={i}
-                                    href={link.url}
+                                    href={buildSocialUrl(link.type, link.url)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center gap-2 text-primary hover:underline"
@@ -1027,10 +1126,304 @@ const PageDetail = () => {
                     )}
 
                     {aboutSection === 'privacy' && (
-                      <p className="text-sm text-muted-foreground">No privacy or legal info added yet.</p>
+                      <section className="space-y-4">
+                        <h3 className="font-semibold">Privacy and legal info</h3>
+                        {aboutEditing ? (
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">Gender</label>
+                              <p className="text-sm text-foreground h-10 flex items-center px-3 rounded-md border border-input bg-muted/50">Other</p>
+                              <p className="text-xs text-red-500 mt-1">Not available on this type of page</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">Relationship</label>
+                              <p className="text-sm text-foreground h-10 flex items-center px-3 rounded-md border border-input bg-muted/50">Select relationship</p>
+                              <p className="text-xs text-red-500 mt-1">Not available on this type of page</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">Family</label>
+                              <p className="text-sm text-foreground h-10 flex items-center px-3 rounded-md border border-input bg-muted/50">Not available</p>
+                              <p className="text-xs text-red-500 mt-1">Not available on this type of page</p>
+                            </div>
+                            {[
+                              { key: 'birthplace', label: 'Birthplace', type: 'text', placeholder: 'City, Country' },
+                              { key: 'location', label: 'Location', type: 'text', placeholder: 'City, Country' },
+                              { key: 'birthday', label: 'Birthday', type: 'date' },
+                              { key: 'quotes', label: 'Quotes', type: 'textarea', placeholder: 'Favorite quotes' },
+                              { key: 'languages', label: 'Languages', type: 'text', placeholder: 'e.g. English, Spanish' },
+                            ].map((field) => (
+                              <div key={field.key}>
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">{field.label}</label>
+                                {field.type === 'textarea' ? (
+                                  <textarea
+                                    value={legalInfo[field.key] || ''}
+                                    onChange={(e) => setLegalInfo(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                    placeholder={field.placeholder}
+                                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-h-[80px]"
+                                  />
+                                ) : (
+                                  <Input
+                                    value={legalInfo[field.key] || ''}
+                                    onChange={(e) => setLegalInfo(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                    placeholder={field.placeholder}
+                                    type={field.type}
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {[
+                              { key: 'gender', label: 'Gender', icon: UserIcon, val: 'Other' },
+                              { key: 'relationship', label: 'Relationship', icon: Heart, val: 'Select relationship' },
+                              { key: 'family', label: 'Family', icon: Users, val: 'Not available' },
+                              { key: 'birthplace', label: 'Birthplace', icon: MapPin },
+                              { key: 'location', label: 'Location', icon: MapPin },
+                              { key: 'birthday', label: 'Birthday', icon: Calendar },
+                              { key: 'quotes', label: 'Quotes', icon: MessageCircle },
+                              { key: 'languages', label: 'Languages', icon: Globe },
+                            ].map((entry) => {
+                              const val = entry.val || legalInfo[entry.key];
+                              if (!val) return null;
+                              return (
+                                <div key={entry.key} className="flex items-start gap-3 text-sm">
+                                  <entry.icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                                  <div>
+                                    <span className="text-muted-foreground">{entry.label}: </span>
+                                    <span className="text-foreground">{val}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </section>
                     )}
                     {aboutSection === 'work' && (
-                      <p className="text-sm text-muted-foreground">No work or education info added yet.</p>
+                      <section className="space-y-4">
+                        <h3 className="font-semibold">Work</h3>
+                        {aboutEditing ? (
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">Company / Organization</label>
+                              <Input
+                                value={workEducation.company || ''}
+                                onChange={(e) => setWorkEducation(prev => ({ ...prev, company: e.target.value }))}
+                                placeholder="Company name"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">Position</label>
+                              <Input
+                                value={workEducation.position || ''}
+                                onChange={(e) => setWorkEducation(prev => ({ ...prev, position: e.target.value }))}
+                                placeholder="Job title / Role"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">Start date</label>
+                                <Input
+                                  value={workEducation.start_date || ''}
+                                  onChange={(e) => setWorkEducation(prev => ({ ...prev, start_date: e.target.value }))}
+                                  type="date"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">End date</label>
+                                <Input
+                                  value={workEducation.end_date || ''}
+                                  onChange={(e) => setWorkEducation(prev => ({ ...prev, end_date: e.target.value }))}
+                                  type="date"
+                                  disabled={workCurrent}
+                                />
+                              </div>
+                            </div>
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={workCurrent}
+                                onChange={(e) => setWorkCurrent(e.target.checked)}
+                                className="accent-primary"
+                              />
+                              Until now
+                            </label>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">Region / City</label>
+                              <Input
+                                value={workEducation.region || ''}
+                                onChange={(e) => setWorkEducation(prev => ({ ...prev, region: e.target.value }))}
+                                placeholder="City, Region"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">Description</label>
+                              <textarea
+                                value={workEducation.description || ''}
+                                onChange={(e) => setWorkEducation(prev => ({ ...prev, description: e.target.value }))}
+                                placeholder="Describe your role or work"
+                                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-h-[80px]"
+                              />
+                            </div>
+                            <h4 className="font-semibold mt-6 mb-2">Education</h4>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">School / University</label>
+                              <Input
+                                value={educationState.school || ''}
+                                onChange={(e) => setEducationState(prev => ({ ...prev, school: e.target.value }))}
+                                placeholder="School or university name"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">Degree</label>
+                              <Input
+                                value={educationState.degree || ''}
+                                onChange={(e) => setEducationState(prev => ({ ...prev, degree: e.target.value }))}
+                                placeholder="e.g. Bachelor's, Master's"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">Field of study</label>
+                              <Input
+                                value={educationState.field || ''}
+                                onChange={(e) => setEducationState(prev => ({ ...prev, field: e.target.value }))}
+                                placeholder="e.g. Computer Science"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">Start date</label>
+                                <Input
+                                  value={educationState.start_date || ''}
+                                  onChange={(e) => setEducationState(prev => ({ ...prev, start_date: e.target.value }))}
+                                  type="date"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">End date</label>
+                                <Input
+                                  value={educationState.end_date || ''}
+                                  onChange={(e) => setEducationState(prev => ({ ...prev, end_date: e.target.value }))}
+                                  type="date"
+                                  disabled={educationCurrent}
+                                />
+                              </div>
+                            </div>
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={educationCurrent}
+                                onChange={(e) => setEducationCurrent(e.target.checked)}
+                                className="accent-primary"
+                              />
+                              Until now
+                            </label>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">Grade / GPA</label>
+                              <Input
+                                value={educationState.grade || ''}
+                                onChange={(e) => setEducationState(prev => ({ ...prev, grade: e.target.value }))}
+                                placeholder="e.g. 3.8 GPA"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground mb-1 block">Activities / Societies</label>
+                              <textarea
+                                value={educationState.activities || ''}
+                                onChange={(e) => setEducationState(prev => ({ ...prev, activities: e.target.value }))}
+                                placeholder="Clubs, sports, volunteer work"
+                                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-h-[80px]"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {[
+                              { key: 'company', label: 'Company / Organization', icon: Building2 },
+                              { key: 'position', label: 'Position', icon: Briefcase },
+                              { key: 'region', label: 'Region / City', icon: MapPin },
+                            ].map(({ key, label, icon: Icon }) => {
+                              const val = workEducation[key];
+                              if (!val) return null;
+                              return (
+                                <div key={key} className="flex items-start gap-3 text-sm">
+                                  <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                                  <div>
+                                    <span className="text-muted-foreground">{label}: </span>
+                                    <span className="text-foreground">{val}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {(workEducation.start_date || workEducation.end_date || workCurrent) && (
+                              <div className="flex items-start gap-3 text-sm">
+                                <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                                <div>
+                                  <span className="text-muted-foreground">Period: </span>
+                                  <span className="text-foreground">
+                                    {workEducation.start_date || '?'} – {workCurrent ? 'Present' : (workEducation.end_date || '?')}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {workEducation.description && (
+                              <div className="flex items-start gap-3 text-sm">
+                                <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                                <div>
+                                  <span className="text-muted-foreground">Description: </span>
+                                  <span className="text-foreground whitespace-pre-wrap">{workEducation.description}</span>
+                                </div>
+                              </div>
+                            )}
+                            {Object.keys(workEducation).every(k => !workEducation[k]) && !workCurrent && (
+                              <p className="text-sm text-muted-foreground">No work info added yet.</p>
+                            )}
+                            <h4 className="font-semibold mt-6 mb-2">Education</h4>
+                            {[
+                              { key: 'school', label: 'School / University', icon: Building2 },
+                              { key: 'degree', label: 'Degree', icon: BadgeCheck },
+                              { key: 'field', label: 'Field of study', icon: BookOpen },
+                              { key: 'grade', label: 'Grade / GPA', icon: Star },
+                            ].map(({ key, label, icon: Icon }) => {
+                              const val = educationState[key];
+                              if (!val) return null;
+                              return (
+                                <div key={key} className="flex items-start gap-3 text-sm">
+                                  <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                                  <div>
+                                    <span className="text-muted-foreground">{label}: </span>
+                                    <span className="text-foreground">{val}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {(educationState.start_date || educationState.end_date || educationCurrent) && (
+                              <div className="flex items-start gap-3 text-sm">
+                                <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                                <div>
+                                  <span className="text-muted-foreground">Period: </span>
+                                  <span className="text-foreground">
+                                    {educationState.start_date || '?'} – {educationCurrent ? 'Present' : (educationState.end_date || '?')}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {educationState.activities && (
+                              <div className="flex items-start gap-3 text-sm">
+                                <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                                <div>
+                                  <span className="text-muted-foreground">Activities: </span>
+                                  <span className="text-foreground whitespace-pre-wrap">{educationState.activities}</span>
+                                </div>
+                              </div>
+                            )}
+                            {Object.keys(educationState).every(k => !educationState[k]) && !educationCurrent && (
+                              <p className="text-sm text-muted-foreground">No education info added yet.</p>
+                            )}
+                          </div>
+                        )}
+                      </section>
                     )}
                     {aboutSection === 'places' && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">

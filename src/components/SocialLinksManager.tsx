@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, X, ExternalLink } from 'lucide-react';
+import { buildSocialUrl } from '@/utils/socialLinks';
 
 interface SocialLink {
   type: string;
@@ -126,7 +127,7 @@ export const SocialLinksManager: React.FC<SocialLinksManagerProps> = ({
                       {socialLinkTypes.find(t => t.value === link.type)?.label || link.type}:
                     </span>
                     <a
-                      href={link.url}
+                      href={buildSocialUrl(link.type, link.url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-primary hover:underline flex items-center gap-1"
