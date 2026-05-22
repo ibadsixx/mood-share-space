@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageCircle, Search, ChevronDown, ChevronUp, Edit } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useConversations } from '@/hooks/useConversations';
-import { MiniChatWindow } from './MiniChatWindow';
+import { usePageSwitch } from '@/contexts/PageSwitchContext';
 import { supabase } from '@/integrations/supabase/client';
+import { openChatWindow } from './ChatWindowManager';
 
 interface ChatContact {
   id: string;
@@ -16,76 +16,104 @@ interface ChatContact {
   profile_pic?: string | null;
 }
 
-interface OpenChat {
-  user: ChatContact;
-  minimized: boolean;
-}
-
 export const FloatingIM: React.FC = () => {
   const { user } = useAuth();
+  const { actingPage } = usePageSwitch();
   const [contacts, setContacts] = useState<ChatContact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [openChats, setOpenChats] = useState<OpenChat[]>([]);
   const [contactsCollapsed, setContactsCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const currentUserId = user?.id;
 
-  // Fetch friends + conversation contacts
+  // Fetch contacts — personal or page-specific
   useEffect(() => {
     if (!currentUserId) return;
 
     const fetchContacts = async () => {
+      setLoading(true);
       try {
-        // Fetch friends and conversation partners in parallel
-        const [friendsRes, convsRes] = await Promise.all([
-          supabase
-            .from('friends')
-            .select('requester_id, receiver_id')
-            .or(`requester_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
-            .eq('status', 'accepted'),
-          supabase
+        if (actingPage) {
+          // Fetch page contacts — people the page has conversed with
+          const { data: convs } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('page_id', actingPage.id)
+            .order('updated_at', { ascending: false });
+          if (!convs || convs.length === 0) {
+            setContacts([]);
+            setLoading(false);
+            return;
+          }
+          const convIds = convs.map((c: any) => c.id);
+          const { data: participants } = await supabase
             .from('conversation_participants')
-            .select('conversation_id, user_id')
-            .neq('user_id', currentUserId)
-        ]);
+            .select('user_id')
+            .in('conversation_id', convIds);
+          if (!participants || participants.length === 0) {
+            setContacts([]);
+            setLoading(false);
+            return;
+          }
+          const userIds = [...new Set<string>(participants.map((p: any) => p.user_id).filter((uid: string) => uid !== currentUserId))];
+          if (userIds.length === 0) {
+            setContacts([]);
+            setLoading(false);
+            return;
+          }
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, username, display_name, profile_pic')
+            .in('id', userIds);
+          setContacts(profiles || []);
+        } else {
+          // Fetch personal contacts — friends + conversation partners
+          const [friendsRes, convsRes] = await Promise.all([
+            supabase
+              .from('friends')
+              .select('requester_id, receiver_id')
+              .or(`requester_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
+              .eq('status', 'accepted'),
+            supabase
+              .from('conversation_participants')
+              .select('conversation_id, user_id')
+              .neq('user_id', currentUserId)
+          ]);
 
-        // Collect unique user IDs from both sources
-        const userIdSet = new Set<string>();
+          const userIdSet = new Set<string>();
 
-        friendsRes.data?.forEach((f) => {
-          userIdSet.add(f.requester_id === currentUserId ? f.receiver_id : f.requester_id);
-        });
-
-        // Only include conversation partners where current user is also a participant
-        if (convsRes.data?.length) {
-          // Get conversations the current user is in
-          const { data: myConvs } = await supabase
-            .from('conversation_participants')
-            .select('conversation_id')
-            .eq('user_id', currentUserId);
-
-          const myConvIds = new Set(myConvs?.map(c => c.conversation_id) || []);
-          convsRes.data.forEach((cp) => {
-            if (myConvIds.has(cp.conversation_id)) {
-              userIdSet.add(cp.user_id);
-            }
+          friendsRes.data?.forEach((f) => {
+            userIdSet.add(f.requester_id === currentUserId ? f.receiver_id : f.requester_id);
           });
+
+          if (convsRes.data?.length) {
+            const { data: myConvs } = await supabase
+              .from('conversation_participants')
+              .select('conversation_id')
+              .eq('user_id', currentUserId);
+
+            const myConvIds = new Set(myConvs?.map(c => c.conversation_id) || []);
+            convsRes.data.forEach((cp) => {
+              if (myConvIds.has(cp.conversation_id)) {
+                userIdSet.add(cp.user_id);
+              }
+            });
+          }
+
+          const allIds = Array.from(userIdSet);
+          if (!allIds.length) {
+            setContacts([]);
+            setLoading(false);
+            return;
+          }
+
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, username, display_name, profile_pic')
+            .in('id', allIds);
+
+          setContacts(profiles || []);
         }
-
-        const allIds = Array.from(userIdSet);
-        if (!allIds.length) {
-          setContacts([]);
-          setLoading(false);
-          return;
-        }
-
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username, display_name, profile_pic')
-          .in('id', allIds);
-
-        setContacts(profiles || []);
       } catch (err) {
         console.error('Failed to fetch contacts:', err);
       } finally {
@@ -94,7 +122,7 @@ export const FloatingIM: React.FC = () => {
     };
 
     fetchContacts();
-  }, [currentUserId]);
+  }, [currentUserId, actingPage]);
 
   const filteredContacts = contacts.filter((c) =>
     c.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -102,61 +130,18 @@ export const FloatingIM: React.FC = () => {
   );
 
   const openChat = (contact: ChatContact) => {
-    setOpenChats((prev) => {
-      const existing = prev.find((c) => c.user.id === contact.id);
-      if (existing) {
-        // Un-minimize if already open
-        return prev.map((c) =>
-          c.user.id === contact.id ? { ...c, minimized: false } : c
-        );
-      }
-      // Max 3 open chats
-      const updated = [...prev, { user: contact, minimized: false }];
-      if (updated.length > 3) updated.shift();
-      return updated;
-    });
-  };
-
-  const closeChat = (userId: string) => {
-    setOpenChats((prev) => prev.filter((c) => c.user.id !== userId));
-  };
-
-  const toggleMinimize = (userId: string) => {
-    setOpenChats((prev) =>
-      prev.map((c) =>
-        c.user.id === userId ? { ...c, minimized: !c.minimized } : c
-      )
-    );
+    openChatWindow(contact);
   };
 
   if (!currentUserId) return null;
 
-  // Calculate positions for mini chat windows (open from right side)
-  const openWindows = openChats.filter((c) => !c.minimized);
-  const minimizedChats = openChats.filter((c) => c.minimized);
-
   return (
     <>
-      {/* Mini Chat Windows - positioned above the contacts bar */}
-      <div className="fixed bottom-0 right-[280px] z-50 flex items-end gap-2" style={{ direction: 'rtl' }}>
-        {openChats.map((chat) => (
-          <div key={chat.user.id} style={{ direction: 'ltr' }}>
-            <MiniChatWindow
-              user={chat.user}
-              currentUserId={currentUserId}
-              onClose={() => closeChat(chat.user.id)}
-              onMinimize={() => toggleMinimize(chat.user.id)}
-              isMinimized={chat.minimized}
-            />
-          </div>
-        ))}
-      </div>
-
       {/* Contacts Sidebar - right edge */}
       <aside className="fixed right-0 top-16 bottom-0 w-[260px] bg-card/95 backdrop-blur-sm border-l border-border/50 z-40 hidden xl:flex flex-col">
         {/* Header */}
         <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-foreground">Contacts</h3>
+          <h3 className="text-base font-semibold text-foreground">{actingPage ? 'Page Contacts' : 'Contacts'}</h3>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
               <Search className="h-4 w-4" />

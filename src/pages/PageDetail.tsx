@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -167,6 +167,7 @@ const BUTTON_TYPES = [
 const PageDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -199,8 +200,23 @@ const PageDetail = () => {
   const defaultEducation = { school: '', degree: '', field: '', start_date: '', end_date: '', grade: '', activities: '' };
   const [educationState, setEducationState] = useState<Record<string, string>>({ ...defaultEducation });
   const [educationCurrent, setEducationCurrent] = useState(false);
-  const [activeTab, setActiveTab] = useState('posts');
-  const [aboutSection, setAboutSection] = useState('contact');
+  const [familyMembers, setFamilyMembers] = useState<{ name: string; relationship: string; id?: string; type?: 'person' | 'page' }[]>([]);
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberRelation, setNewMemberRelation] = useState('Family');
+  const [familySearchQuery, setFamilySearchQuery] = useState('');
+  const [familySearchResults, setFamilySearchResults] = useState<{ id: string; name: string; type: 'person' | 'page'; profile_pic?: string | null }[]>([]);
+  const [familySearchLoading, setFamilySearchLoading] = useState(false);
+  const [familySearchIdx, setFamilySearchIdx] = useState<number | null>(null);
+
+  const RELATIONSHIP_OPTIONS = [
+    'Spouse', 'Parent', 'Child', 'Sibling', 'Grandparent', 'Grandchild',
+    'Aunt/Uncle', 'Cousin', 'Niece/Nephew', 'Fiancé/Fiancée', 'Partner', 'Guardian', 'Family',
+  ];
+  const pathParts = location.pathname.split('/');
+  const aboutPathSection = pathParts[pathParts.length - 1];
+  const isAboutPath = pathParts.includes('about');
+  const [activeTab, setActiveTab] = useState(isAboutPath ? 'about' : 'posts');
+  const [aboutSection, setAboutSection] = useState(isAboutPath && aboutPathSection !== 'about' ? aboutPathSection : 'contact');
   const [pagePosts, setPagePosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -213,6 +229,7 @@ const PageDetail = () => {
   const [selectedButtonType, setSelectedButtonType] = useState<string>('message');
   const [buttonUrl, setButtonUrl] = useState('');
   const [savingButton, setSavingButton] = useState(false);
+  const [pageContacts, setPageContacts] = useState<{ id: string; display_name: string; username: string; profile_pic?: string | null }[]>([]);
 
   const { createPost } = useHomeFeed();
   const { actingPage, switchToPage, switchToPersonal } = usePageSwitch();
@@ -234,7 +251,10 @@ const PageDetail = () => {
     switch (page.button_type) {
       case 'message': {
         const convId = await getOrCreateDM(page.admin_id);
-        if (convId) navigate(`/messages/${convId}`);
+        if (convId && page?.id) {
+          await supabase.from('conversations').update({ page_id: page.id }).eq('id', convId).maybeSingle();
+          navigate(`/messages/${convId}`);
+        }
         break;
       }
       case 'call': {
@@ -289,6 +309,7 @@ const PageDetail = () => {
       setWorkCurrent(((data as any).work_education?.work?.current === true || (data as any).work_education?.work?.current === 'true'));
       setEducationState({ ...defaultEducation, ...(((data as any).work_education?.education) ?? {}) });
       setEducationCurrent(((data as any).work_education?.education?.current === true || (data as any).work_education?.education?.current === 'true'));
+      setFamilyMembers((data as any).family_members ?? []);
 
       const { count } = await supabase
         .from('page_followers')
@@ -361,6 +382,65 @@ const PageDetail = () => {
       setIsFollowing(!!data);
     })();
   }, [id, user]);
+
+  // Fetch page contacts (conversations tagged with this page)
+  useEffect(() => {
+    if (!id || !user) return;
+    (async () => {
+      const { data: convs } = await supabase
+        .from('conversations')
+        .select('id, created_by')
+        .eq('page_id', id)
+        .order('updated_at', { ascending: false });
+      if (!convs || convs.length === 0) return;
+      const convIds = convs.map((c: any) => c.id);
+      const { data: participants } = await supabase
+        .from('conversation_participants')
+        .select('user_id')
+        .in('conversation_id', convIds);
+      if (!participants || participants.length === 0) return;
+      const userIds = [...new Set<string>(participants.map((p: any) => p.user_id).filter((uid: string) => uid !== user.id))];
+      if (userIds.length === 0) return;
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name, username, profile_pic')
+        .in('id', userIds);
+      setPageContacts(profiles || []);
+    })();
+  }, [id, user]);
+
+  useEffect(() => {
+    if (!familySearchQuery.trim() || familySearchQuery.trim().length < 2 || familySearchIdx === null) {
+      setFamilySearchResults([]);
+      return;
+    }
+    const q = familySearchQuery.trim();
+    const timer = setTimeout(async () => {
+      setFamilySearchLoading(true);
+      try {
+        const pattern = `%${q}%`;
+        const [profilesRes, pagesRes] = await Promise.all([
+          supabase.from('profiles').select('id, display_name, username, profile_pic').or(`display_name.ilike.${pattern},username.ilike.${pattern}`).limit(10),
+          supabase.from('pages').select('id, name, profile_pic').ilike('name', pattern).limit(10),
+        ]);
+        const results: { id: string; name: string; type: 'person' | 'page'; profile_pic?: string | null }[] = [];
+        for (const p of profilesRes.data || []) {
+          results.push({ id: p.id, name: p.display_name || p.username, type: 'person', profile_pic: p.profile_pic });
+        }
+        for (const p of pagesRes.data || []) {
+          if (!results.some(r => r.id === p.id && r.type === 'page')) {
+            results.push({ id: p.id, name: p.name, type: 'page', profile_pic: p.profile_pic });
+          }
+        }
+        setFamilySearchResults(results);
+      } catch {
+        setFamilySearchResults([]);
+      } finally {
+        setFamilySearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [familySearchQuery, familySearchIdx]);
 
   const handlePagePost = async (
     content: string,
@@ -452,6 +532,9 @@ const PageDetail = () => {
     if (links.length > 0) {
       updates.links = links;
     }
+    if (familyMembers.length > 0) {
+      updates.family_members = familyMembers;
+    }
 
     const { error } = await supabase
       .from('pages')
@@ -460,7 +543,7 @@ const PageDetail = () => {
 
     if (error) {
       const msg = error.message || '';
-      const missingColumn = msg.includes('links') || msg.includes('legal_info') || msg.includes('work_education');
+      const missingColumn = msg.includes('links') || msg.includes('legal_info') || msg.includes('work_education') || msg.includes('family_members');
       if (missingColumn) {
         const fallback: Record<string, unknown> = {
           name: name.trim(),
@@ -475,6 +558,9 @@ const PageDetail = () => {
         }
         if ((hasWork || hasEducation) && !msg.includes('work_education')) {
           fallback.work_education = workPayload;
+        }
+        if (familyMembers.length > 0 && !msg.includes('family_members')) {
+          fallback.family_members = familyMembers;
         }
         const { error: fallbackErr } = await supabase
           .from('pages')
@@ -496,6 +582,7 @@ const PageDetail = () => {
           links: links.length > 0 ? links : null,
           legal_info: hasLegalInfo ? cleanLegalInfo : null,
           work_education: (hasWork || hasEducation) ? workPayload : null,
+          family_members: familyMembers.length > 0 ? familyMembers : null,
         });
         toast({ title: 'Saved' });
       } else {
@@ -514,6 +601,7 @@ const PageDetail = () => {
       links: links.length > 0 ? links : null,
       legal_info: hasLegalInfo ? cleanLegalInfo : null,
       work_education: (hasWork || hasEducation) ? workPayload : null,
+      family_members: familyMembers.length > 0 ? familyMembers : null,
     });
     toast({ title: 'Saved', description: 'Page updated successfully' });
   };
@@ -815,7 +903,7 @@ const PageDetail = () => {
         </div>
 
         {/* Tabs bar */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); if (v === 'about') navigate(`/pages/${id}/about/${aboutSection}`, { replace: true }); else navigate(`/pages/${id}`, { replace: true }); }} className="w-full">
           <div className="px-2">
             <TabsList className="bg-transparent h-12 p-0 gap-1">
               <TabsTrigger value="posts" className="data-[state=active]:bg-accent rounded-md px-4 h-10">Posts</TabsTrigger>
@@ -912,14 +1000,13 @@ const PageDetail = () => {
                         { id: 'contact', label: 'Contact and basic info' },
                         { id: 'privacy', label: 'Privacy and legal info' },
                         { id: 'work', label: 'Work and education' },
-                        { id: 'places', label: 'Places lived' },
                         { id: 'transparency', label: 'Page transparency' },
-                        { id: 'family', label: 'Family and relationships' },
+                        { id: 'family', label: 'Family' },
                         { id: 'life', label: 'Life updates' },
                       ].map((s) => (
                         <button
                           key={s.id}
-                          onClick={() => setAboutSection(s.id)}
+                          onClick={() => { setAboutSection(s.id); navigate(`/pages/${id}/about/${s.id}`, { replace: true }); }}
                           className={`text-left px-3 py-2 rounded-md transition-colors ${
                             aboutSection === s.id
                               ? 'bg-primary/10 text-primary font-medium'
@@ -938,7 +1025,7 @@ const PageDetail = () => {
                       <div className="flex justify-end">
                         {aboutEditing ? (
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => { setAboutEditing(false); setDescription(page.description ?? ''); setCategory(page.category ?? ''); setLinks(page.links ?? []); setLegalInfo({ ...defaultLegalInfo, ...(page.legal_info ?? {}) }); setWorkEducation({ ...defaultWork, ...((page.work_education?.work) ?? {}) }); setWorkCurrent(page.work_education?.work?.current === true || page.work_education?.work?.current === 'true'); setEducationState({ ...defaultEducation, ...((page.work_education?.education) ?? {}) }); setEducationCurrent(page.work_education?.education?.current === true || page.work_education?.education?.current === 'true'); }}>
+                            <Button variant="outline" size="sm" onClick={() => { setAboutEditing(false); setDescription(page.description ?? ''); setCategory(page.category ?? ''); setLinks(page.links ?? []); setLegalInfo({ ...defaultLegalInfo, ...(page.legal_info ?? {}) }); setWorkEducation({ ...defaultWork, ...((page.work_education?.work) ?? {}) }); setWorkCurrent(page.work_education?.work?.current === true || page.work_education?.work?.current === 'true'); setEducationState({ ...defaultEducation, ...((page.work_education?.education) ?? {}) }); setEducationCurrent(page.work_education?.education?.current === true || page.work_education?.education?.current === 'true'); setFamilyMembers(page.family_members ?? []); setNewMemberName(''); setNewMemberRelation('Family'); setFamilySearchQuery(''); setFamilySearchResults([]); setFamilySearchIdx(null); }}>
                               Cancel
                             </Button>
                             <Button variant="default" size="sm" onClick={() => { handleSave(); setAboutEditing(false); }} disabled={saving}>
@@ -1101,6 +1188,52 @@ const PageDetail = () => {
                                   <span>No links added yet</span>
                                 </div>
                               )}
+                            </div>
+                          )}
+                        </section>
+
+                        <section>
+                          <h3 className="font-semibold mb-3">Contacts</h3>
+                          {pageContacts.length > 0 ? (
+                            <div className="space-y-2 text-sm">
+                              {pageContacts.map((c) => (
+                                <div key={c.id} className="flex items-center gap-3 px-2 py-1.5 rounded-md group hover:bg-accent transition-colors">
+                                  <button
+                                    onClick={() => navigate(`/profile/${c.username || c.id}`)}
+                                    className="flex items-center gap-3 flex-1 text-left"
+                                  >
+                                    <Avatar className="h-8 w-8 shrink-0">
+                                      <AvatarImage src={c.profile_pic || ''} />
+                                      <AvatarFallback className="text-xs">{(c.display_name || '?')[0]}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-foreground truncate">{c.display_name}</p>
+                                      <p className="text-xs text-muted-foreground truncate">@{c.username}</p>
+                                    </div>
+                                  </button>
+                                  {actingAsPage && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={async () => {
+                                        const convId = await getOrCreateDM(c.id);
+                                        if (convId && page?.id) {
+                                          await supabase.from('conversations').update({ page_id: page.id }).eq('id', convId).maybeSingle();
+                                          navigate(`/messages/${convId}`);
+                                        }
+                                      }}
+                                    >
+                                      <MessageCircle className="h-4 w-4 mr-1" /> Message
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <MessageCircle className="h-4 w-4" />
+                              <span>No contacts yet. Message someone from this page to add them here.</span>
                             </div>
                           )}
                         </section>
@@ -1425,11 +1558,6 @@ const PageDetail = () => {
                         )}
                       </section>
                     )}
-                    {aboutSection === 'places' && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4" /> <span>No places added yet.</span>
-                      </div>
-                    )}
                     {aboutSection === 'transparency' && (
                       <div className="space-y-5 text-sm">
                         <div>
@@ -1485,7 +1613,107 @@ const PageDetail = () => {
                       </div>
                     )}
                     {aboutSection === 'family' && (
-                      <p className="text-sm text-muted-foreground">No family or relationships info.</p>
+                      <section className="space-y-4">
+                        <h3 className="font-semibold">Family</h3>
+                        {aboutEditing ? (
+                          <div className="space-y-3">
+                            {familyMembers.map((member, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <Input
+                                  value={member.name}
+                                  readOnly
+                                  className="flex-1 bg-muted/50"
+                                />
+                                <select
+                                  value={member.relationship}
+                                  onChange={(e) => {
+                                    const next = [...familyMembers];
+                                    next[i] = { ...next[i], relationship: e.target.value };
+                                    setFamilyMembers(next);
+                                  }}
+                                  className="flex h-10 w-[140px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                >
+                                  {RELATIONSHIP_OPTIONS.map((r) => (
+                                    <option key={r} value={r}>{r}</option>
+                                  ))}
+                                </select>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setFamilyMembers(familyMembers.filter((_, j) => j !== i))}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            <div className="relative flex items-center gap-2">
+                              <div className="relative flex-1">
+                                <Input
+                                  value={familySearchIdx === null ? '' : familySearchQuery}
+                                  onChange={(e) => {
+                                    setFamilySearchQuery(e.target.value);
+                                    setFamilySearchIdx(0);
+                                  }}
+                                  placeholder="Search people or pages..."
+                                  className="flex-1"
+                                />
+                                {familySearchLoading && (
+                                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                                )}
+                                {familySearchResults.length > 0 && familySearchIdx !== null && (
+                                  <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                    {familySearchResults.map((r) => (
+                                      <button
+                                        key={`${r.type}-${r.id}`}
+                                        type="button"
+                                        className="flex items-center gap-3 w-full px-3 py-2 text-sm hover:bg-accent text-left"
+                                        onClick={() => {
+                                          setFamilyMembers([...familyMembers, { name: r.name, relationship: newMemberRelation, id: r.id, type: r.type }]);
+                                          setFamilySearchQuery('');
+                                          setFamilySearchResults([]);
+                                          setFamilySearchIdx(null);
+                                        }}
+                                      >
+                                        <Avatar className="h-8 w-8">
+                                          <AvatarImage src={r.profile_pic || ''} />
+                                          <AvatarFallback className="text-xs">{r.name[0]}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                          <p className="font-medium">{r.name}</p>
+                                          <p className="text-xs text-muted-foreground capitalize">{r.type}</p>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <select
+                                value={newMemberRelation}
+                                onChange={(e) => setNewMemberRelation(e.target.value)}
+                                className="flex h-10 w-[140px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              >
+                                {RELATIONSHIP_OPTIONS.map((r) => (
+                                  <option key={r} value={r}>{r}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {familyMembers.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">No family info added yet.</p>
+                            ) : (
+                              familyMembers.map((member, i) => (
+                                <div key={i} className="flex items-center gap-3 text-sm">
+                                  <Users className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-foreground">{member.name}</span>
+                                  <span className="text-muted-foreground">— {member.relationship}</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </section>
                     )}
                     {aboutSection === 'life' && (
                       <p className="text-sm text-muted-foreground">No life updates yet.</p>

@@ -67,6 +67,8 @@ const App = () => (
                 <Route path="groups/:groupId" element={<GroupDetail />} />
                 <Route path="pages" element={<Pages />} />
                 <Route path="pages/:id" element={<PageDetail />} />
+                <Route path="pages/:id/about" element={<PageDetail />} />
+                <Route path="pages/:id/about/:section" element={<PageDetail />} />
                 <Route path="pages/:id/status" element={<PageStatus />} />
                 <Route path="pages/:id/archive" element={<PageArchive />} />
                 <Route path="pages/:id/activity-log" element={<PageActivityLog />} />

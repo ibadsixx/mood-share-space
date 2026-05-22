@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { NotificationsDropdown } from '@/components/NotificationsDropdown';
 import { FloatingIM } from '@/components/im/FloatingIM';
+import { ChatWindowManager } from '@/components/im/ChatWindowManager';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HeaderAvatarMenuProvider, useHeaderAvatarMenu } from '@/contexts/HeaderAvatarMenuContext';
 import { usePageSwitch } from '@/contexts/PageSwitchContext';
@@ -331,8 +332,10 @@ const Layout = () => {
         </main>
       </div>
 
-      {/* Floating IM */}
-      <FloatingIM />
+      {/* Chat windows — always visible */}
+      <ChatWindowManager />
+      {/* Floating IM contacts sidebar — hidden on profile and page profile pages */}
+      {!location.pathname.startsWith('/profile') && !location.pathname.startsWith('/pages') && <FloatingIM />}
     </div>
     </HeaderAvatarMenuProvider>
   );
