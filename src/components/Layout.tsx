@@ -8,6 +8,7 @@ import { FloatingIM } from '@/components/im/FloatingIM';
 import { ChatWindowManager } from '@/components/im/ChatWindowManager';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HeaderAvatarMenuProvider, useHeaderAvatarMenu } from '@/contexts/HeaderAvatarMenuContext';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePageSwitch } from '@/contexts/PageSwitchContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -302,25 +303,30 @@ const Layout = () => {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 h-[calc(100vh-4rem)] border-r border-border/50 bg-card/50 sticky top-16">
-          <nav className="p-6 space-y-1">
+        <aside className="w-16 h-[calc(100vh-4rem)] border-r border-border/50 bg-card/50 sticky top-16">
+          <nav className="flex flex-col items-center gap-1 py-4">
             {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
               
               return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  {item.name}
-                </Link>
+                <Tooltip key={item.name}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={item.href}
+                      className={`flex items-center justify-center w-10 h-10 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {item.name}
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           </nav>
