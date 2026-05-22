@@ -327,15 +327,15 @@ const Layout = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 min-h-[calc(100vh-4rem)] xl:mr-[260px]">
+        <main className={`flex-1 min-h-[calc(100vh-4rem)] ${location.pathname.startsWith('/messages') ? '' : 'xl:mr-[260px]'}`}>
           <Outlet />
         </main>
       </div>
 
       {/* Chat windows — always visible */}
       <ChatWindowManager />
-      {/* Floating IM contacts sidebar — hidden on profile and page profile pages */}
-      {!location.pathname.startsWith('/profile') && !location.pathname.startsWith('/pages') && <FloatingIM />}
+      {/* Floating IM contacts sidebar — hidden on profile, page profile, and messages pages */}
+      {!location.pathname.startsWith('/profile') && !location.pathname.startsWith('/pages') && !location.pathname.startsWith('/messages') && <FloatingIM />}
     </div>
     </HeaderAvatarMenuProvider>
   );

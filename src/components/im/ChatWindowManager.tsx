@@ -72,10 +72,11 @@ export const ChatWindowManager: React.FC = () => {
   const searchRef = useRef<HTMLDivElement>(null);
 
   const isFloatingIMHidden = location.pathname.startsWith('/profile') || location.pathname.startsWith('/pages');
+  const isMessagesPage = location.pathname.startsWith('/messages');
   const minimizedSide = isFloatingIMHidden ? 'right-4' : 'left-4';
 
   const currentUserId = user?.id;
-  if (!currentUserId) return null;
+  if (!currentUserId || isMessagesPage) return null;
 
   const closeChat = useCallback((id: string) => {
     setOpenChats((prev) => prev.filter((c) => c.contact.id !== id));
