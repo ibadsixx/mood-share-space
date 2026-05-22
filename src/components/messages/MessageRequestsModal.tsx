@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ export const MessageRequestsModal: React.FC<MessageRequestsModalProps> = ({
   currentUserId
 }) => {
   const [activeTab, setActiveTab] = useState('you_may_know');
+  const [mutualCounts, setMutualCounts] = useState<Record<string, number>>({});
   
   const {
     youMayKnowRequests,
@@ -31,8 +32,22 @@ export const MessageRequestsModal: React.FC<MessageRequestsModalProps> = ({
     loading,
     acceptRequest,
     declineRequest,
-    blockUser
+    blockUser,
+    fetchMutualFriendsCount
   } = useMessageRequests(currentUserId);
+
+  // Lazily fetch mutual friend counts when modal opens
+  useEffect(() => {
+    if (!open || !currentUserId) return;
+    const allRequests = [...youMayKnowRequests, ...spamRequests];
+    const counts: Record<string, number> = {};
+    Promise.all(
+      allRequests.map(async (req) => {
+        const count = await fetchMutualFriendsCount(req.sender_id);
+        counts[req.sender_id] = count;
+      })
+    ).then(() => setMutualCounts(counts));
+  }, [open]);
 
   const totalRequests = youMayKnowRequests.length + spamRequests.length;
 
@@ -99,6 +114,7 @@ export const MessageRequestsModal: React.FC<MessageRequestsModalProps> = ({
                     <MessageRequestCard
                       key={request.id}
                       request={request}
+                      mutualFriendsCount={mutualCounts[request.sender_id]}
                       onAccept={acceptRequest}
                       onDecline={declineRequest}
                       onBlock={blockUser}
@@ -148,6 +164,7 @@ export const MessageRequestsModal: React.FC<MessageRequestsModalProps> = ({
                     <MessageRequestCard
                       key={request.id}
                       request={request}
+                      mutualFriendsCount={mutualCounts[request.sender_id]}
                       onAccept={acceptRequest}
                       onDecline={declineRequest}
                       onBlock={blockUser}

@@ -62,10 +62,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [reportMessage, setReportMessage] = useState<Message | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [pinnedMessageIds, setPinnedMessageIds] = useState<string[]>([]);
-  const [localMessages, setLocalMessages] = useState<Message[]>(messages);
   const [pendingScrollToMessageId, setPendingScrollToMessageId] = useState<string | null>(null);
   const [chatTheme, setChatTheme] = useState('default');
-  const [quickEmoji, setQuickEmoji] = useState('👌');
   const scrollAttemptsRef = useRef<Record<string, number>>({});
   const navigate = useNavigate();
   const { reportConversation } = useConversationReport();
@@ -74,54 +72,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const { blockStatus, blockUser, unblockUser } = useBlocks(otherUser?.id || '', currentUserId);
   const { deleteMessage, pinMessage, reportMessage: submitReport, getPinnedMessages } = useMessageActions(conversationId, currentUserId);
 
-  // Fetch shared theme and quick emoji from conversations table
+  // Derive chat theme and quick emoji from conversation settings (fetched via RPC in useConversationSettings)
   useEffect(() => {
-    const fetchConversationSettings = async () => {
-      if (!conversationId) return;
-      const { data, error } = await supabase
-        .from('conversations')
-        .select('chat_theme, quick_emoji')
-        .eq('id', conversationId)
-        .single();
-      
-      if (!error && data) {
-        if (data.chat_theme) setChatTheme(data.chat_theme);
-        if (data.quick_emoji) setQuickEmoji(data.quick_emoji);
-      }
-    };
-    fetchConversationSettings();
+    if (conversationSettings?.chat_theme) {
+      setChatTheme(conversationSettings.chat_theme);
+    }
+  }, [conversationSettings?.chat_theme]);
 
-    // Subscribe to real-time theme and emoji changes
-    const channel = supabase
-      .channel(`conversation-settings-${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'conversations',
-          filter: `id=eq.${conversationId}`
-        },
-        (payload) => {
-          if (payload.new?.chat_theme) {
-            setChatTheme(payload.new.chat_theme);
-          }
-          if (payload.new?.quick_emoji) {
-            setQuickEmoji(payload.new.quick_emoji);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [conversationId]);
-
-  // Sync local messages with props
-  useEffect(() => {
-    setLocalMessages(messages);
-  }, [messages]);
+  const quickEmoji = conversationSettings?.quick_emoji || '👌';
 
   // Fetch pinned messages and reactions when conversation changes
   useEffect(() => {
@@ -131,11 +89,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [conversationId]);
 
   useEffect(() => {
-    if (localMessages.length > 0) {
-      const messageIds = localMessages.map(m => m.id);
+    if (messages.length > 0) {
+      const messageIds = messages.map(m => m.id);
       fetchReactions(messageIds);
     }
-  }, [localMessages]);
+  }, [messages]);
 
   const handleReaction = async (messageId: string, reaction: string) => {
     await toggleReaction(messageId, reaction as ReactionKey, currentUserId);
@@ -147,25 +105,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   const handleQuickEmojiChange = async (emoji: string) => {
-    setQuickEmoji(emoji);
     if (!conversationId) return;
-    
-    try {
-      await supabase.rpc('update_conversation_quick_emoji', {
-        p_conversation_id: conversationId,
-        p_quick_emoji: emoji
-      });
-    } catch (error) {
+    const { error } = await supabase.rpc('update_conversation_quick_emoji', {
+      p_conversation_id: conversationId,
+      p_quick_emoji: emoji
+    });
+    if (error) {
       console.error('Error updating quick emoji:', error);
     }
   };
 
   // Handle delete message
   const handleDeleteMessage = async (messageId: string) => {
-    const success = await deleteMessage(messageId);
-    if (success) {
-      setLocalMessages(prev => prev.filter(m => m.id !== messageId));
-    }
+    await deleteMessage(messageId);
   };
 
   // Handle pin message
@@ -229,12 +181,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       delete scrollAttemptsRef.current[pendingScrollToMessageId];
       setPendingScrollToMessageId(null);
     }
-  }, [pendingScrollToMessageId, localMessages]);
+    }, [pendingScrollToMessageId, messages]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [localMessages]);
+  }, [messages]);
 
   const handleStartCall = (type: 'voice' | 'video') => {
     if (!otherUser) return;
@@ -324,7 +276,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         {/* Messages Area */}
         <ScrollArea className="flex-1 p-4 min-h-0" ref={scrollAreaRef}>
 
-          {loading && localMessages.length === 0 ? (
+          {loading && messages.length === 0 ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex items-end space-x-2 animate-pulse">
@@ -335,7 +287,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
           ) : (
             <>
-              {localMessages.length > 0 && onLoadMore && (
+              {messages.length > 0 && onLoadMore && (
                 <div className="text-center mb-4">
                   <Button variant="ghost" size="sm" onClick={onLoadMore}>
                     Load older messages
@@ -344,9 +296,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               )}
               
               <div className="space-y-1">
-                {localMessages.map((message, index) => {
+                {messages.map((message, index) => {
                   const isOwnMessage = message.sender_id === currentUserId;
-                  const prevMessage = localMessages[index - 1];
+                  const prevMessage = messages[index - 1];
                   const showAvatar = !prevMessage || 
                     prevMessage.sender_id !== message.sender_id ||
                     new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime() > 300000; // 5 minutes
@@ -392,7 +344,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
         {/* Pinned Messages Banner - Facebook Messenger Style (positioned above input) */}
         <PinnedMessagesBanner
-          messages={localMessages}
+          messages={messages}
           pinnedMessageIds={pinnedMessageIds}
           currentUserId={currentUserId}
           onScrollToMessage={handleScrollToMessage}

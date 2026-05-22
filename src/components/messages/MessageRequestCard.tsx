@@ -20,11 +20,11 @@ type MessageRequest = {
     display_name: string;
     profile_pic?: string;
   };
-  mutual_friends_count?: number;
 };
 
 interface MessageRequestCardProps {
   request: MessageRequest;
+  mutualFriendsCount?: number;
   onAccept: (requestId: string, senderId: string) => Promise<boolean>;
   onDecline: (requestId: string) => Promise<boolean>;
   onBlock: (requestId: string, senderId: string) => Promise<boolean>;
@@ -32,6 +32,7 @@ interface MessageRequestCardProps {
 
 export const MessageRequestCard: React.FC<MessageRequestCardProps> = ({
   request,
+  mutualFriendsCount,
   onAccept,
   onDecline,
   onBlock
@@ -99,11 +100,11 @@ export const MessageRequestCard: React.FC<MessageRequestCardProps> = ({
             </div>
 
             {/* Mutual Friends */}
-            {request.mutual_friends_count !== undefined && request.mutual_friends_count > 0 && (
+            {mutualFriendsCount !== undefined && mutualFriendsCount > 0 && (
               <div className="flex items-center space-x-1 mb-3">
                 <Users className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  {request.mutual_friends_count} mutual friend{request.mutual_friends_count > 1 ? 's' : ''}
+                  {mutualFriendsCount} mutual friend{mutualFriendsCount > 1 ? 's' : ''}
                 </span>
               </div>
             )}

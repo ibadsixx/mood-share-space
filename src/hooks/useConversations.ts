@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -345,6 +345,21 @@ export const useConversations = (currentUserId?: string) => {
     }
   };
 
+  // Keep a ref to conversation IDs so the realtime callback isn't stale
+  const conversationIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    conversationIdsRef.current = new Set(conversations.map(c => c.conversation_id));
+  }, [conversations]);
+
+  // Debounced version of fetchConversations to avoid rapid refetches
+  const debouncedFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedFetchConversations = () => {
+    if (debouncedFetchRef.current) clearTimeout(debouncedFetchRef.current);
+    debouncedFetchRef.current = setTimeout(() => {
+      fetchConversations();
+    }, 500);
+  };
+
   // Set up real-time subscriptions
   useEffect(() => {
     if (!currentUserId) return;
@@ -359,17 +374,22 @@ export const useConversations = (currentUserId?: string) => {
           table: 'messages',
         },
         async (payload) => {
-          console.log('[useConversations] New message received via realtime:', payload);
+          const msgConvId = payload.new.conversation_id as string;
+          
+          // Skip if this message isn't in one of our conversations
+          if (!conversationIdsRef.current.has(msgConvId)) {
+            return;
+          }
+
           // Refresh conversations to update last message and unread counts
-          fetchConversations();
+          debouncedFetchConversations();
           
           // If it's for the active conversation, handle the new message
-          if (activeConversationId && payload.new.conversation_id === activeConversationId) {
+          if (activeConversationId && msgConvId === activeConversationId) {
             const newMsg = payload.new as any;
             
             // Skip if message was sent by current user (already added optimistically)
             if (newMsg.sender_id === currentUserId) {
-              console.log('[useConversations] Skipping own message (already in state)');
               return;
             }
             
@@ -387,7 +407,6 @@ export const useConversations = (currentUserId?: string) => {
               .single();
             
             if (msgData) {
-              // Fetch reply_to data if needed
               let replyData = null;
               if (msgData.reply_to_id) {
                 const { data: replyResult } = await supabase
@@ -403,7 +422,6 @@ export const useConversations = (currentUserId?: string) => {
                 reply_to: replyData
               };
               
-              // Add to messages if not already present
               setMessages(prev => {
                 if (prev.some(m => m.id === fullMessage.id)) {
                   return prev;
@@ -422,14 +440,14 @@ export const useConversations = (currentUserId?: string) => {
           table: 'conversations',
         },
         () => {
-          console.log('New conversation created');
-          fetchConversations();
+          debouncedFetchConversations();
         }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(messagesChannel);
+      if (debouncedFetchRef.current) clearTimeout(debouncedFetchRef.current);
     };
   }, [currentUserId, activeConversationId]);
 

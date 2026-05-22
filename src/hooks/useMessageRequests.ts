@@ -40,22 +40,7 @@ export const useMessageRequests = (currentUserId?: string) => {
 
       if (error) throw error;
 
-      // Get mutual friends count for each request
-      const requestsWithMutualFriends = await Promise.all(
-        (data || []).map(async (request: any) => {
-          const { data: mutualCount } = await supabase.rpc('get_mutual_friends_count', {
-            user_a: currentUserId,
-            user_b: request.sender_id
-          });
-
-          return {
-            ...request,
-            mutual_friends_count: mutualCount || 0
-          };
-        })
-      );
-
-      setRequests(requestsWithMutualFriends);
+      setRequests(data || []);
     } catch (error: any) {
       console.error('Error fetching message requests:', error);
       toast({
@@ -65,6 +50,19 @@ export const useMessageRequests = (currentUserId?: string) => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMutualFriendsCount = async (otherUserId: string) => {
+    if (!currentUserId) return 0;
+    try {
+      const { data } = await supabase.rpc('get_mutual_friends_count', {
+        user_a: currentUserId,
+        user_b: otherUserId
+      });
+      return data || 0;
+    } catch {
+      return 0;
     }
   };
 
@@ -297,6 +295,7 @@ export const useMessageRequests = (currentUserId?: string) => {
     declineRequest,
     blockUser,
     sendRequest,
-    refetchRequests: fetchRequests
+    refetchRequests: fetchRequests,
+    fetchMutualFriendsCount
   };
 };
