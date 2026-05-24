@@ -12,6 +12,7 @@ type Conversation = {
     username: string;
     display_name: string;
     profile_pic?: string;
+    last_seen_at?: string;
   };
   last_message?: {
     content?: string;
@@ -91,6 +92,7 @@ export const useConversations = (currentUserId?: string) => {
           username: conv.other_user_username,
           display_name: conv.other_user_display_name,
           profile_pic: conv.other_user_profile_pic,
+          last_seen_at: undefined,
         },
         last_message: conv.last_message_content ? {
           content: conv.last_message_content,
@@ -98,6 +100,21 @@ export const useConversations = (currentUserId?: string) => {
         } : undefined,
         unread_count: Number(conv.unread_count || 0),
       })) || [];
+
+      // Batch-fetch last_seen_at for all conversation partners
+      const otherUserIds = formattedConversations.map(c => c.other_user.id);
+      if (otherUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, last_seen_at')
+          .in('id', otherUserIds);
+        if (profiles) {
+          const lastSeenMap = new Map(profiles.map(p => [p.id, p.last_seen_at]));
+          formattedConversations.forEach(conv => {
+            conv.other_user.last_seen_at = lastSeenMap.get(conv.other_user.id) || undefined;
+          });
+        }
+      }
 
       setConversations(formattedConversations);
     } catch (error: any) {

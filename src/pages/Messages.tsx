@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ConversationList } from '@/components/messages/ConversationList';
 import { ChatWindow } from '@/components/messages/ChatWindow';
 import { NewConversationDialog } from '@/components/messages/NewConversationDialog';
 import { useConversations } from '@/hooks/useConversations';
+import { usePresence } from '@/hooks/usePresence';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { Edit, MessageCircle } from 'lucide-react';
@@ -10,8 +12,14 @@ import { Edit, MessageCircle } from 'lucide-react';
 const Messages = () => {
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [activePage, setActivePage] = useState(0);
+  const navigate = useNavigate();
+  const params = useParams();
+  const urlConversationId = params['*'] || '';
+  const syncedRef = useRef(false);
   const { user, loading: authLoading } = useAuth();
   const currentUserId = user?.id || null;
+
+  usePresence(currentUserId || undefined);
   
   const {
     conversations,
@@ -25,10 +33,21 @@ const Messages = () => {
     refetchConversations
   } = useConversations(currentUserId || undefined);
 
+  // Sync URL -> state on mount (refresh / direct navigation)
+  useEffect(() => {
+    if (urlConversationId && currentUserId && !syncedRef.current) {
+      syncedRef.current = true;
+      setActiveConversationId(urlConversationId);
+      setActivePage(0);
+      fetchMessages(urlConversationId, 0);
+    }
+  }, [currentUserId]);
+
   const handleSelectConversation = (conversationId: string) => {
     setActiveConversationId(conversationId);
     setActivePage(0);
     fetchMessages(conversationId, 0);
+    navigate(`/messages/${conversationId}`);
   };
 
   const handleSendMessage = async (content?: string, mediaUrl?: string, replyToId?: string) => {
@@ -45,11 +64,11 @@ const Messages = () => {
     
     const conversationId = await getOrCreateDM(userId);
     if (conversationId) {
-      await refetchConversations();
+      setShowNewConversation(false);
       setActiveConversationId(conversationId);
       setActivePage(0);
       fetchMessages(conversationId, 0);
-      setShowNewConversation(false);
+      navigate(`/messages/${conversationId}`);
     }
   };
 

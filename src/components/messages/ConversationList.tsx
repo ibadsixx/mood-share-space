@@ -10,6 +10,7 @@ import { MessageRequestsModal } from './MessageRequestsModal';
 import { useMessageRequests } from '@/hooks/useMessageRequests';
 import { cn } from '@/lib/utils';
 import { EmojiText } from '@/components/EmojiText';
+import { isOnline, formatLastSeen } from '@/hooks/usePresence';
 
 type Conversation = {
   conversation_id: string;
@@ -18,6 +19,7 @@ type Conversation = {
     username: string;
     display_name: string;
     profile_pic?: string;
+    last_seen_at?: string;
   };
   last_message?: {
     content?: string;
@@ -56,6 +58,7 @@ const ConversationItem = memo(({
   const displayName = conversation.other_user.display_name;
   const initial = displayName.charAt(0).toUpperCase();
   const previewText = formatLastMessage(conversation.last_message);
+  const online = isOnline(conversation.other_user.last_seen_at);
 
   return (
     <button
@@ -77,7 +80,10 @@ const ConversationItem = memo(({
             {initial}
           </AvatarFallback>
         </Avatar>
-        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-success rounded-full border-2 border-card" />
+        <div className={cn(
+          "absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card",
+          online ? "bg-green-500" : "bg-gray-400"
+        )} />
       </div>
 
       <div className="flex-1 min-w-0">
@@ -116,6 +122,10 @@ const ConversationItem = memo(({
             </Badge>
           )}
         </div>
+
+        <p className="text-xs text-muted-foreground truncate mt-0.5">
+          {online ? 'Online' : formatLastSeen(conversation.other_user.last_seen_at)}
+        </p>
       </div>
     </button>
   );

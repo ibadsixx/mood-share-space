@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Phone, Video, Info, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { MessageBubble, Message } from './MessageBubble';
 import { MessageInput, ReplyToMessage } from './MessageInput';
 import { ChatInfoPanel } from './ChatInfoPanel';
@@ -21,12 +22,14 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { ReactionKey } from '@/lib/reactions';
 import { GifItem } from '@/hooks/useGifSearch';
+import { isOnline, formatLastSeen } from '@/hooks/usePresence';
 
 type OtherUser = {
   id: string;
   username: string;
   display_name: string;
   profile_pic?: string;
+  last_seen_at?: string;
 };
 
 interface ChatWindowProps {
@@ -233,11 +236,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               </Avatar>
               <div>
                 <h3 className="font-semibold text-foreground">{otherUser.display_name}</h3>
-                <p className="text-sm text-muted-foreground">@{otherUser.username}</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-sm text-muted-foreground">@{otherUser.username}</p>
+                  <span className={cn(
+                    "inline-flex items-center gap-1 text-xs",
+                    isOnline(otherUser.last_seen_at) ? "text-green-500" : "text-muted-foreground"
+                  )}>
+                    <span className={cn(
+                      "inline-block w-2 h-2 rounded-full",
+                      isOnline(otherUser.last_seen_at) ? "bg-green-500" : "bg-gray-400"
+                    )} />
+                    {isOnline(otherUser.last_seen_at) ? 'Online' : formatLastSeen(otherUser.last_seen_at)}
+                  </span>
+                </div>
               </div>
-              <Badge variant="secondary" className="ml-2">
-                Online
-              </Badge>
             </div>
 
             <div className="flex items-center space-x-2">

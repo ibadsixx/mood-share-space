@@ -14,7 +14,7 @@ import Profile from "@/pages/Profile";
 import ProfilePage from "@/pages/ProfilePage";
 import PostPage from "@/pages/PostPage";
 import Messages from "@/pages/Messages";
-import ConversationPage from "@/pages/ConversationPage";
+
 import Search from "@/pages/Search";
 import Groups from "@/pages/Groups";
 import GroupDetail from "@/pages/GroupDetail";
@@ -60,8 +60,7 @@ const App = () => (
                 <Route path="profile" element={<Profile />} />
                 <Route path="profile/:username" element={<ProfilePage />} />
                 <Route path="post/:id" element={<PostPage />} />
-                <Route path="messages" element={<Messages />} />
-                <Route path="messages/:conversationId" element={<ConversationPage />} />
+                <Route path="messages/*" element={<Messages />} />
                 <Route path="search" element={<Search />} />
                 <Route path="groups" element={<Groups />} />
                 <Route path="groups/:groupId" element={<GroupDetail />} />

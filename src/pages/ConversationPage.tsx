@@ -115,7 +115,7 @@ const ConversationPage = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-background">
       {/* Header with back button */}
       <div className="border-b border-border p-4 flex items-center space-x-4">
         <Button

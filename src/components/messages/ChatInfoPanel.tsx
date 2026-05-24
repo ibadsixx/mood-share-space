@@ -8,6 +8,7 @@ import {
   Settings, Clock, Eye, Loader2, MessageCircle, ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isOnline, formatLastSeen } from '@/hooks/usePresence';
 import { useConversationSettings } from '@/hooks/useConversationSettings';
 import { ChatThemeModal, THEME_OPTIONS } from './ChatThemeModal';
 import { ChatEmojiModal } from './ChatEmojiModal';
@@ -50,6 +51,7 @@ interface ChatInfoPanelProps {
     username: string;
     display_name: string;
     profile_pic?: string;
+    last_seen_at?: string;
   } | null;
   pinnedMessageIds?: string[];
   chatTheme?: string;
@@ -288,7 +290,17 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                 </AvatarFallback>
               </Avatar>
               <h3 className="font-semibold text-lg text-foreground">{otherUser.display_name}</h3>
-              <p className="text-sm text-muted-foreground">Active 54m ago</p>
+              <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                <span className={cn(
+                  "inline-block w-2 h-2 rounded-full",
+                  isOnline(otherUser.last_seen_at) ? "bg-green-500" : "bg-gray-400"
+                )} />
+                {isOnline(otherUser.last_seen_at) ? (
+                  <span className="text-green-500 font-medium">Online</span>
+                ) : (
+                  <>Last seen {formatLastSeen(otherUser.last_seen_at)}</>
+                )}
+              </p>
               
               {/* Encryption Badge */}
               <div className="flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-muted rounded-full">
