@@ -306,7 +306,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             toast({
               title: newValue ? "Vanish Mode activated" : "Vanish Mode deactivated",
               description: newValue
-                ? "Messages will disappear after being seen"
+                ? "Messages disappear after being read"
                 : "Messages will be kept permanently",
             });
             setTimeout(() => { vanishJustActivated.current = false; }, 1000);
@@ -322,7 +322,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             <div className="flex items-center gap-2">
               <Flame className="h-4 w-4 text-orange-400" />
               <span className="text-sm font-medium text-orange-300">Vanish Mode is on</span>
-              <span className="text-xs text-orange-400/70">Messages will disappear after 24 hours</span>
+              <span className="text-xs text-orange-400/70">Messages disappear after being read</span>
             </div>
             <Button
               variant="ghost"
