@@ -46,7 +46,6 @@ type Message = {
   read?: boolean;
   created_at: string;
   expires_at?: string | null;
-  vanish_on_read?: boolean;
   reply_to_id?: string;
   reply_to?: {
     id: string;
@@ -167,7 +166,6 @@ export const useConversations = (currentUserId?: string) => {
           reply_to_id,
           created_at,
           expires_at,
-          vanish_on_read,
           read,
           message_type,
           is_system,
@@ -282,7 +280,6 @@ export const useConversations = (currentUserId?: string) => {
           reply_to_id,
           created_at,
           expires_at,
-          vanish_on_read,
           sender_profile:profiles!messages_sender_id_fkey(username, display_name, profile_pic)
         `)
         .single();
@@ -433,7 +430,7 @@ export const useConversations = (currentUserId?: string) => {
                 id, conversation_id, sender_id, content, attachment_url, image_url, media_url, is_image,
                 is_gif, gif_url, is_sticker, sticker_url, sticker_id, sticker_set,
                 audio_url, audio_duration, audio_mime, audio_size, audio_path,
-                reply_to_id, created_at, expires_at, vanish_on_read, read, message_type, is_system,
+                reply_to_id, created_at, expires_at, read, message_type, is_system,
                 sender_profile:profiles!messages_sender_id_fkey(username, display_name, profile_pic)
               `)
               .eq('id', newMsg.id)
