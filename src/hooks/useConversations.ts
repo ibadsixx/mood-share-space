@@ -219,7 +219,7 @@ export const useConversations = (currentUserId?: string) => {
 
       // Mark messages as read
       await markMessagesAsRead(conversationId);
-      console.log('[useConversations] Messages loaded successfully:', filteredMessages.length);
+      console.log('[useConversations] Messages loaded successfully:', formattedMessages.length);
     } catch (error: any) {
       console.error('[useConversations] Error fetching messages:', error);
       toast({
