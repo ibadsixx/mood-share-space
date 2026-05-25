@@ -43,7 +43,6 @@ type Message = {
   audio_path?: string;
   message_type?: 'text' | 'image' | 'gif' | 'sticker' | 'audio' | 'video' | 'file';
   is_system?: boolean;
-  read?: boolean;
   created_at: string;
   reply_to_id?: string;
   reply_to?: {
@@ -132,11 +131,8 @@ export const useConversations = (currentUserId?: string) => {
   // Fetch messages for a specific conversation
   const fetchMessages = async (conversationId: string, page = 0, limit = 50) => {
     if (!currentUserId) {
-      console.log('[useConversations] fetchMessages: No currentUserId');
       return;
     }
-
-    console.log('[useConversations] fetchMessages called:', { conversationId, page, limit, currentUserId });
 
     try {
       // Fetch messages with sender profile using explicit foreign key hint
@@ -164,7 +160,6 @@ export const useConversations = (currentUserId?: string) => {
           audio_path,
           reply_to_id,
           created_at,
-          read,
           message_type,
           is_system,
           sender_profile:profiles!messages_sender_id_fkey(username, display_name, profile_pic)
@@ -172,12 +167,6 @@ export const useConversations = (currentUserId?: string) => {
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
         .range(page * limit, (page + 1) * limit - 1);
-
-      console.log('[useConversations] Messages query result:', { 
-        dataLength: data?.length || 0, 
-        error: error?.message,
-        conversationId 
-      });
 
       if (error) {
         console.error('[useConversations] Supabase messages error:', error);
@@ -219,7 +208,6 @@ export const useConversations = (currentUserId?: string) => {
 
       // Mark messages as read
       await markMessagesAsRead(conversationId);
-      console.log('[useConversations] Messages loaded successfully:', formattedMessages.length);
     } catch (error: any) {
       console.error('[useConversations] Error fetching messages:', error);
       toast({
@@ -240,8 +228,6 @@ export const useConversations = (currentUserId?: string) => {
     const isImage = !isVideo && attachmentUrl && /\.(jpg|jpeg|png|gif|webp|heic|heif|bmp|svg)$/i.test(urlPath);
 
     try {
-      console.log('[useConversations] Sending message:', { conversationId, content, attachmentUrl, replyToId, isImage, isVideo });
-      
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -287,8 +273,6 @@ export const useConversations = (currentUserId?: string) => {
         });
         return false;
       }
-
-      console.log('[useConversations] Message sent successfully:', data?.id);
 
       // If reply_to_id exists, fetch the reply_to message data and add to messages state immediately
       if (data && replyToId) {

@@ -132,15 +132,10 @@ export const useConversationSettings = (conversationId?: string) => {
     }
 
     try {
-      console.log('updateChatTheme: Updating theme to', themeId, 'for conversation', conversationId);
-      
-      // Use the shared conversation theme RPC
-      const { data, error } = await supabase.rpc('update_conversation_theme', {
+      const { error } = await supabase.rpc('update_conversation_theme', {
         p_conversation_id: conversationId,
         p_chat_theme: themeId,
       });
-
-      console.log('updateChatTheme result:', { data, error });
 
       if (error) throw error;
       

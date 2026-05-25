@@ -15,7 +15,6 @@ const Messages = () => {
   const navigate = useNavigate();
   const params = useParams();
   const urlConversationId = params['*'] || '';
-  const syncedRef = useRef(false);
   const { user, loading: authLoading } = useAuth();
   const currentUserId = user?.id || null;
 
@@ -33,15 +32,14 @@ const Messages = () => {
     refetchConversations
   } = useConversations(currentUserId || undefined);
 
-  // Sync URL -> state on mount (refresh / direct navigation)
+  // Sync URL -> state (refresh, direct navigation, manual URL change)
   useEffect(() => {
-    if (urlConversationId && currentUserId && !syncedRef.current) {
-      syncedRef.current = true;
+    if (urlConversationId && currentUserId && urlConversationId !== activeConversationId) {
       setActiveConversationId(urlConversationId);
       setActivePage(0);
       fetchMessages(urlConversationId, 0);
     }
-  }, [currentUserId]);
+  }, [currentUserId, urlConversationId, activeConversationId]);
 
   const handleSelectConversation = (conversationId: string) => {
     setActiveConversationId(conversationId);
@@ -137,6 +135,7 @@ const Messages = () => {
       {/* Chat Window */}
       <div className="flex-1 min-w-0 h-full overflow-hidden">
         <ChatWindow
+          key={activeConversationId || 'no-conversation'}
           otherUser={activeConversation?.other_user || null}
           messages={messages}
           currentUserId={currentUserId}

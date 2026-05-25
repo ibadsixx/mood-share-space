@@ -586,7 +586,6 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
         onOpenChange={setShowThemeModal}
         currentTheme={chatTheme}
         onSelectTheme={(themeId) => {
-          console.log('ChatInfoPanel: onSelectTheme called with', themeId);
           onThemeChange?.(themeId);
         }}
       />

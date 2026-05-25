@@ -72,7 +72,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const navigate = useNavigate();
   const { toast } = useToast();
   const { reportConversation } = useConversationReport();
-  const { settings: conversationSettings, updateChatTheme, toggleVanishingMessages: toggleVanish } = useConversationSettings(conversationId);
+  const { settings: conversationSettings, updateChatTheme, toggleVanishingMessages: toggleVanish, updateQuickEmoji } = useConversationSettings(conversationId);
   const { toggleReaction, fetchReactions, getMessageReactions } = useMessageReactions(conversationId);
   const { blockStatus, blockUser, unblockUser } = useBlocks(otherUser?.id || '', currentUserId);
   const { deleteMessage, pinMessage, reportMessage: submitReport, getPinnedMessages } = useMessageActions(conversationId, currentUserId);
@@ -161,14 +161,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   const handleQuickEmojiChange = async (emoji: string) => {
-    if (!conversationId) return;
-    const { error } = await supabase.rpc('update_conversation_quick_emoji', {
-      p_conversation_id: conversationId,
-      p_quick_emoji: emoji
-    });
-    if (error) {
-      console.error('Error updating quick emoji:', error);
-    }
+    await updateQuickEmoji(emoji);
   };
 
   // Handle delete message
@@ -289,6 +282,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           if (swipeStartY.current === null) return;
           const deltaY = e.touches[0].clientY - swipeStartY.current;
           if (deltaY < -80 && !vanishJustActivated.current) {
+            e.preventDefault();
             vanishJustActivated.current = true;
             swipeStartY.current = null;
             const newValue = !vanishingMessagesEnabled;

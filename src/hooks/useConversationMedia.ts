@@ -33,11 +33,9 @@ export function useConversationMedia(conversationId: string | undefined) {
 
   const fetchMedia = async () => {
     if (!conversationId) {
-      console.log('useConversationMedia: No conversationId provided');
       return;
     }
     setLoading(true);
-    console.log('useConversationMedia: Fetching media for conversation:', conversationId);
 
     try {
       // Fetch images, videos, gifs, stickers, and attachments from both sender and receiver
@@ -49,8 +47,6 @@ export function useConversationMedia(conversationId: string | undefined) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
-      console.log('useConversationMedia: Raw data from DB:', data);
 
       const mediaItems: SharedMedia[] = [];
       
@@ -110,7 +106,6 @@ export function useConversationMedia(conversationId: string | undefined) {
         }
       });
 
-      console.log('useConversationMedia: Processed media items:', mediaItems);
       setMedia(mediaItems);
     } catch (error) {
       console.error('Error fetching media:', error);

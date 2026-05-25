@@ -45,7 +45,6 @@ export const useMessageReactions = (conversationId?: string) => {
 
   // Toggle a reaction on a message
   const toggleReaction = async (messageId: string, reactionKey: ReactionKey, userId: string) => {
-    console.log('[toggleReaction] called:', { messageId, reactionKey, userId });
     try {
       // Check if user already has a reaction on this message
       const { data: existingReaction, error: fetchError } = await supabase
@@ -140,8 +139,6 @@ export const useMessageReactions = (conversationId?: string) => {
           table: 'message_reactions',
         },
         (payload) => {
-          console.log('Reaction change:', payload);
-          
           if (payload.eventType === 'INSERT') {
             const newReaction = payload.new as MessageReaction;
             setReactions(prev => ({

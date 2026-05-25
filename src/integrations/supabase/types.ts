@@ -728,6 +728,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          page_id: string | null
           quick_emoji: string | null
           type: string
           updated_at: string
@@ -737,6 +738,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          page_id?: string | null
           quick_emoji?: string | null
           type?: string
           updated_at?: string
@@ -746,6 +748,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          page_id?: string | null
           quick_emoji?: string | null
           type?: string
           updated_at?: string
@@ -1761,7 +1764,6 @@ export type Database = {
           is_system: boolean | null
           media_url: string | null
           message_type: Database["public"]["Enums"]["message_type_enum"] | null
-          read: boolean
           receiver_id: string | null
           reply_to_id: string | null
           sender_id: string
@@ -1789,7 +1791,6 @@ export type Database = {
           is_system?: boolean | null
           media_url?: string | null
           message_type?: Database["public"]["Enums"]["message_type_enum"] | null
-          read?: boolean
           receiver_id?: string | null
           reply_to_id?: string | null
           sender_id: string
@@ -1817,7 +1818,6 @@ export type Database = {
           is_system?: boolean | null
           media_url?: string | null
           message_type?: Database["public"]["Enums"]["message_type_enum"] | null
-          read?: boolean
           receiver_id?: string | null
           reply_to_id?: string | null
           sender_id?: string
