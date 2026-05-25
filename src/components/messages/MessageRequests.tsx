@@ -42,7 +42,20 @@ export const MessageRequests: React.FC<MessageRequestsProps> = ({
     setProcessingRequest(null);
   };
 
-  const RequestCard = ({ request }: { request: any }) => (
+  const RequestCard = ({ request }: { request: {
+    id: string;
+    sender_id: string;
+    receiver_id: string;
+    status: string;
+    category: string;
+    created_at: string;
+    sender_profile: {
+      username: string;
+      display_name: string;
+      profile_pic?: string;
+    };
+    mutual_friends_count?: number;
+  } }) => (
     <Card key={request.id} className="mb-3">
       <CardContent className="p-4">
         <div className="flex items-start space-x-3">

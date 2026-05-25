@@ -39,6 +39,7 @@ const Messages = () => {
       setActivePage(0);
       fetchMessages(urlConversationId, 0);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, urlConversationId, activeConversationId]);
 
   const handleSelectConversation = (conversationId: string) => {

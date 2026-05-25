@@ -35,6 +35,7 @@ export const SharedMediaModal: React.FC<SharedMediaModalProps> = ({
       else if (activeTab === 'files') fetchFiles();
       else if (activeTab === 'links') fetchLinks();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, conversationId, activeTab]);
 
   useEffect(() => {

@@ -50,6 +50,7 @@ export const MessageRecorder: React.FC<MessageRecorderProps> = ({
       }
     };
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

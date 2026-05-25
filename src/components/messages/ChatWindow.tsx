@@ -97,6 +97,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     if (conversationId) {
       getPinnedMessages().then(setPinnedMessageIds);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
 
   useEffect(() => {
@@ -104,6 +105,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       const messageIds = messages.map(m => m.id);
       fetchReactions(messageIds);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   // Delete seen vanish-mode messages when disabling vanish mode

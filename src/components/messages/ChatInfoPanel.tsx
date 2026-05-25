@@ -10,7 +10,8 @@ import {
 import { cn } from '@/lib/utils';
 import { isOnline, formatLastSeen } from '@/hooks/usePresence';
 import { useConversationSettings } from '@/hooks/useConversationSettings';
-import { ChatThemeModal, THEME_OPTIONS } from './ChatThemeModal';
+import { ChatThemeModal } from './ChatThemeModal';
+import { THEME_OPTIONS } from './chatThemeOptions';
 import { ChatEmojiModal } from './ChatEmojiModal';
 import { SharedMediaModal } from './SharedMediaModal';
 import { ReportMessageModal } from './ReportMessageModal';
@@ -41,6 +42,28 @@ import { Switch } from '@/components/ui/switch';
 const getThemeGradient = (themeId: string) => {
   const theme = THEME_OPTIONS.find(t => t.id === themeId);
   return theme?.gradient ?? 'from-primary to-primary';
+};
+
+type ParticipantData = {
+  user_id: string;
+  display_name: string;
+  profile_pic?: string;
+  username: string;
+  devices: Array<{
+    browser: string;
+    key_fingerprint: string;
+    device_id?: string;
+  }>;
+};
+
+type EncryptionDetails = {
+  last_verification?: {
+    verified_at: string;
+    status: string;
+    verified_by: string;
+    verified_by_name: string;
+  } | null;
+  participants: ParticipantData[];
 };
 interface ChatInfoPanelProps {
   isOpen: boolean;
@@ -99,11 +122,11 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
   const [showMessagingControls, setShowMessagingControls] = useState(false);
   const [showEncryptionDialog, setShowEncryptionDialog] = useState(false);
   const [encryptionView, setEncryptionView] = useState<'check' | 'details' | 'keys'>('check');
-  const [selectedParticipantKeys, setSelectedParticipantKeys] = useState<any>(null);
+  const [selectedParticipantKeys, setSelectedParticipantKeys] = useState<Record<string, unknown> | null>(null);
   const [showLimitDialog, setShowLimitDialog] = useState(false);
   const [showBlockDialog, setShowBlockDialog] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [encryptionData, setEncryptionData] = useState<any>(null);
+  const [encryptionData, setEncryptionData] = useState<EncryptionDetails | null>(null);
   const [encryptionLoading, setEncryptionLoading] = useState(false);
   const [encryptionVerified, setEncryptionVerified] = useState(false);
   const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
@@ -151,16 +174,17 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
       });
       
       if (error) throw error;
-      setEncryptionData(data);
+      setEncryptionData(data as EncryptionDetails | null);
       
-      if ((data as any)?.last_verification) {
+      if (data && (data as EncryptionDetails).last_verification) {
         setEncryptionVerified(true);
-        setVerifiedAt(new Date((data as any).last_verification.verified_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        const lastVerification = (data as EncryptionDetails).last_verification!;
+        setVerifiedAt(new Date(lastVerification.verified_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       } else {
         setEncryptionVerified(false);
         setVerifiedAt(null);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching encryption details:', error);
       toast({
         title: 'Error',
@@ -177,7 +201,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
     if (!conversationId) return;
     
     if (settings?.messaging_controls) {
-      const controls = settings.messaging_controls as any;
+      const controls = settings.messaging_controls as Record<string, unknown>;
       setAllowMessageSharing(controls?.allow_message_sharing !== false);
     }
     setShowMessagingControls(true);
@@ -201,7 +225,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
         description: 'Message permissions have been saved'
       });
       setShowMessagingControls(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving messaging controls:', error);
       toast({
         title: 'Error',
@@ -243,7 +267,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
       
       setShowClearConfirm(false);
       onClearHistory?.();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error clearing conversation:', error);
       toast({
         title: 'Error',
@@ -728,7 +752,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold text-foreground">Participants</h4>
-                  {(encryptionData as any)?.participants?.map((p: any) => (
+                  {encryptionData?.participants?.map((p: ParticipantData) => (
                     <button
                       key={p.user_id}
                       onClick={() => {
@@ -782,7 +806,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                 </div>
               </DialogHeader>
               <div className="py-4 space-y-4">
-                {(selectedParticipantKeys.devices || []).map((device: any, i: number) => (
+                {(selectedParticipantKeys.devices || []).map((device: { browser?: string; device_id?: string; key_fingerprint?: string }, i: number) => (
                   <div key={i} className="space-y-2">
                     <p className="text-sm text-foreground">
                       <span className="font-medium">{device.browser || 'Unknown'}</span>

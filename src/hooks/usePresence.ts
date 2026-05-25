@@ -40,23 +40,8 @@ export function usePresence(userId?: string) {
     updateLastSeen();
     intervalRef.current = setInterval(updateLastSeen, 60000);
 
-    const channel = supabase
-      .channel('presence-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${userId}`,
-        },
-        () => {}
-      )
-      .subscribe();
-
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      supabase.removeChannel(channel);
     };
   }, [userId]);
 }

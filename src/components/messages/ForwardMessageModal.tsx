@@ -106,7 +106,7 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
     fetchFriends();
     setSelectedFriends([]);
     setSearchQuery('');
-  }, [open, currentUserId]);
+  }, [open, currentUserId, toast]);
 
   // Filter friends based on search query
   useEffect(() => {
@@ -163,7 +163,6 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
         const { error: msgError } = await supabase.from('messages').insert({
           conversation_id: conversationId,
           sender_id: currentUserId,
-          receiver_id: friendId,
           content: forwardedContent || null,
           image_url: forwardedImageUrl,
           is_image: Boolean(forwardedImageUrl && !forwardedGifUrl && !forwardedStickerUrl),

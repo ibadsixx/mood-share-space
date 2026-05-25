@@ -233,7 +233,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       // Clean up
       URL.revokeObjectURL(recording.url);
       setShowVoiceRecorder(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error sending audio message:', error);
     } finally {
       setUploadingAudio(false);

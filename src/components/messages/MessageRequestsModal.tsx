@@ -47,7 +47,7 @@ export const MessageRequestsModal: React.FC<MessageRequestsModalProps> = ({
         counts[req.sender_id] = count;
       })
     ).then(() => setMutualCounts(counts));
-  }, [open]);
+  }, [open, currentUserId, fetchMutualFriendsCount, youMayKnowRequests, spamRequests]);
 
   const totalRequests = youMayKnowRequests.length + spamRequests.length;
 

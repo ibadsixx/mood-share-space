@@ -86,7 +86,7 @@ export const useConversationSettings = (conversationId?: string) => {
       toast({
         title: data.vanishing_messages_enabled ? "Vanishing messages enabled" : "Vanishing messages disabled",
         description: data.vanishing_messages_enabled 
-          ? "Messages will disappear after 24 hours" 
+          ? "Messages disappear after being read" 
           : "Messages will be kept permanently"
       });
     } catch (error: any) {

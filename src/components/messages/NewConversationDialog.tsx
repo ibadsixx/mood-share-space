@@ -46,6 +46,7 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
     if (open && currentUserId) {
       fetchFriends();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, currentUserId]);
 
   // Search users when query changes
@@ -59,6 +60,7 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   const fetchFriends = async () => {
@@ -77,7 +79,12 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
 
       if (error) throw error;
 
-      const friendsList: User[] = (data || []).map((friendship: any) => {
+      const friendsList: User[] = (data || []).map((friendship: {
+        requester_id: string;
+        receiver_id: string;
+        requester: User;
+        receiver: User;
+      }) => {
         const friend = friendship.requester_id === currentUserId
           ? friendship.receiver
           : friendship.requester;

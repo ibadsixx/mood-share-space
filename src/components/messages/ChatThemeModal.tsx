@@ -8,17 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-export const THEME_OPTIONS = [
-  { id: 'default', name: 'Default', gradient: 'from-primary to-primary' },
-  { id: 'purple-pink', name: 'Berry', gradient: 'from-purple-500 to-pink-500' },
-  { id: 'blue-cyan', name: 'Ocean', gradient: 'from-blue-500 to-cyan-400' },
-  { id: 'orange-red', name: 'Sunset', gradient: 'from-orange-500 to-red-500' },
-  { id: 'green-teal', name: 'Forest', gradient: 'from-green-500 to-teal-400' },
-  { id: 'indigo-purple', name: 'Galaxy', gradient: 'from-indigo-500 to-purple-500' },
-  { id: 'rose-pink', name: 'Rose', gradient: 'from-rose-400 to-pink-400' },
-  { id: 'amber-yellow', name: 'Honey', gradient: 'from-amber-400 to-yellow-300' },
-];
+import { THEME_OPTIONS } from './chatThemeOptions';
 
 interface ChatThemeModalProps {
   open: boolean;
@@ -37,7 +27,7 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
 
   useEffect(() => {
     if (open) setSelected(currentTheme);
-  }, [open, currentTheme]);
+  }, [open, currentTheme, setSelected]);
 
   const handleApply = () => {
     onSelectTheme(selected);

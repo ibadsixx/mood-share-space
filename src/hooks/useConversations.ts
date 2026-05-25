@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -63,6 +63,57 @@ type Message = {
   };
 };
 
+type ConversationInfoRow = {
+  conversation_id: string;
+  type: string;
+  created_at: string;
+  updated_at: string;
+  other_user_id: string;
+  other_user_username: string;
+  other_user_display_name: string;
+  other_user_profile_pic?: string;
+  last_message_content?: string;
+  last_message_created_at?: string;
+  unread_count: number;
+};
+
+type NewMessagePayload = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+};
+
+type MessageRow = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content?: string;
+  attachment_url?: string;
+  image_url?: string;
+  media_url?: string;
+  is_image?: boolean;
+  is_gif?: boolean;
+  gif_url?: string;
+  is_sticker?: boolean;
+  sticker_url?: string;
+  sticker_id?: string;
+  sticker_set?: string;
+  audio_url?: string;
+  audio_duration?: number;
+  audio_mime?: string;
+  audio_size?: number;
+  audio_path?: string;
+  reply_to_id?: string;
+  created_at: string;
+  message_type?: string;
+  is_system?: boolean;
+  sender_profile: {
+    username: string;
+    display_name: string;
+    profile_pic?: string;
+  } | null;
+};
+
 export const useConversations = (currentUserId?: string) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -71,7 +122,7 @@ export const useConversations = (currentUserId?: string) => {
   const { toast } = useToast();
 
   // Fetch conversations using the new RPC
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     if (!currentUserId) return;
 
     try {
@@ -81,7 +132,7 @@ export const useConversations = (currentUserId?: string) => {
 
       if (error) throw error;
 
-      const formattedConversations: Conversation[] = data?.map((conv: any) => ({
+      const formattedConversations: Conversation[] = data?.map((conv: ConversationInfoRow) => ({
         conversation_id: conv.conversation_id,
         type: conv.type,
         created_at: conv.created_at,
@@ -116,7 +167,7 @@ export const useConversations = (currentUserId?: string) => {
       }
 
       setConversations(formattedConversations);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching conversations:', error);
       toast({
         title: "Error",
@@ -126,7 +177,7 @@ export const useConversations = (currentUserId?: string) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUserId, toast]);
 
   // Fetch messages for a specific conversation
   const fetchMessages = async (conversationId: string, page = 0, limit = 50) => {
@@ -174,9 +225,9 @@ export const useConversations = (currentUserId?: string) => {
       }
 
       // Format messages (reverse to show oldest first)
-      const formattedMessages: Message[] = (data?.reverse() || []).map((msg: any) => ({
+      const formattedMessages: Message[] = (data?.reverse() || []).map((msg: MessageRow) => ({
         ...msg,
-        reply_to: null // Will be populated separately if needed
+        reply_to: null
       }));
 
       // Fetch reply_to messages separately if any messages have reply_to_id
@@ -208,7 +259,7 @@ export const useConversations = (currentUserId?: string) => {
 
       // Mark messages as read
       await markMessagesAsRead(conversationId);
-    } catch (error: any) {
+    } catch (error) {
       console.error('[useConversations] Error fetching messages:', error);
       toast({
         title: "Error",
@@ -240,7 +291,7 @@ export const useConversations = (currentUserId?: string) => {
           is_image: Boolean(isImage),
           message_type: isVideo ? 'video' : isImage ? 'image' : 'text',
           reply_to_id: replyToId || null
-        } as any)
+        } as Record<string, unknown>)
         .select(`
           id,
           conversation_id,
@@ -298,7 +349,7 @@ export const useConversations = (currentUserId?: string) => {
       }
 
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error('[useConversations] Error sending message:', error);
       toast({
         title: "Error",
@@ -335,7 +386,7 @@ export const useConversations = (currentUserId?: string) => {
       if (error) throw error;
 
       return data;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error creating/getting conversation:', error);
       toast({
         title: "Error",
@@ -354,12 +405,12 @@ export const useConversations = (currentUserId?: string) => {
 
   // Debounced version of fetchConversations to avoid rapid refetches
   const debouncedFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debouncedFetchConversations = () => {
+  const debouncedFetchConversations = useCallback(() => {
     if (debouncedFetchRef.current) clearTimeout(debouncedFetchRef.current);
     debouncedFetchRef.current = setTimeout(() => {
       fetchConversations();
     }, 500);
-  };
+  }, [fetchConversations]);
 
   // Set up real-time subscriptions
   useEffect(() => {
@@ -387,7 +438,7 @@ export const useConversations = (currentUserId?: string) => {
           
           // If it's for the active conversation, handle the new message
           if (activeConversationId && msgConvId === activeConversationId) {
-            const newMsg = payload.new as any;
+            const newMsg = payload.new as NewMessagePayload;
             
             // Skip if message was sent by current user (already added optimistically)
             if (newMsg.sender_id === currentUserId) {
@@ -462,14 +513,14 @@ export const useConversations = (currentUserId?: string) => {
       supabase.removeChannel(messagesChannel);
       if (debouncedFetchRef.current) clearTimeout(debouncedFetchRef.current);
     };
-  }, [currentUserId, activeConversationId]);
+  }, [currentUserId, activeConversationId, debouncedFetchConversations]);
 
   // Initial fetch
   useEffect(() => {
     if (currentUserId) {
       fetchConversations();
     }
-  }, [currentUserId]);
+  }, [currentUserId, fetchConversations]);
 
   return {
     conversations,

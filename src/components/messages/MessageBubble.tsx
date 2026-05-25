@@ -202,7 +202,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       if (error) throw error;
       
       setAudioUrl(data.signedUrl);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading audio:', error);
       setAudioError('Failed to load audio');
     } finally {
