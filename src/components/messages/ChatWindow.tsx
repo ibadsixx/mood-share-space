@@ -106,26 +106,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   }, [messages]);
 
-  // Clean up vanish mode messages when leaving a conversation
-  const prevConvIdRef = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    return () => {
-      // Only delete if vanish mode was active and we have a conversation ID
-      if (prevConvIdRef.current && vanishingMessagesEnabled) {
-        supabase.rpc('delete_read_vanish_messages', {
-          p_conversation_id: prevConvIdRef.current
-        }).then(({ error }) => {
-          if (error) console.error('Error cleaning up vanish messages:', error);
-        });
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Track the current conversation ID for cleanup on unmount
-  useEffect(() => {
-    prevConvIdRef.current = conversationId;
-  }, [conversationId]);
+  // Delete seen vanish-mode messages when disabling vanish mode
+  const handleToggleVanish = async () => {
+    if (!conversationId) return;
+    const wasEnabled = vanishingMessagesEnabled;
+    await toggleVanish();
+    // When turning vanish mode OFF, clean up messages that were already seen
+    if (wasEnabled) {
+      supabase.rpc('delete_read_vanish_messages', {
+        p_conversation_id: conversationId
+      }).then(({ error }) => {
+        if (error) console.error('Error cleaning up vanish messages:', error);
+      });
+    }
+  };
 
   // Screenshot detection for vanish mode
   const wasHiddenRef = useRef(false);
@@ -294,7 +288,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         onTouchMove={(e) => {
           if (swipeStartY.current === null) return;
           const deltaY = e.touches[0].clientY - swipeStartY.current;
-          // Swipe up (negative delta) crosses threshold
           if (deltaY < -80 && !vanishJustActivated.current) {
             vanishJustActivated.current = true;
             swipeStartY.current = null;
@@ -302,6 +295,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             supabase.rpc('update_conversation_settings', {
               p_conversation_id: conversationId,
               p_vanishing_messages_enabled: newValue
+            }).then(() => {
+              // When turning vanish mode OFF, clean up seen messages
+              if (!newValue && conversationId) {
+                supabase.rpc('delete_read_vanish_messages', {
+                  p_conversation_id: conversationId
+                }).catch(console.error);
+              }
             }).catch(console.error);
             toast({
               title: newValue ? "Vanish Mode activated" : "Vanish Mode deactivated",
@@ -327,7 +327,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={toggleVanish}
+              onClick={handleToggleVanish}
               className="h-6 w-6 p-0 text-orange-400/70 hover:text-orange-300 hover:bg-orange-500/10"
             >
               <X className="h-3 w-3" />
@@ -554,7 +554,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         onClearHistory={() => console.log('Clear chat history')}
         onScrollToMessage={handleScrollToMessage}
         vanishingMessagesEnabled={vanishingMessagesEnabled}
-        onToggleVanishingMessages={toggleVanish}
+        onToggleVanishingMessages={handleToggleVanish}
       />
 
       {/* Forward Message Modal */}
