@@ -326,6 +326,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           <video
             src={message.image_url}
             controls
+            playsInline
+            preload="auto"
             className="max-w-xs rounded-lg"
             style={{ maxHeight: '300px' }}
           />
@@ -390,6 +392,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             <video
               src={message.media_url}
               controls
+              playsInline
+              preload="auto"
               className="max-w-xs rounded-lg"
               style={{ maxHeight: '300px' }}
             />
@@ -428,6 +432,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             <video
               src={message.attachment_url}
               controls
+              playsInline
+              preload="auto"
               className="max-w-xs rounded-lg"
               style={{ maxHeight: '300px' }}
             />
@@ -513,6 +519,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             <video
               src={getMediaUrl() || ''}
               controls
+              playsInline
+              preload="auto"
               className="rounded-2xl max-w-[280px] max-h-[320px] shadow-sm"
               style={{ maxHeight: '320px' }}
             />
@@ -659,19 +667,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   loop
                   muted
                   playsInline
-                  className="max-w-[250px] max-h-[200px] rounded-xl object-contain cursor-pointer hover:scale-105 transition-transform duration-200"
-                  onClick={() => {
-                    // Optional: Could add GIF enlargement on click
-                  }}
-                  onError={(e) => {
-                    // Fallback to img if video fails
-                    const target = e.target as HTMLVideoElement;
-                    const img = document.createElement('img');
-                    img.src = message.gif_url || '';
-                    img.className = target.className;
-                    img.alt = 'GIF';
-                    target.parentNode?.replaceChild(img, target);
-                  }}
+                  preload="auto"
+                  className="max-w-[250px] max-h-[200px] rounded-xl object-contain"
                 />
               </div>
             ) : (

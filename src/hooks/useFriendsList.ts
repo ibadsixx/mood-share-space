@@ -377,13 +377,12 @@ export const useFriendsList = (profileId: string, isOwnProfile: boolean) => {
       // First remove any existing friendship
       await unfriendUser(userId);
       
-      // Then add to blocked users
-      const { error } = await supabase
-        .from('blocked_users')
-        .insert({
-          user_id: user.id,
-          blocked_user_id: userId
-        });
+      // Then block via RPC (uses blocks table)
+      const { error } = await supabase.rpc('block_user', {
+        p_blocker: user.id,
+        p_blocked: userId,
+        p_block_type: 'full'
+      });
 
       if (error) throw error;
 

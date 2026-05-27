@@ -156,17 +156,14 @@ export const useMessageRequests = (currentUserId?: string) => {
 
       if (requestError) throw requestError;
 
-      // Add to blocked users
-      const { error: blockError } = await supabase
-        .from('blocked_users')
-        .insert({
-          user_id: currentUserId,
-          blocked_user_id: senderId
-        });
+      // Block via RPC (uses blocks table)
+      const { error: blockError } = await supabase.rpc('block_user', {
+        p_blocker: currentUserId,
+        p_blocked: senderId,
+        p_block_type: 'full'
+      });
 
-      if (blockError && blockError.code !== '23505') { // Ignore unique constraint violations
-        throw blockError;
-      }
+      if (blockError) throw blockError;
 
       setRequests(prev => prev.filter(req => req.id !== requestId));
 

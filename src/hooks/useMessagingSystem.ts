@@ -32,11 +32,10 @@ export const useMessagingSystem = (currentUserId?: string) => {
   // Check if user is blocked
   const checkIfBlocked = async (userId1: string, userId2: string): Promise<boolean> => {
     try {
-      const { data, error } = await supabase
-        .from('blocked_users')
-        .select('id')
-        .or(`and(user_id.eq.${userId1},blocked_user_id.eq.${userId2}),and(user_id.eq.${userId2},blocked_user_id.eq.${userId1})`)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('is_blocked', {
+        user1_id: userId1,
+        user2_id: userId2
+      });
 
       if (error) throw error;
       return !!data;
@@ -276,18 +275,14 @@ export const useMessagingSystem = (currentUserId?: string) => {
 
       if (requestError) throw requestError;
 
-      // Add to blocked users
-      const { error: blockError } = await supabase
-        .from('blocked_users')
-        .insert({
-          user_id: currentUserId,
-          blocked_user_id: senderId
-        });
+      // Block via RPC (uses blocks table)
+      const { error: blockError } = await supabase.rpc('block_user', {
+        p_blocker: currentUserId,
+        p_blocked: senderId,
+        p_block_type: 'full'
+      });
 
-      // Ignore unique constraint violation (already blocked)
-      if (blockError && blockError.code !== '23505') {
-        throw blockError;
-      }
+      if (blockError) throw blockError;
 
       return { success: true };
     } catch (error: any) {

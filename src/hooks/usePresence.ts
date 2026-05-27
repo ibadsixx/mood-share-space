@@ -39,7 +39,7 @@ export function usePresence(userId?: string) {
     };
 
     const updateLastSeenSync = () => {
-      supabase.rpc('update_last_seen').catch(() => {});
+      supabase.rpc('update_last_seen').then();
     };
 
     updateLastSeen();

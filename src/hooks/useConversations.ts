@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { initConversationEncryption, decryptContent, isEncryptionReady } from '@/lib/conversationEncryption';
+import { loadEcdhPrivateKey } from '@/hooks/useEncryptionKeys';
+
+async function tryDecryptMessage(msg: Message, convId: string): Promise<Message> {
+  if (msg.encrypted_content && msg.encryption_iv) {
+    const decrypted = await decryptContent(convId, msg.encrypted_content, msg.encryption_iv);
+    if (decrypted !== null) {
+      return { ...msg, content: decrypted, encrypted_content: undefined, encryption_iv: undefined };
+    }
+  }
+  return msg;
+}
 
 type Conversation = {
   conversation_id: string;
@@ -61,6 +73,8 @@ type Message = {
     display_name: string;
     profile_pic?: string;
   };
+  encrypted_content?: string;
+  encryption_iv?: string;
   seen?: boolean;
   delivered?: boolean;
 };
@@ -183,6 +197,24 @@ export const useConversations = (currentUserId?: string) => {
     }
   }, [currentUserId, toast]);
 
+  // Initialize E2EE for the active conversation
+  const initEncryption = useCallback(async (convId: string) => {
+    if (!currentUserId) return;
+    try {
+      const ecdhPrivKey = await loadEcdhPrivateKey();
+      if (!ecdhPrivKey) return;
+      await initConversationEncryption(convId, currentUserId, ecdhPrivKey);
+    } catch {
+      // Encryption not available — messages fall back to plaintext
+    }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (activeConversationId && currentUserId) {
+      initEncryption(activeConversationId);
+    }
+  }, [activeConversationId, currentUserId, initEncryption]);
+
   // Fetch messages for a specific conversation
   const fetchMessages = async (conversationId: string, page = 0, limit = 50) => {
     if (!currentUserId) {
@@ -198,6 +230,8 @@ export const useConversations = (currentUserId?: string) => {
           conversation_id,
           sender_id,
           content,
+          encrypted_content,
+          encryption_iv,
           attachment_url,
           image_url,
           media_url,
@@ -229,12 +263,17 @@ export const useConversations = (currentUserId?: string) => {
       }
 
       // Format messages (reverse to show oldest first)
-      const formattedMessages: Message[] = (data?.reverse() || []).map((msg: MessageRow) => ({
-        ...msg,
-        reply_to: null,
-        seen: false,
-        delivered: !!msg.delivered_at
-      }));
+      const formattedMessages: Message[] = await Promise.all(
+        (data?.reverse() || []).map(async (msg: MessageRow) => {
+          const base = {
+            ...msg,
+            reply_to: null,
+            seen: false,
+            delivered: !!msg.delivered_at
+          };
+          return tryDecryptMessage(base, conversationId);
+        })
+      );
 
       // Fetch reply_to messages separately if any messages have reply_to_id
       const replyIds = formattedMessages
@@ -311,13 +350,29 @@ export const useConversations = (currentUserId?: string) => {
     const isVideo = attachmentUrl && /\.(mp4|webm|ogg|mov|avi|mkv|m4v)$/i.test(urlPath);
     const isImage = !isVideo && attachmentUrl && /\.(jpg|jpeg|png|gif|webp|heic|heif|bmp|svg)$/i.test(urlPath);
 
+    let encryptedContent: string | undefined;
+    let encryptionIv: string | undefined;
+
+    const isText = !isImage && !isVideo;
+    if (isText && content) {
+      const encResult = isEncryptionReady(conversationId)
+        ? await import('@/lib/conversationEncryption').then(m => m.encryptContent(conversationId, content))
+        : null;
+      if (encResult) {
+        encryptedContent = encResult.encryptedContent;
+        encryptionIv = encResult.iv;
+      }
+    }
+
     try {
       const { data, error } = await supabase
         .from('messages')
         .insert({
           conversation_id: conversationId,
           sender_id: currentUserId,
-          content: (isImage || isVideo) ? (content || null) : content,
+          content: encryptedContent ? null : (isImage || isVideo ? (content || null) : content),
+          encrypted_content: encryptedContent || null,
+          encryption_iv: encryptionIv || null,
           attachment_url: attachmentUrl,
           image_url: isImage ? attachmentUrl : null,
           media_url: isVideo ? attachmentUrl : null,
@@ -330,6 +385,8 @@ export const useConversations = (currentUserId?: string) => {
           conversation_id,
           sender_id,
           content,
+          encrypted_content,
+          encryption_iv,
           attachment_url,
           image_url,
           media_url,
@@ -498,11 +555,11 @@ export const useConversations = (currentUserId?: string) => {
             const { data: msgData } = await supabase
               .from('messages')
               .select(`
-                id, conversation_id, sender_id, content, attachment_url, image_url, media_url, is_image,
+                id, conversation_id, sender_id, content, encrypted_content, encryption_iv,
+                attachment_url, image_url, media_url, is_image,
                 is_gif, gif_url, is_sticker, sticker_url, sticker_id, sticker_set,
                 audio_url, audio_duration, audio_mime, audio_size, audio_path,
-                          reply_to_id,
-          created_at, message_type, is_system,
+                reply_to_id, created_at, message_type, is_system,
                 sender_profile:profiles!messages_sender_id_fkey(username, display_name, profile_pic)
               `)
               .eq('id', newMsg.id)
@@ -523,8 +580,9 @@ export const useConversations = (currentUserId?: string) => {
                 replyData = replyResult;
               }
               
+              const plainMessage = await tryDecryptMessage(msgData as Message, msgConvId);
               const fullMessage: Message = {
-                ...msgData,
+                ...plainMessage,
                 reply_to: replyData,
                 seen: false,
                 delivered: !!msgData.delivered_at

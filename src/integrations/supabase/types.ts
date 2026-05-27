@@ -4073,16 +4073,14 @@ export type Database = {
         Args: { user_a: string; user_b: string }
         Returns: boolean
       }
-      block_user:
-        | { Args: { p_blocked: string; p_blocker: string }; Returns: undefined }
-        | {
-            Args: {
-              p_block_type?: string
-              p_blocked: string
-              p_blocker: string
-            }
-            Returns: undefined
-          }
+      block_user: {
+        Args: {
+          p_block_type?: string
+          p_blocked: string
+          p_blocker: string
+        }
+        Returns: undefined
+      }
       can_see_content: {
         Args: {
           p_content_id: string
@@ -4172,6 +4170,10 @@ export type Database = {
         Args: { user_a: string; user_b: string }
         Returns: number
       }
+      get_my_encryption_keys: {
+        Args: Record<string, never>
+        Returns: Json
+      }
       get_or_create_conversation_settings: {
         Args: { p_conversation_id: string }
         Returns: {
@@ -4219,7 +4221,7 @@ export type Database = {
         Returns: undefined
       }
       is_blocked: {
-        Args: { user1_id: string; user2_id: string }
+        Args: { user1_id: string; user2_id: string; p_block_type?: string }
         Returns: boolean
       }
       is_content_hidden: {
@@ -4322,8 +4324,20 @@ export type Database = {
         }
       }
       update_music_trending_status: { Args: never; Returns: undefined }
+      upsert_encryption_key: {
+        Args: {
+          p_public_key: string
+          p_key_fingerprint: string
+          p_device_info?: string
+        }
+        Returns: Json
+      }
       verify_conversation_encryption: {
-        Args: { p_conversation_id: string }
+        Args: {
+          p_conversation_id: string
+          p_key_fingerprint?: string
+          p_verified_user_id?: string
+        }
         Returns: Json
       }
     }

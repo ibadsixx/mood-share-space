@@ -93,7 +93,7 @@ const PrivacyCheckup = () => {
     setLoading(true);
 
     try {
-      const [profileRes, settingsRes, blocksRes, legacyBlocksRes] = await Promise.all([
+      const [profileRes, settingsRes, blocksRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('email, birthday, relationship, email_visibility, birth_date_visibility, birth_year_visibility, relationship_visibility, friends_visibility, following_visibility')
@@ -107,16 +107,11 @@ const PrivacyCheckup = () => {
           .from('blocks')
           .select('blocked_id')
           .eq('blocker_id', user.id),
-        supabase
-          .from('blocked_users')
-          .select('blocked_user_id')
-          .eq('user_id', user.id),
       ]);
 
       if (profileRes.error) throw profileRes.error;
       if (settingsRes.error) throw settingsRes.error;
       if (blocksRes.error) throw blocksRes.error;
-      if (legacyBlocksRes.error) throw legacyBlocksRes.error;
 
       setProfileData({
         email: profileRes.data?.email || '',
@@ -136,12 +131,7 @@ const PrivacyCheckup = () => {
       }, {});
       setPrivacySettings(settingsObject);
 
-      const blockedIds = Array.from(
-        new Set([
-          ...(blocksRes.data ?? []).map(block => block.blocked_id),
-          ...(legacyBlocksRes.data ?? []).map(block => block.blocked_user_id),
-        ])
-      );
+      const blockedIds = (blocksRes.data ?? []).map(block => block.blocked_id);
 
       if (blockedIds.length === 0) {
         setBlockedUsers([]);
@@ -238,12 +228,13 @@ const PrivacyCheckup = () => {
   const unblockUser = async (blockedUserId: string) => {
     if (!user?.id) return;
 
-    const [blocksDelete, legacyBlocksDelete] = await Promise.all([
-      supabase.from('blocks').delete().eq('blocker_id', user.id).eq('blocked_id', blockedUserId),
-      supabase.from('blocked_users').delete().eq('user_id', user.id).eq('blocked_user_id', blockedUserId),
-    ]);
+    const { error } = await supabase
+      .from('blocks')
+      .delete()
+      .eq('blocker_id', user.id)
+      .eq('blocked_id', blockedUserId);
 
-    if (blocksDelete.error && legacyBlocksDelete.error) {
+    if (error) {
       toast({ title: 'Error', description: 'Could not lift restriction', variant: 'destructive' });
       return;
     }

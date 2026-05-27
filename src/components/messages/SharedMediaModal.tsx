@@ -118,6 +118,8 @@ const MediaGrid: React.FC<{ media: SharedMedia[] }> = ({ media }) => {
                 <Play className="h-8 w-8 text-white" />
                 <video 
                   src={item.url} 
+                  playsInline
+                  preload="auto"
                   className="absolute inset-0 w-full h-full object-cover -z-10"
                 />
               </div>
@@ -148,6 +150,8 @@ const MediaGrid: React.FC<{ media: SharedMedia[] }> = ({ media }) => {
               src={selectedMedia.url}
               controls
               autoPlay
+              playsInline
+              preload="auto"
               className="w-full max-h-[80vh] object-contain"
             />
           ) : (

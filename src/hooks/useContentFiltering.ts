@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface ContentFilteringState {
   blockedUserIds: string[];
+  restrictedUserIds: string[];
+  mutedUserIds: string[];
   hiddenContentIds: string[];
   hiddenProfileIds: string[];
   seeLessOwnerIds: string[];
@@ -17,6 +19,8 @@ interface ContentFilteringState {
 export const useContentFiltering = () => {
   const [state, setState] = useState<ContentFilteringState>({
     blockedUserIds: [],
+    restrictedUserIds: [],
+    mutedUserIds: [],
     hiddenContentIds: [],
     hiddenProfileIds: [],
     seeLessOwnerIds: [],
@@ -63,6 +67,22 @@ export const useContentFiltering = () => {
       console.log('[CONTENT_FILTER] Hidden reels (See less):', hiddenContentIds);
       console.log('[CONTENT_FILTER] Hidden profiles:', hiddenProfileIds);
 
+      // Fetch restricted users
+      const { data: restrictedData } = await supabase
+        .from('restricted_users')
+        .select('restricted_user_id')
+        .eq('user_id', user.id);
+
+      const restrictedIds = restrictedData?.map(r => r.restricted_user_id) || [];
+
+      // Fetch muted users
+      const { data: mutedData } = await supabase
+        .from('muted_users')
+        .select('muted_user_id')
+        .eq('user_id', user.id);
+
+      const mutedIds = mutedData?.map(m => m.muted_user_id) || [];
+
       // Fetch see_less preferences for reels
       const { data: seeLessData } = await supabase
         .from('content_preferences')
@@ -75,6 +95,8 @@ export const useContentFiltering = () => {
 
       setState({
         blockedUserIds: blockedIds,
+        restrictedUserIds: restrictedIds,
+        mutedUserIds: mutedIds,
         hiddenContentIds,
         hiddenProfileIds,
         seeLessOwnerIds,
@@ -83,6 +105,8 @@ export const useContentFiltering = () => {
 
       console.log('[CONTENT_FILTER] Loaded:', {
         blockedUsers: blockedIds.length,
+        restrictedUsers: restrictedIds.length,
+        mutedUsers: mutedIds.length,
         hiddenContent: hiddenContentIds.length,
         hiddenProfiles: hiddenProfileIds.length,
         seeLessOwners: seeLessOwnerIds.length,
@@ -115,6 +139,18 @@ export const useContentFiltering = () => {
     [state.hiddenProfileIds]
   );
 
+  // Check if user is restricted
+  const isUserRestricted = useCallback(
+    (userId: string) => state.restrictedUserIds.includes(userId),
+    [state.restrictedUserIds]
+  );
+
+  // Check if user is muted
+  const isUserMuted = useCallback(
+    (userId: string) => state.mutedUserIds.includes(userId),
+    [state.mutedUserIds]
+  );
+
   // Check if owner is in "see less" list
   const isSeeLessOwner = useCallback(
     (ownerId: string) => state.seeLessOwnerIds.includes(ownerId),
@@ -136,13 +172,17 @@ export const useContentFiltering = () => {
       if (state.hiddenProfileIds.includes(ownerId)) {
         return false;
       }
+      // Check if user is muted - exclude from feed
+      if (state.mutedUserIds.includes(ownerId)) {
+        return false;
+      }
       // Check if owner is in "see less" list - exclude from feed
       if (state.seeLessOwnerIds.includes(ownerId)) {
         return false;
       }
       return true;
     },
-    [state.blockedUserIds, state.hiddenContentIds, state.hiddenProfileIds, state.seeLessOwnerIds]
+    [state.blockedUserIds, state.hiddenContentIds, state.hiddenProfileIds, state.mutedUserIds, state.seeLessOwnerIds]
   );
 
   // Filter an array of content items
@@ -162,14 +202,18 @@ export const useContentFiltering = () => {
   // Get exclusion filters for database queries
   const exclusionFilters = useMemo(() => ({
     blockedUserIds: state.blockedUserIds,
+    restrictedUserIds: state.restrictedUserIds,
+    mutedUserIds: state.mutedUserIds,
     hiddenContentIds: state.hiddenContentIds,
     hiddenProfileIds: state.hiddenProfileIds,
     seeLessOwnerIds: state.seeLessOwnerIds,
-  }), [state.blockedUserIds, state.hiddenContentIds, state.hiddenProfileIds, state.seeLessOwnerIds]);
+  }), [state.blockedUserIds, state.restrictedUserIds, state.mutedUserIds, state.hiddenContentIds, state.hiddenProfileIds, state.seeLessOwnerIds]);
 
   return {
     ...state,
     isUserBlocked,
+    isUserRestricted,
+    isUserMuted,
     isContentHidden,
     isProfileHidden,
     isSeeLessOwner,

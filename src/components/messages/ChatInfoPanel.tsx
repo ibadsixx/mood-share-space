@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { z } from 'zod';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -52,7 +53,7 @@ type ParticipantData = {
   devices: Array<{
     browser: string;
     key_fingerprint: string;
-    device_id?: string;
+    key_id?: string;
   }>;
 };
 
@@ -62,9 +63,37 @@ type EncryptionDetails = {
     status: string;
     verified_by: string;
     verified_by_name: string;
+    verified_key_fingerprint?: string | null;
+    verified_user_id?: string | null;
   } | null;
   participants: ParticipantData[];
 };
+
+const deviceSchema = z.object({
+  browser: z.string(),
+  key_fingerprint: z.string(),
+  key_id: z.string().optional(),
+});
+
+const participantDataSchema = z.object({
+  user_id: z.string(),
+  display_name: z.string(),
+  profile_pic: z.string().optional(),
+  username: z.string(),
+  devices: z.array(deviceSchema),
+});
+
+const encryptionDetailsSchema = z.object({
+  last_verification: z.object({
+    verified_at: z.string(),
+    status: z.string(),
+    verified_by: z.string(),
+    verified_by_name: z.string(),
+    verified_key_fingerprint: z.string().nullable().optional(),
+    verified_user_id: z.string().nullable().optional(),
+  }).nullable().optional(),
+  participants: z.array(participantDataSchema),
+});
 interface ChatInfoPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -126,17 +155,67 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
   const [encryptionView, setEncryptionView] = useState<'check' | 'details' | 'keys'>('check');
   const [selectedParticipantKeys, setSelectedParticipantKeys] = useState<Record<string, unknown> | null>(null);
   const [showLimitDialog, setShowLimitDialog] = useState(false);
+  const [isRestricted, setIsRestricted] = useState(false);
+  const [restrictLoading, setRestrictLoading] = useState(false);
   const [showBlockDialog, setShowBlockDialog] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [encryptionData, setEncryptionData] = useState<EncryptionDetails | null>(null);
   const [encryptionLoading, setEncryptionLoading] = useState(false);
   const [encryptionVerified, setEncryptionVerified] = useState(false);
   const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
+  const [verifiedKeyFingerprint, setVerifiedKeyFingerprint] = useState<string | null>(null);
+  const [encryptionStatus, setEncryptionStatus] = useState<'loading' | 'encrypted' | 'not-encrypted'>('loading');
   const [clearingHistory, setClearingHistory] = useState(false);
   const [allowMessageSharing, setAllowMessageSharing] = useState(true);
   const [savingControls, setSavingControls] = useState(false);
   const { toast } = useToast();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) setCurrentUserId(data.user.id);
+    });
+  }, []);
+
+  // Auto-fetch encryption status when panel opens
+  useEffect(() => {
+    if (isOpen && conversationId) {
+      setEncryptionData(null);
+      setEncryptionStatus('loading');
+      (async () => {
+        try {
+          const { data, error } = await supabase.rpc('get_encryption_details', {
+            p_conversation_id: conversationId
+          });
+          if (error) throw error;
+          const parsed = data ? encryptionDetailsSchema.parse(data) : null;
+          setEncryptionData(parsed);
+          const hasKeys = parsed?.participants?.some(p => p.devices?.length > 0) ?? false;
+          setEncryptionStatus(hasKeys ? 'encrypted' : 'not-encrypted');
+        } catch {
+          setEncryptionStatus('not-encrypted');
+        }
+      })();
+    } else if (!isOpen) {
+      setEncryptionStatus('loading');
+    }
+  }, [isOpen, conversationId]);
+
+  // Check restriction status on mount
+  useEffect(() => {
+    if (isOpen && otherUser?.id && currentUserId) {
+      supabase
+        .from('restricted_users')
+        .select('id')
+        .eq('user_id', currentUserId)
+        .eq('restricted_user_id', otherUser.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          setIsRestricted(!!data);
+        });
+    }
+  }, [isOpen, otherUser?.id, currentUserId]);
+
   const { 
     settings, 
     loading,
@@ -176,18 +255,24 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
       });
       
       if (error) throw error;
-      setEncryptionData(data as EncryptionDetails | null);
       
-      if (data && (data as EncryptionDetails).last_verification) {
+      const parsed = data ? encryptionDetailsSchema.parse(data) : null;
+      setEncryptionData(parsed);
+      const hasKeys = parsed?.participants?.some(p => p.devices?.length > 0) ?? false;
+      setEncryptionStatus(hasKeys ? 'encrypted' : 'not-encrypted');
+      
+      if (parsed?.last_verification) {
         setEncryptionVerified(true);
-        const lastVerification = (data as EncryptionDetails).last_verification!;
-        setVerifiedAt(new Date(lastVerification.verified_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        setVerifiedAt(new Date(parsed.last_verification.verified_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        setVerifiedKeyFingerprint(parsed.last_verification.verified_key_fingerprint ?? null);
       } else {
         setEncryptionVerified(false);
         setVerifiedAt(null);
+        setVerifiedKeyFingerprint(null);
       }
     } catch (error) {
       console.error('Error fetching encryption details:', error);
+      setEncryptionStatus('not-encrypted');
       toast({
         title: 'Error',
         description: 'Failed to load encryption details',
@@ -242,6 +327,58 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
   // Limit interactions handler  
   const handleLimitInteractions = () => {
     setShowLimitDialog(true);
+  };
+
+  const handleRestrict = async () => {
+    if (!currentUserId || !otherUser?.id) return;
+    setRestrictLoading(true);
+    try {
+      const { error } = await supabase
+        .from('restricted_users')
+        .insert({ user_id: currentUserId, restricted_user_id: otherUser.id });
+      if (error) throw error;
+      setIsRestricted(true);
+      setShowLimitDialog(false);
+      toast({
+        title: 'Restricted',
+        description: `${otherUser.display_name} has been restricted.`,
+      });
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to restrict user.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRestrictLoading(false);
+    }
+  };
+
+  const handleUnrestrict = async () => {
+    if (!currentUserId || !otherUser?.id) return;
+    setRestrictLoading(true);
+    try {
+      const { error } = await supabase
+        .from('restricted_users')
+        .delete()
+        .eq('user_id', currentUserId)
+        .eq('restricted_user_id', otherUser.id);
+      if (error) throw error;
+      setIsRestricted(false);
+      setShowLimitDialog(false);
+      toast({
+        title: 'Restriction removed',
+        description: `${otherUser.display_name} is no longer restricted.`,
+      });
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to remove restriction.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRestrictLoading(false);
+    }
   };
 
   // Clear conversation handler
@@ -337,11 +474,13 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                 )}
               </p>
               
-              {/* Encryption Badge */}
-              <div className="flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-muted rounded-full">
-                <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">End-to-end encrypted</span>
-              </div>
+              {/* Encryption Badge — only shown when real keys exist */}
+              {encryptionStatus === 'encrypted' && (
+                <div className="flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-muted rounded-full">
+                  <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">End-to-end encrypted</span>
+                </div>
+              )}
             </div>
 
             {/* Quick Actions */}
@@ -578,7 +717,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                     className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 text-foreground text-sm"
                   >
                     <Shield className="h-5 w-5 text-muted-foreground" />
-                    <span>Limit interactions</span>
+                    <span>{isRestricted ? 'Remove restriction' : 'Limit interactions'}</span>
                   </button>
                   <button 
                     onClick={() => isBlocked ? onBlock?.() : setShowBlockDialog(true)}
@@ -701,13 +840,19 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                         <p className="text-sm text-muted-foreground">
                           {verifiedAt ? `Verified at ${verifiedAt}` : 'Not yet verified'}
                         </p>
+                        {verifiedKeyFingerprint && (
+                          <p className="text-xs text-muted-foreground mt-1 font-mono">
+                            Key: {verifiedKeyFingerprint.split('\n')[0]}...
+                          </p>
+                        )}
                       </div>
                       <button
                         onClick={async () => {
-                          if (!conversationId) return;
+                          const cid = conversationId;
+                          if (!cid) return;
                           try {
                             await supabase.rpc('verify_conversation_encryption', {
-                              p_conversation_id: conversationId
+                              p_conversation_id: cid
                             });
                             const now = new Date();
                             setVerifiedAt(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -759,42 +904,41 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold text-foreground">Participants</h4>
-                  {encryptionData?.participants?.map((p: ParticipantData) => (
-                    <button
-                      key={p.user_id}
-                      onClick={() => {
-                        setSelectedParticipantKeys(p);
-                        setEncryptionView('keys');
-                      }}
-                      className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-9 h-9">
-                          <AvatarImage src={p.profile_pic} />
-                          <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                            {p.display_name?.charAt(0)?.toUpperCase() || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm text-foreground">{p.display_name}'s keys</span>
-                      </div>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground -rotate-90" />
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setSelectedParticipantKeys({ display_name: 'You', devices: [{ browser: 'This device', key_fingerprint: 'EB 66 AA 4D 88 11 60 6A 17 4C 83 EF 85 02\n83 19 BE EE 9E A9 D0 04 1A 36 51 67 30 AB' }] });
-                      setEncryptionView('keys');
-                    }}
-                    className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <span className="text-sm text-foreground">Your keys</span>
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground -rotate-90" />
-                  </button>
+                  {encryptionData?.participants?.map((p: ParticipantData) => {
+                    const isYou = p.user_id === currentUserId;
+                    return (
+                      <button
+                        key={p.user_id}
+                        onClick={() => {
+                          setSelectedParticipantKeys({
+                            ...p,
+                            display_name: isYou ? 'You' : p.display_name
+                          });
+                          setEncryptionView('keys');
+                        }}
+                        className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          {isYou ? (
+                            <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <Avatar className="w-9 h-9">
+                              <AvatarImage src={p.profile_pic} />
+                              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                                {p.display_name?.charAt(0)?.toUpperCase() || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          <span className="text-sm text-foreground">
+                            {isYou ? 'Your keys' : `${p.display_name}'s keys`}
+                          </span>
+                        </div>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground -rotate-90" />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </>
@@ -813,39 +957,59 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                 </div>
               </DialogHeader>
               <div className="py-4 space-y-4">
-                {(selectedParticipantKeys.devices || []).map((device: { browser?: string; device_id?: string; key_fingerprint?: string }, i: number) => (
-                  <div key={i} className="space-y-2">
-                    <p className="text-sm text-foreground">
-                      <span className="font-medium">{device.browser || 'Unknown'}</span>
-                      <span className="text-muted-foreground"> · {device.device_id || device.key_fingerprint?.substring(0, 8) || '07d4672e'}</span>
-                      <span className="text-muted-foreground"> · Last seen 10 days ago</span>
-                    </p>
-                    <div className="bg-muted rounded-lg p-3 font-mono text-xs text-foreground tracking-wider leading-relaxed whitespace-pre-wrap">
-                      {device.key_fingerprint || 'EB 66 AA 4D 88 11 60 6A 17 4C 83 EF 85 02\n83 19 BE EE 9E A9 D0 04 1A 36 51 67 30 AB'}
-                    </div>
-                  </div>
-                ))}
-                {(!selectedParticipantKeys.devices || selectedParticipantKeys.devices.length === 0) && (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-sm text-foreground">
-                        <span className="font-medium">Safari</span>
-                        <span className="text-muted-foreground"> · 07d4672e · Last seen 10 days ago</span>
-                      </p>
-                      <div className="bg-muted rounded-lg p-3 font-mono text-xs text-foreground tracking-wider leading-relaxed whitespace-pre-wrap">
-                        {'EB 66 AA 4D 88 11 60 6A 17 4C 83 EF 85 02\n83 19 BE EE 9E A9 D0 04 1A 36 51 67 30 AB'}
+                {selectedParticipantKeys.devices && selectedParticipantKeys.devices.length > 0 ? (
+                  selectedParticipantKeys.devices.map((device: { browser?: string; key_fingerprint?: string }, i: number) => {
+                    const isVerified = device.key_fingerprint && device.key_fingerprint === verifiedKeyFingerprint;
+                    return (
+                      <div key={i} className="space-y-2">
+                        <p className="text-sm text-foreground">
+                          <span className="font-medium">{device.browser || 'Unknown'}</span>
+                          {isVerified && (
+                            <span className="text-primary ml-2 text-xs">Verified ✓</span>
+                          )}
+                        </p>
+                        <div className="bg-muted rounded-lg p-3 font-mono text-xs text-foreground tracking-wider leading-relaxed whitespace-pre-wrap">
+                          {device.key_fingerprint || 'Fingerprint unavailable'}
+                        </div>
+                        {device.key_fingerprint && selectedParticipantKeys.display_name !== 'You' && (
+                          <button
+                            onClick={async () => {
+                              const cid = conversationId;
+                              if (!cid) return;
+                              try {
+                                await supabase.rpc('verify_conversation_encryption', {
+                                  p_conversation_id: cid,
+                                  p_key_fingerprint: device.key_fingerprint,
+                                  p_verified_user_id: selectedParticipantKeys.user_id as string
+                                });
+                                setVerifiedKeyFingerprint(device.key_fingerprint!);
+                                const now = new Date();
+                                setVerifiedAt(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                                setEncryptionVerified(true);
+                                toast({
+                                  title: 'Key verified',
+                                  description: `${selectedParticipantKeys.display_name}'s key has been verified.`
+                                });
+                              } catch (err) {
+                                toast({
+                                  title: 'Error',
+                                  description: 'Failed to verify key',
+                                  variant: 'destructive'
+                                });
+                              }
+                            }}
+                            className="text-sm text-primary hover:underline"
+                          >
+                            {isVerified ? 'Verify again' : 'Verify identity'}
+                          </button>
+                        )}
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-sm text-foreground">
-                        <span className="font-medium">Chrome</span>
-                        <span className="text-muted-foreground"> · 07d4672e · Last seen 10 days ago</span>
-                      </p>
-                      <div className="bg-muted rounded-lg p-3 font-mono text-xs text-foreground tracking-wider leading-relaxed whitespace-pre-wrap">
-                        {'28 C6 BF D5 FF 83 FB 65 B1 04 98 92 B9 AE\nCA A6 90 D8 F1 B2 FC 34 14 63 F1 20 15 A3'}
-                      </div>
-                    </div>
-                  </>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No encryption keys registered for this device yet.
+                  </p>
                 )}
               </div>
             </>
@@ -857,59 +1021,59 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
       <Dialog open={showLimitDialog} onOpenChange={setShowLimitDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Limit interactions</DialogTitle>
+            <DialogTitle>
+              {isRestricted ? `Remove restriction on ${otherUser?.display_name}?` : 'Limit interactions'}
+            </DialogTitle>
           </DialogHeader>
           <div className="py-2 space-y-4">
-            <p className="text-sm text-foreground">
-              When you restrict <span className="font-semibold">{otherUser?.display_name}</span>:
-            </p>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 shrink-0">
-                  <svg className="h-5 w-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="4" width="20" height="16" rx="2" />
-                    <path d="M7 15h0" />
-                  </svg>
+            {isRestricted ? (
+              <p className="text-sm text-foreground">
+                This will restore full interactions with <span className="font-semibold">{otherUser?.display_name}</span>. They will not be notified.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-foreground">
+                  When you restrict <span className="font-semibold">{otherUser?.display_name}</span>:
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 shrink-0">
+                      <svg className="h-5 w-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <path d="M7 15h0" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-foreground">Their messages will be moved to message requests — you won't be notified</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 shrink-0">
+                      <Eye className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-foreground">They won't see when you're active or when you've read their messages</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 shrink-0">
+                      <BellOff className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-foreground">Their comments on your posts will only be visible to them</p>
+                  </div>
                 </div>
-                <p className="text-sm text-foreground">Their messages will be moved to message requests — you won't be notified</p>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 shrink-0">
-                  <Eye className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <p className="text-sm text-foreground">They won't see when you're active or when you've read their messages</p>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 shrink-0">
-                  <BellOff className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <p className="text-sm text-foreground">Their comments on your posts will only be visible to them</p>
-              </div>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              {otherUser?.display_name} won't be notified that you've restricted them.
-            </p>
+                <p className="text-xs text-muted-foreground">
+                  {otherUser?.display_name} won't be notified that you've restricted them.
+                </p>
+              </>
+            )}
           </div>
           <DialogFooter className="flex flex-row justify-end gap-2 sm:gap-2">
             <Button variant="ghost" onClick={() => setShowLimitDialog(false)}>
               Cancel
             </Button>
             <Button 
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={async () => {
-                if (onBlock) onBlock('messaging');
-                setShowLimitDialog(false);
-                toast({
-                  title: 'Restricted',
-                  description: `${otherUser?.display_name} has been restricted.`,
-                });
-              }}
+              disabled={restrictLoading}
+              onClick={isRestricted ? handleUnrestrict : handleRestrict}
+              className={isRestricted ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'}
             >
-              Restrict
+              {restrictLoading ? 'Processing...' : isRestricted ? 'Remove Restriction' : 'Restrict'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -219,7 +219,7 @@ const ReelReportModal = ({
           description: "You won't see content from this creator anymore.",
         });
       } else if (actionId === 'block-creator') {
-        // Insert into blocked_users - NOT reported_posts
+        // Insert into blocks table
         console.log(`[BLOCK] Blocking user_id=${resolvedOwnerId}`);
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not logged in');
