@@ -174,6 +174,10 @@ export function clearConversationKeyCache(): void {
   conversationKeyCache.clear();
 }
 
+export function deleteCachedConversationKey(conversationId: string): void {
+  conversationKeyCache.delete(conversationId);
+}
+
 export async function ensureConversationKey(
   conversationId: string,
   myEcdhPrivateKey: CryptoKey,

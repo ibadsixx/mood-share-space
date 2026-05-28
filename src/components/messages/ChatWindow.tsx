@@ -43,6 +43,8 @@ interface ChatWindowProps {
   onSendGif?: (gif: GifItem) => void;
   onSendAudioMessage?: (audioPath: string, duration: number, mimeType: string, fileSize: number) => void;
   onLoadMore?: () => void;
+  onClearHistory?: () => void;
+  hasMoreMessages: boolean;
   loading?: boolean;
 }
 
@@ -56,6 +58,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   onSendGif,
   onSendAudioMessage,
   onLoadMore,
+  onClearHistory,
+  hasMoreMessages,
   loading = false
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -487,7 +491,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
           ) : (
             <>
-              {messages.length > 0 && onLoadMore && (
+              {messages.length > 0 && onLoadMore && hasMoreMessages && (
                 <div className="text-center mb-4">
                   <Button variant="ghost" size="sm" onClick={onLoadMore}>
                     Load older messages
@@ -607,7 +611,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             await reportConversation(conversationId, reportedUserId, reason || 'inappropriate', details || '');
           }
         }}
-        onClearHistory={() => console.log('Clear chat history')}
+        onClearHistory={onClearHistory}
         onScrollToMessage={handleScrollToMessage}
         vanishingMessagesEnabled={vanishingMessagesEnabled}
         onToggleVanishingMessages={handleToggleVanish}
@@ -627,6 +631,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         open={isReportModalOpen}
         onOpenChange={setIsReportModalOpen}
         onReport={handleReportMessage}
+        userName={otherUser?.display_name}
       />
     </div>
   );

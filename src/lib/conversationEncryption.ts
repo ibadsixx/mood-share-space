@@ -63,3 +63,5 @@ export function isEncryptionReady(conversationId: string): boolean {
 export function resetEncryption(): void {
   clearConversationKeyCache();
 }
+
+export { deleteCachedConversationKey } from './crypto';

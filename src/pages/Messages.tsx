@@ -24,6 +24,7 @@ const Messages = () => {
     conversations,
     messages,
     firstUnreadIndex,
+    hasMoreMessages,
     loading,
     activeConversationId,
     setActiveConversationId,
@@ -152,6 +153,11 @@ const Messages = () => {
               return next;
             });
           }}
+          onClearHistory={() => {
+            refetchConversations();
+            navigate('/messages');
+          }}
+          hasMoreMessages={hasMoreMessages}
           loading={loading}
         />
       </div>

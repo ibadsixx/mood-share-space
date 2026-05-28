@@ -19,6 +19,7 @@ import { ReportMessageModal } from './ReportMessageModal';
 import { useToast } from '@/hooks/use-toast';
 import { EmojiAsset } from '@/components/EmojiAsset';
 import { supabase } from '@/integrations/supabase/client';
+import { deleteCachedConversationKey } from '@/lib/conversationEncryption';
 import {
   Dialog,
   DialogContent,
@@ -85,10 +86,10 @@ const participantDataSchema = z.object({
 
 const encryptionDetailsSchema = z.object({
   last_verification: z.object({
-    verified_at: z.string(),
-    status: z.string(),
-    verified_by: z.string(),
-    verified_by_name: z.string(),
+    verified_at: z.string().nullable().optional(),
+    status: z.string().nullable().optional(),
+    verified_by: z.string().nullable().optional(),
+    verified_by_name: z.string().nullable().optional(),
     verified_key_fingerprint: z.string().nullable().optional(),
     verified_user_id: z.string().nullable().optional(),
   }).nullable().optional(),
@@ -239,12 +240,17 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
   const handleReport = () => {
     if (otherUser) {
       setShowReportDialog(true);
+    } else {
+      console.warn('[ChatInfoPanel] handleReport: otherUser is null');
     }
   };
 
   // Check encryption handler
   const handleCheckEncryption = async () => {
-    if (!conversationId) return;
+    if (!conversationId) {
+      console.warn('[ChatInfoPanel] handleCheckEncryption: conversationId is missing');
+      return;
+    }
     setEncryptionLoading(true);
     setEncryptionView('check');
     setShowEncryptionDialog(true);
@@ -301,7 +307,6 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
     try {
       const { error } = await supabase.rpc('update_messaging_controls', {
         p_conversation_id: conversationId,
-        p_who_can_reply: 'everyone',
         p_message_requests_enabled: allowMessageSharing
       });
       
@@ -390,18 +395,23 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Delete messages sent by the current user in this conversation
+      // Upsert a clear marker — messages are soft-hidden from this user's view
       const { error } = await supabase
-        .from('messages')
-        .delete()
-        .eq('conversation_id', conversationId)
-        .eq('sender_id', user.id);
-      
+        .from('conversation_clears')
+        .upsert({
+          user_id: user.id,
+          conversation_id: conversationId,
+          cleared_at: new Date().toISOString()
+        }, { onConflict: 'user_id, conversation_id' });
+
       if (error) throw error;
+
+      // Purge encrypted conversation key from cache
+      deleteCachedConversationKey(conversationId);
       
       toast({
         title: 'Conversation cleared',
-        description: 'Your messages have been removed from this conversation'
+        description: 'Messages have been hidden from this conversation'
       });
       
       setShowClearConfirm(false);
@@ -925,7 +935,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                             </div>
                           ) : (
                             <Avatar className="w-9 h-9">
-                              <AvatarImage src={p.profile_pic} />
+                              {p.profile_pic && <AvatarImage src={p.profile_pic} />}
                               <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                                 {p.display_name?.charAt(0)?.toUpperCase() || 'U'}
                               </AvatarFallback>
@@ -1085,7 +1095,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Clear conversation</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete all your sent messages in this conversation. This action cannot be undone.
+              This will hide all messages in this conversation. Other participants will still see their messages. You can view new messages that arrive after clearing.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1111,10 +1121,14 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
           <div className="space-y-3">
             {/* Block messages and calls */}
             <button
-              onClick={() => {
-                if (onBlock) onBlock('messaging');
-                setShowBlockDialog(false);
-                toast({ title: 'Blocked', description: `Messages and calls from ${otherUser?.display_name} have been blocked.` });
+              onClick={async () => {
+                try {
+                  if (onBlock) await onBlock('messaging');
+                  setShowBlockDialog(false);
+                  toast({ title: 'Blocked', description: `Messages and calls from ${otherUser?.display_name} have been blocked.` });
+                } catch {
+                  toast({ title: 'Error', description: 'Failed to block user.', variant: 'destructive' });
+                }
               }}
               className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:bg-accent transition-colors text-left"
             >
@@ -1134,10 +1148,14 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
             {/* Block completely */}
             <button
-              onClick={() => {
-                if (onBlock) onBlock('full');
-                setShowBlockDialog(false);
-                toast({ title: 'Blocked', description: `${otherUser?.display_name} has been fully blocked.` });
+              onClick={async () => {
+                try {
+                  if (onBlock) await onBlock('full');
+                  setShowBlockDialog(false);
+                  toast({ title: 'Blocked', description: `${otherUser?.display_name} has been fully blocked.` });
+                } catch {
+                  toast({ title: 'Error', description: 'Failed to block user.', variant: 'destructive' });
+                }
               }}
               className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:bg-accent transition-colors text-left"
             >
@@ -1164,8 +1182,9 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
         onReport={async (reason, details) => {
           if (otherUser && onReport) {
             await onReport(otherUser.id, reason, details);
+            return true;
           }
-          return true;
+          return false;
         }}
         userName={otherUser?.display_name}
       />

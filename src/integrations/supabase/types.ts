@@ -589,6 +589,42 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_clears: {
+        Row: {
+          id: string
+          user_id: string
+          conversation_id: string
+          cleared_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          conversation_id: string
+          cleared_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          conversation_id?: string
+          cleared_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_clears_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_clears_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_participants: {
         Row: {
           conversation_id: string
@@ -1693,7 +1729,7 @@ export type Database = {
             foreignKeyName: "message_reports_reporter_id_fkey"
             columns: ["reporter_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

@@ -40,11 +40,13 @@ export const ReportMessageModal: React.FC<ReportMessageModalProps> = ({
 }) => {
   const [submitting, setSubmitting] = useState(false);
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
+  const [details, setDetails] = useState('');
   const [step, setStep] = useState<'reasons' | 'subcategory' | 'confirm'>('reasons');
 
   const handleClose = (val: boolean) => {
     if (!val) {
       setSelectedReason(null);
+      setDetails('');
       setStep('reasons');
     }
     onOpenChange(val);
@@ -68,10 +70,11 @@ export const ReportMessageModal: React.FC<ReportMessageModalProps> = ({
   const handleSubmit = async () => {
     if (!selectedReason || submitting) return;
     setSubmitting(true);
-    const success = await onReport(selectedReason);
+    const success = await onReport(selectedReason, details || undefined);
     setSubmitting(false);
     if (success) {
       setSelectedReason(null);
+      setDetails('');
       setStep('reasons');
       onOpenChange(false);
     }
@@ -140,13 +143,14 @@ export const ReportMessageModal: React.FC<ReportMessageModalProps> = ({
             <DialogDescription className="text-sm text-foreground">
               Send recent messages from this conversation to be reviewed.
             </DialogDescription>
-            <a
-              href="#"
-              onClick={(e) => e.preventDefault()}
-              className="text-sm text-primary hover:underline"
-            >
-              Learn more about reporting.
-            </a>
+            <textarea
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
+              placeholder="Add any additional details..."
+              className="w-full min-h-[80px] p-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+              maxLength={1000}
+            />
+            <p className="text-xs text-muted-foreground text-right">{details.length}/1000</p>
           </div>
 
           <div className="px-6 pb-6">

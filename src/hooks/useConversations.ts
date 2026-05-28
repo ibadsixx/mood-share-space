@@ -137,6 +137,7 @@ export const useConversations = (currentUserId?: string) => {
   const [loading, setLoading] = useState(true);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [firstUnreadIndex, setFirstUnreadIndex] = useState<number>(-1);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const { toast } = useToast();
 
   // Fetch conversations using the new RPC
@@ -262,9 +263,25 @@ export const useConversations = (currentUserId?: string) => {
         throw error;
       }
 
+      // Filter out messages cleared by this user (soft-delete)
+      let clearedAt: string | null = null;
+      if (data && data.length > 0) {
+        const { data: clearRecord } = await supabase
+          .from('conversation_clears')
+          .select('cleared_at')
+          .eq('user_id', currentUserId)
+          .eq('conversation_id', conversationId)
+          .maybeSingle();
+        if (clearRecord) {
+          clearedAt = clearRecord.cleared_at;
+        }
+      }
+
       // Format messages (reverse to show oldest first)
       const formattedMessages: Message[] = await Promise.all(
-        (data?.reverse() || []).map(async (msg: MessageRow) => {
+        (data?.reverse() || [])
+          .filter(msg => !clearedAt || msg.created_at >= clearedAt)
+          .map(async (msg: MessageRow) => {
           const base = {
             ...msg,
             reply_to: null,
@@ -274,6 +291,10 @@ export const useConversations = (currentUserId?: string) => {
           return tryDecryptMessage(base, conversationId);
         })
       );
+
+      // Determine if more messages can be loaded
+      const rawCount = data?.length || 0;
+      setHasMoreMessages(rawCount >= limit && formattedMessages.length > 0);
 
       // Fetch reply_to messages separately if any messages have reply_to_id
       const replyIds = formattedMessages
@@ -297,6 +318,7 @@ export const useConversations = (currentUserId?: string) => {
       }
 
       if (page === 0) {
+        setHasMoreMessages(true);
         setMessages(formattedMessages);
 
         // Determine which messages have been read by other participants
@@ -740,6 +762,7 @@ export const useConversations = (currentUserId?: string) => {
     conversations,
     messages,
     firstUnreadIndex,
+    hasMoreMessages,
     loading,
     activeConversationId,
     setActiveConversationId,
