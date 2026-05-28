@@ -35,6 +35,7 @@ type OtherUser = {
 
 interface ChatWindowProps {
   otherUser: OtherUser | null;
+  conversationName?: string;
   messages: Message[];
   firstUnreadIndex?: number;
   currentUserId: string;
@@ -50,6 +51,7 @@ interface ChatWindowProps {
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
   otherUser,
+  conversationName,
   messages,
   firstUnreadIndex,
   currentUserId,
@@ -305,19 +307,24 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const isInCall = status !== 'idle';
 
   if (!otherUser) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-muted/30">
-        <div className="text-center">
-          <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">
-            Select a conversation
-          </h3>
-          <p className="text-muted-foreground">
-            Choose a conversation from the sidebar to start chatting
-          </p>
+    if (conversationName) {
+      // Group conversation: show group header without short-circuiting
+      // fall through to the main render
+    } else {
+      return (
+        <div className="flex-1 flex items-center justify-center bg-muted/30">
+          <div className="text-center">
+            <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              Select a conversation
+            </h3>
+            <p className="text-muted-foreground">
+              Choose a conversation from the sidebar to start chatting
+            </p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   return (
@@ -390,15 +397,27 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         )}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={otherUser.profile_pic} alt={otherUser.display_name} />
+            <Avatar className="w-10 h-10">
+              {otherUser ? (
+                <>
+                  <AvatarImage src={otherUser.profile_pic} alt={otherUser.display_name} />
+                  <AvatarFallback className={cn(
+                    "bg-primary text-primary-foreground",
+                    vanishingMessagesEnabled && "ring-2 ring-orange-500/50"
+                  )}>
+                    {otherUser.display_name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </>
+              ) : (
                 <AvatarFallback className={cn(
                   "bg-primary text-primary-foreground",
                   vanishingMessagesEnabled && "ring-2 ring-orange-500/50"
                 )}>
-                  {otherUser.display_name.charAt(0).toUpperCase()}
+                  <Users className="h-5 w-5" />
                 </AvatarFallback>
-              </Avatar>
+              )}
+            </Avatar>
+            {otherUser ? (
               <div>
                 <h3 className={cn(
                   "font-semibold transition-colors",
@@ -424,6 +443,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                     <p className="text-xs text-muted-foreground/50 mt-0.5">Read receipts are off</p>
                   )}
               </div>
+            ) : (
+              <div>
+                <h3 className={cn(
+                  "font-semibold transition-colors",
+                  vanishingMessagesEnabled ? "text-zinc-100" : "text-foreground"
+                )}>{conversationName}</h3>
+                <p className={cn(
+                  "text-sm transition-colors",
+                  vanishingMessagesEnabled ? "text-zinc-400" : "text-muted-foreground"
+                )}>Group conversation</p>
+              </div>
+            )}
             </div>
 
             <div className="flex items-center space-x-2">

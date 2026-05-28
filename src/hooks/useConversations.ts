@@ -17,6 +17,7 @@ async function tryDecryptMessage(msg: Message, convId: string): Promise<Message>
 type Conversation = {
   conversation_id: string;
   type: string;
+  name?: string;
   created_at: string;
   updated_at: string;
   other_user: {
@@ -82,6 +83,7 @@ type Message = {
 type ConversationInfoRow = {
   conversation_id: string;
   type: string;
+  conversation_name?: string;
   created_at: string;
   updated_at: string;
   other_user_id: string;
@@ -154,6 +156,7 @@ export const useConversations = (currentUserId?: string) => {
       const formattedConversations: Conversation[] = data?.map((conv: ConversationInfoRow) => ({
         conversation_id: conv.conversation_id,
         type: conv.type,
+        name: conv.conversation_name || undefined,
         created_at: conv.created_at,
         updated_at: conv.updated_at,
         other_user: {
@@ -171,7 +174,9 @@ export const useConversations = (currentUserId?: string) => {
       })) || [];
 
       // Batch-fetch last_seen_at for all conversation partners
-      const otherUserIds = formattedConversations.map(c => c.other_user.id);
+      const otherUserIds = formattedConversations
+        .filter(c => c.other_user?.id)
+        .map(c => c.other_user.id);
       if (otherUserIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Search, UserPlus, Loader2, Users, Megaphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { CreateGroupChatDialog } from './CreateGroupChatDialog';
 
 interface User {
   id: string;
@@ -25,6 +25,7 @@ interface NewConversationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelectUser: (userId: string) => void;
+  onGroupCreated: (conversationId: string) => void;
   currentUserId: string;
 }
 
@@ -32,14 +33,15 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
   open,
   onOpenChange,
   onSelectUser,
+  onGroupCreated,
   currentUserId,
 }) => {
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [friends, setFriends] = useState<User[]>([]);
+  const [showGroupDialog, setShowGroupDialog] = useState(false);
 
   // Fetch friends on open
   useEffect(() => {
@@ -122,8 +124,7 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
   };
 
   const handleCreateGroupChat = () => {
-    onOpenChange(false);
-    navigate('/groups');
+    setShowGroupDialog(true);
   };
 
   const handleCreateChannel = () => {
@@ -143,6 +144,7 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
   const displayTitle = searchQuery.trim().length >= 2 ? 'Search Results' : 'Suggested Friends';
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -229,5 +231,13 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
         </div>
       </DialogContent>
     </Dialog>
+
+      <CreateGroupChatDialog
+        open={showGroupDialog}
+        onOpenChange={setShowGroupDialog}
+        onGroupCreated={onGroupCreated}
+        currentUserId={currentUserId}
+      />
+    </>
   );
 };

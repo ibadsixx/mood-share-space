@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Inbox, Search, X } from 'lucide-react';
+import { Inbox, Search, X, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageRequestsModal } from './MessageRequestsModal';
 import { useMessageRequests } from '@/hooks/useMessageRequests';
@@ -14,6 +14,8 @@ import { isOnline, formatLastSeen } from '@/hooks/usePresence';
 
 type Conversation = {
   conversation_id: string;
+  type: string;
+  name?: string;
   other_user: {
     id: string;
     username: string;
@@ -51,14 +53,17 @@ const ConversationItem = memo(({
   isActive: boolean;
   onSelect: (id: string) => void;
 }) => {
+  const isGroup = conversation.type === 'group';
   const hasUnread = conversation.unread_count > 0;
   const timeAgo = conversation.last_message
     ? formatDistanceToNow(new Date(conversation.last_message.created_at), { addSuffix: false })
     : null;
-  const displayName = conversation.other_user.display_name;
+  const displayName = isGroup
+    ? (conversation.name || 'Group')
+    : conversation.other_user.display_name;
   const initial = displayName.charAt(0).toUpperCase();
   const previewText = formatLastMessage(conversation.last_message);
-  const online = isOnline(conversation.other_user.last_seen_at);
+  const online = !isGroup && isOnline(conversation.other_user.last_seen_at);
 
   return (
     <button
@@ -71,19 +76,27 @@ const ConversationItem = memo(({
       )}
     >
       <div className="relative shrink-0">
-        <Avatar className="w-10 h-10">
-          <AvatarImage
-            src={conversation.other_user.profile_pic}
-            alt={displayName}
-          />
-          <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-            {initial}
-          </AvatarFallback>
-        </Avatar>
-        <div className={cn(
-          "absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card",
-          online ? "bg-green-500" : "bg-gray-400"
-        )} />
+        {isGroup ? (
+          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+            <Users className="h-5 w-5 text-muted-foreground" />
+          </div>
+        ) : (
+          <Avatar className="w-10 h-10">
+            <AvatarImage
+              src={conversation.other_user.profile_pic}
+              alt={displayName}
+            />
+            <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+              {initial}
+            </AvatarFallback>
+          </Avatar>
+        )}
+        {!isGroup && (
+          <div className={cn(
+            "absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card",
+            online ? "bg-green-500" : "bg-gray-400"
+          )} />
+        )}
       </div>
 
       <div className="flex-1 min-w-0">
@@ -123,9 +136,11 @@ const ConversationItem = memo(({
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground truncate mt-0.5">
-          {online ? 'Online' : formatLastSeen(conversation.other_user.last_seen_at)}
-        </p>
+        {!isGroup && (
+          <p className="text-xs text-muted-foreground truncate mt-0.5">
+            {online ? 'Online' : formatLastSeen(conversation.other_user.last_seen_at)}
+          </p>
+        )}
       </div>
     </button>
   );
@@ -146,10 +161,13 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) return conversations;
     const query = searchQuery.toLowerCase();
-    return conversations.filter(conv =>
-      conv.other_user.display_name.toLowerCase().includes(query) ||
-      conv.other_user.username.toLowerCase().includes(query)
-    );
+    return conversations.filter(conv => {
+      const name = conv.type === 'group'
+        ? (conv.name || '').toLowerCase()
+        : conv.other_user.display_name.toLowerCase();
+      const username = conv.other_user?.username?.toLowerCase() || '';
+      return name.includes(query) || username.includes(query);
+    });
   }, [conversations, searchQuery]);
 
   if (loading) {

@@ -4156,6 +4156,13 @@ export type Database = {
         }
         Returns: string
       }
+      create_group_conversation: {
+        Args: {
+          p_name: string
+          p_participant_ids: string[]
+        }
+        Returns: string
+      }
       determine_request_category: {
         Args: { receiver_id: string; sender_id: string }
         Returns: Database["public"]["Enums"]["message_request_category"]
@@ -4180,16 +4187,17 @@ export type Database = {
         Args: { p_user_id?: string }
         Returns: {
           conversation_id: string
+          type: string
+          conversation_name: string
           created_at: string
+          updated_at: string
+          other_user_id: string
+          other_user_username: string
+          other_user_display_name: string
+          other_user_profile_pic: string
           last_message_content: string
           last_message_created_at: string
-          other_user_display_name: string
-          other_user_id: string
-          other_user_profile_pic: string
-          other_user_username: string
-          type: string
           unread_count: number
-          updated_at: string
         }[]
       }
       get_encryption_details: {

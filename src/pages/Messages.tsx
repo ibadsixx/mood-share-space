@@ -73,6 +73,14 @@ const Messages = () => {
     }
   };
 
+  const handleGroupCreated = (conversationId: string) => {
+    setActiveConversationId(conversationId);
+    setActivePage(0);
+    fetchMessages(conversationId, 0);
+    refetchConversations();
+    navigate(`/messages/${conversationId}`);
+  };
+
   const activeConversation = conversations.find(
     conv => conv.conversation_id === activeConversationId
   );
@@ -140,6 +148,7 @@ const Messages = () => {
         <ChatWindow
           key={activeConversationId || 'no-conversation'}
           otherUser={activeConversation?.other_user || null}
+          conversationName={activeConversation?.name}
           messages={messages}
           firstUnreadIndex={firstUnreadIndex}
           currentUserId={currentUserId}
@@ -167,6 +176,7 @@ const Messages = () => {
         open={showNewConversation}
         onOpenChange={setShowNewConversation}
         onSelectUser={handleStartConversation}
+        onGroupCreated={handleGroupCreated}
         currentUserId={currentUserId}
       />
     </div>
