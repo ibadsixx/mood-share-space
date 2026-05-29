@@ -4346,7 +4346,7 @@ export type Database = {
           options: any
           total_votes: number
           vote_counts: any
-          user_vote: number
+          user_vote: number | null
         }[]
       }
       vote_on_poll: {
