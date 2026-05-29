@@ -127,8 +127,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const canPost = channelRole === 'owner' || channelRole === 'moderator';
   const isFollower = channelRole === 'follower';
 
-  const [replyTo, setReplyTo] = useState<ReplyToMessage | null>(null);
-
   const handleReplyInChannel = async (content?: string, _mediaUrl?: string, replyToId?: string) => {
     if (!conversationId || !replyToId || !content?.trim()) return;
     const { data, error } = await supabase.rpc('send_channel_reply', {
