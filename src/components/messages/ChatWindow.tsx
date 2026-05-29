@@ -106,15 +106,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     setChannelRoleLoading(true);
     setChannelRole(null);
     setChannelStats(null);
+
+    let ignore = false;
+
     supabase.rpc('get_channel_user_role', { p_conversation_id: conversationId })
-      .then(({ data }) => setChannelRole(data || null))
-      .catch(() => setChannelRole(null))
-      .finally(() => setChannelRoleLoading(false));
+      .then(({ data }) => { if (!ignore) setChannelRole(data || null); })
+      .catch(() => { if (!ignore) setChannelRole(null); })
+      .finally(() => { if (!ignore) setChannelRoleLoading(false); });
     supabase.rpc('get_channel_stats', { p_conversation_id: conversationId })
       .then(({ data }) => {
-        if (data && data.length > 0) setChannelStats(data[0]);
+        if (!ignore && data && data.length > 0) setChannelStats(data[0]);
       })
-      .catch(() => setChannelStats(null));
+      .catch(() => { if (!ignore) setChannelStats(null); });
+
+    return () => { ignore = true; };
   }, [conversationId, isChannel]);
 
   const canPost = channelRole === 'owner' || channelRole === 'moderator';
