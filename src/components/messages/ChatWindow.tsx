@@ -108,11 +108,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     setChannelStats(null);
     supabase.rpc('get_channel_user_role', { p_conversation_id: conversationId })
       .then(({ data }) => setChannelRole(data || null))
+      .catch(() => setChannelRole(null))
       .finally(() => setChannelRoleLoading(false));
     supabase.rpc('get_channel_stats', { p_conversation_id: conversationId })
       .then(({ data }) => {
         if (data && data.length > 0) setChannelStats(data[0]);
-      });
+      })
+      .catch(() => setChannelStats(null));
   }, [conversationId, isChannel]);
 
   const canPost = channelRole === 'owner' || channelRole === 'moderator';
