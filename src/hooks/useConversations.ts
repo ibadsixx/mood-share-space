@@ -20,7 +20,7 @@ type Conversation = {
   name?: string;
   created_at: string;
   updated_at: string;
-  other_user: {
+  other_user?: {
     id: string;
     username: string;
     display_name: string;
@@ -159,7 +159,7 @@ export const useConversations = (currentUserId?: string) => {
         name: conv.conversation_name || undefined,
         created_at: conv.created_at,
         updated_at: conv.updated_at,
-        other_user: {
+        other_user: conv.type === 'channel' ? undefined : {
           id: conv.other_user_id,
           username: conv.other_user_username,
           display_name: conv.other_user_display_name,
@@ -176,7 +176,7 @@ export const useConversations = (currentUserId?: string) => {
       // Batch-fetch last_seen_at for all conversation partners
       const otherUserIds = formattedConversations
         .filter(c => c.other_user?.id)
-        .map(c => c.other_user.id);
+        .map(c => c.other_user!.id);
       if (otherUserIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
@@ -185,7 +185,9 @@ export const useConversations = (currentUserId?: string) => {
         if (profiles) {
           const lastSeenMap = new Map(profiles.map(p => [p.id, p.last_seen_at]));
           formattedConversations.forEach(conv => {
-            conv.other_user.last_seen_at = lastSeenMap.get(conv.other_user.id) || undefined;
+            if (conv.other_user) {
+              conv.other_user.last_seen_at = lastSeenMap.get(conv.other_user.id) || undefined;
+            }
           });
         }
       }

@@ -81,6 +81,14 @@ const Messages = () => {
     navigate(`/messages/${conversationId}`);
   };
 
+  const handleChannelCreated = (conversationId: string) => {
+    setActiveConversationId(conversationId);
+    setActivePage(0);
+    fetchMessages(conversationId, 0);
+    refetchConversations();
+    navigate(`/messages/${conversationId}`);
+  };
+
   const activeConversation = conversations.find(
     conv => conv.conversation_id === activeConversationId
   );
@@ -177,6 +185,7 @@ const Messages = () => {
         onOpenChange={setShowNewConversation}
         onSelectUser={handleStartConversation}
         onGroupCreated={handleGroupCreated}
+        onChannelCreated={handleChannelCreated}
         currentUserId={currentUserId}
       />
     </div>

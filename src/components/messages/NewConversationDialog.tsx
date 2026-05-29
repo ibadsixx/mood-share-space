@@ -13,6 +13,7 @@ import { Search, UserPlus, Loader2, Users, Megaphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CreateGroupChatDialog } from './CreateGroupChatDialog';
+import { CreateChannelDialog } from './CreateChannelDialog';
 
 interface User {
   id: string;
@@ -26,6 +27,7 @@ interface NewConversationDialogProps {
   onOpenChange: (open: boolean) => void;
   onSelectUser: (userId: string) => void;
   onGroupCreated: (conversationId: string) => void;
+  onChannelCreated?: (conversationId: string) => void;
   currentUserId: string;
 }
 
@@ -34,6 +36,7 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
   onOpenChange,
   onSelectUser,
   onGroupCreated,
+  onChannelCreated,
   currentUserId,
 }) => {
   const { toast } = useToast();
@@ -42,6 +45,7 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [friends, setFriends] = useState<User[]>([]);
   const [showGroupDialog, setShowGroupDialog] = useState(false);
+  const [showChannelDialog, setShowChannelDialog] = useState(false);
 
   // Fetch friends on open
   useEffect(() => {
@@ -128,10 +132,7 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
   };
 
   const handleCreateChannel = () => {
-    toast({
-      title: 'Coming Soon',
-      description: 'Channels are not available yet. Stay tuned!',
-    });
+    setShowChannelDialog(true);
   };
 
   const handleSelectUser = (userId: string) => {
@@ -237,6 +238,11 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
         onOpenChange={setShowGroupDialog}
         onGroupCreated={onGroupCreated}
         currentUserId={currentUserId}
+      />
+      <CreateChannelDialog
+        open={showChannelDialog}
+        onOpenChange={setShowChannelDialog}
+        onChannelCreated={onChannelCreated || ((id) => console.log('Channel created:', id))}
       />
     </>
   );

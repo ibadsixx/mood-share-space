@@ -4198,6 +4198,36 @@ export type Database = {
           joined_at: string
         }[]
       }
+      create_channel_conversation: {
+        Args: {
+          p_name: string
+          p_description?: string
+        }
+        Returns: string
+      }
+      join_channel: {
+        Args: { p_conversation_id: string }
+        Returns: undefined
+      }
+      leave_channel: {
+        Args: { p_conversation_id: string }
+        Returns: undefined
+      }
+      delete_channel: {
+        Args: { p_conversation_id: string }
+        Returns: undefined
+      }
+      get_channel_members: {
+        Args: { p_conversation_id: string }
+        Returns: {
+          user_id: string
+          username: string
+          display_name: string
+          profile_pic: string
+          role: string
+          joined_at: string
+        }[]
+      }
       determine_request_category: {
         Args: { receiver_id: string; sender_id: string }
         Returns: Database["public"]["Enums"]["message_request_category"]
@@ -4224,6 +4254,7 @@ export type Database = {
           conversation_id: string
           type: string
           conversation_name: string
+          conversation_description: string | null
           created_at: string
           updated_at: string
           other_user_id: string

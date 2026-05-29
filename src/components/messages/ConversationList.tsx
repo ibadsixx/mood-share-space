@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Inbox, Search, X, Users } from 'lucide-react';
+import { Inbox, Search, X, Users, Hash } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageRequestsModal } from './MessageRequestsModal';
 import { useMessageRequests } from '@/hooks/useMessageRequests';
@@ -16,7 +16,7 @@ type Conversation = {
   conversation_id: string;
   type: string;
   name?: string;
-  other_user: {
+  other_user?: {
     id: string;
     username: string;
     display_name: string;
@@ -54,16 +54,18 @@ const ConversationItem = memo(({
   onSelect: (id: string) => void;
 }) => {
   const isGroup = conversation.type === 'group';
+  const isChannel = conversation.type === 'channel';
+  const isMulti = isGroup || isChannel;
   const hasUnread = conversation.unread_count > 0;
   const timeAgo = conversation.last_message
     ? formatDistanceToNow(new Date(conversation.last_message.created_at), { addSuffix: false })
     : null;
-  const displayName = isGroup
-    ? (conversation.name || 'Group')
-    : conversation.other_user.display_name;
+  const displayName = isMulti
+    ? (conversation.name || (isChannel ? 'Channel' : 'Group'))
+    : (conversation.other_user?.display_name || 'Unknown');
   const initial = displayName.charAt(0).toUpperCase();
   const previewText = formatLastMessage(conversation.last_message);
-  const online = !isGroup && isOnline(conversation.other_user.last_seen_at);
+  const online = !isMulti && isOnline(conversation.other_user?.last_seen_at);
 
   return (
     <button
@@ -76,14 +78,21 @@ const ConversationItem = memo(({
       )}
     >
       <div className="relative shrink-0">
-        {isGroup ? (
-          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-            <Users className="h-5 w-5 text-muted-foreground" />
+        {isMulti ? (
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center",
+            isChannel ? "bg-orange-500/10" : "bg-muted"
+          )}>
+            {isChannel ? (
+              <Hash className="h-5 w-5 text-orange-500" />
+            ) : (
+              <Users className="h-5 w-5 text-muted-foreground" />
+            )}
           </div>
         ) : (
           <Avatar className="w-10 h-10">
             <AvatarImage
-              src={conversation.other_user.profile_pic}
+              src={conversation.other_user?.profile_pic}
               alt={displayName}
             />
             <AvatarFallback className="bg-primary text-primary-foreground text-sm">
@@ -91,7 +100,7 @@ const ConversationItem = memo(({
             </AvatarFallback>
           </Avatar>
         )}
-        {!isGroup && (
+        {!isMulti && (
           <div className={cn(
             "absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card",
             online ? "bg-green-500" : "bg-gray-400"
@@ -136,9 +145,9 @@ const ConversationItem = memo(({
           )}
         </div>
 
-        {!isGroup && (
+        {!isMulti && (
           <p className="text-xs text-muted-foreground truncate mt-0.5">
-            {online ? 'Online' : formatLastSeen(conversation.other_user.last_seen_at)}
+            {online ? 'Online' : formatLastSeen(conversation.other_user?.last_seen_at)}
           </p>
         )}
       </div>
@@ -162,9 +171,10 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     if (!searchQuery.trim()) return conversations;
     const query = searchQuery.toLowerCase();
     return conversations.filter(conv => {
-      const name = conv.type === 'group'
+      const isMulti = conv.type === 'group' || conv.type === 'channel';
+      const name = isMulti
         ? (conv.name || '').toLowerCase()
-        : conv.other_user.display_name.toLowerCase();
+        : (conv.other_user?.display_name || '').toLowerCase();
       const username = conv.other_user?.username?.toLowerCase() || '';
       return name.includes(query) || username.includes(query);
     });
