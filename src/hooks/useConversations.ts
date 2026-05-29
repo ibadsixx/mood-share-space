@@ -54,7 +54,7 @@ type Message = {
   audio_mime?: string;
   audio_size?: number;
   audio_path?: string;
-  message_type?: 'text' | 'image' | 'gif' | 'sticker' | 'audio' | 'video' | 'file';
+  message_type?: 'text' | 'image' | 'gif' | 'sticker' | 'audio' | 'video' | 'file' | 'poll';
   is_system?: boolean;
   created_at: string;
   reply_to_id?: string;

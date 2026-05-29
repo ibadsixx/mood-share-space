@@ -24,6 +24,7 @@ import {
   Check,
   CheckCheck
 } from 'lucide-react';
+import { PollMessage } from './PollMessage';
 import MessageReactionPicker from './MessageReactionPicker';
 import StaticReactionIcon from '@/components/StaticReactionIcon';
 import { getReactionConfig, type ReactionKey } from '@/lib/reactions';
@@ -671,16 +672,28 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   className="max-w-[250px] max-h-[200px] rounded-xl object-contain"
                 />
               </div>
-            ) : (
+              ) : (
               <>
                 {/* Text content */}
-                {message.content && (
+                {message.content && message.message_type !== 'poll' && (
                   <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                     <EmojiText
                       text={message.content}
                       emojiSize={18}
                       className={isOwn ? 'text-primary-foreground' : 'text-foreground'}
                     />
+                  </div>
+                )}
+
+                {/* Poll content */}
+                {message.message_type === 'poll' && (
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap break-words mb-1">
+                    <EmojiText
+                      text={message.content || ''}
+                      emojiSize={18}
+                      className={isOwn ? 'text-primary-foreground' : 'text-foreground'}
+                    />
+                    <PollMessage messageId={message.id} currentUserId={currentUserId} />
                   </div>
                 )}
 

@@ -1676,6 +1676,77 @@ export type Database = {
           },
         ]
       }
+      message_polls: {
+        Row: {
+          id: string
+          message_id: string
+          question: string
+          options: any
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          question: string
+          options: any
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          question?: string
+          options?: any
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_polls_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_poll_votes: {
+        Row: {
+          id: string
+          poll_id: string
+          user_id: string
+          option_index: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          poll_id: string
+          user_id: string
+          option_index: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          poll_id?: string
+          user_id?: string
+          option_index?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "message_polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_poll_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_reports: {
         Row: {
           conversation_id: string
@@ -4258,6 +4329,42 @@ export type Database = {
         Args: { p_conversation_id: string }
         Returns: string
       }
+      send_poll_message: {
+        Args: {
+          p_conversation_id: string
+          p_question: string
+          p_options: any
+          p_sender_id: string
+        }
+        Returns: string
+      }
+      get_message_poll: {
+        Args: { p_message_id: string }
+        Returns: {
+          poll_id: string
+          question: string
+          options: any
+          total_votes: number
+          vote_counts: any
+          user_vote: number
+        }[]
+      }
+      vote_on_poll: {
+        Args: {
+          p_poll_id: string
+          p_option_index: number
+        }
+        Returns: undefined
+      }
+      send_channel_reply: {
+        Args: {
+          p_conversation_id: string
+          p_reply_to_id: string
+          p_content: string
+          p_sender_id: string
+        }
+        Returns: string
+      }
       determine_request_category: {
         Args: { receiver_id: string; sender_id: string }
         Returns: Database["public"]["Enums"]["message_request_category"]
@@ -4499,6 +4606,7 @@ export type Database = {
         | "audio"
         | "video"
         | "file"
+        | "poll"
       page_follower_role: "follower" | "admin" | "editor"
       post_type_new:
         | "normal_post"
@@ -4672,6 +4780,7 @@ export const Constants = {
         "audio",
         "video",
         "file",
+        "poll",
       ],
       page_follower_role: ["follower", "admin", "editor"],
       post_type_new: [
