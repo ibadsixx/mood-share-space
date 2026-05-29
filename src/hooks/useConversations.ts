@@ -734,7 +734,7 @@ export const useConversations = (currentUserId?: string) => {
       const allConvs = conversationsDataRef.current;
       if (allConvs.length === 0) return;
 
-      const userIds = [...new Set(allConvs.map(c => c.other_user.id))];
+      const userIds = [...new Set(allConvs.map(c => c.other_user?.id).filter(Boolean))];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, last_seen_at')
@@ -743,6 +743,7 @@ export const useConversations = (currentUserId?: string) => {
       if (profiles) {
         const lastSeenMap = new Map(profiles.map(p => [p.id, p.last_seen_at]));
         setConversations(prev => prev.map(conv => {
+          if (!conv.other_user) return conv;
           const newLastSeen = lastSeenMap.get(conv.other_user.id);
           if (!newLastSeen || newLastSeen === conv.other_user.last_seen_at) return conv;
           return {

@@ -83,6 +83,10 @@ BEGIN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
+  IF p_sender_id != v_user_id THEN
+    RAISE EXCEPTION 'Sender ID does not match authenticated user';
+  END IF;
+
   -- Check conversation type and user role
   SELECT c.type INTO v_conv_type
   FROM conversations c
@@ -249,6 +253,10 @@ BEGIN
   v_user_id := auth.uid();
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  IF p_sender_id != v_user_id THEN
+    RAISE EXCEPTION 'Sender ID does not match authenticated user';
   END IF;
 
   SELECT c.type INTO v_conv_type
