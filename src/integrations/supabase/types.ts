@@ -4160,8 +4160,43 @@ export type Database = {
         Args: {
           p_name: string
           p_participant_ids: string[]
+          p_admin_ids?: string[]
+          p_can_add_members?: string
         }
         Returns: string
+      }
+      add_group_member: {
+        Args: {
+          p_conversation_id: string
+          p_new_member_id: string
+        }
+        Returns: undefined
+      }
+      remove_group_member: {
+        Args: {
+          p_conversation_id: string
+          p_member_id: string
+        }
+        Returns: undefined
+      }
+      update_group_member_role: {
+        Args: {
+          p_conversation_id: string
+          p_member_id: string
+          p_role: string
+        }
+        Returns: undefined
+      }
+      get_group_members: {
+        Args: { p_conversation_id: string }
+        Returns: {
+          user_id: string
+          username: string
+          display_name: string
+          profile_pic: string
+          role: string
+          joined_at: string
+        }[]
       }
       determine_request_category: {
         Args: { receiver_id: string; sender_id: string }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,9 +11,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, UserPlus, Loader2, X } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Search, UserPlus, Loader2, X, ShieldCheck, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -40,8 +43,12 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
+  const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
+  const [canAddMembers, setCanAddMembers] = useState<'anyone' | 'admins_only'>('admins_only');
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  const selectedIdsSet = useMemo(() => new Set(selectedUsers.map(u => u.id)), [selectedUsers]);
 
   useEffect(() => {
     if (open) {
@@ -49,6 +56,8 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
       setSearchQuery('');
       setUsers([]);
       setSelectedUsers([]);
+      setAdminIds(new Set());
+      setCanAddMembers('admins_only');
     }
   }, [open]);
 
@@ -61,7 +70,7 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
       }
     }, 300);
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
+  }, [searchQuery, selectedUsers]);
 
   const searchUsers = async () => {
     setLoading(true);
@@ -73,9 +82,7 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
         .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
         .limit(10);
       if (error) throw error;
-      // Filter out already-selected users
-      const selectedIds = new Set(selectedUsers.map(u => u.id));
-      setUsers((data || []).filter(u => !selectedIds.has(u.id)));
+      setUsers((data || []).filter(u => !selectedIdsSet.has(u.id)));
     } catch (error) {
       console.error('Error searching users:', error);
     } finally {
@@ -89,12 +96,21 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
       if (exists) return prev.filter(u => u.id !== user.id);
       return [...prev, user];
     });
-    // Remove from search results
     setUsers(prev => prev.filter(u => u.id !== user.id));
   };
 
   const removeSelected = (userId: string) => {
     setSelectedUsers(prev => prev.filter(u => u.id !== userId));
+    setAdminIds(prev => { const next = new Set(prev); next.delete(userId); return next; });
+  };
+
+  const toggleAdmin = (userId: string) => {
+    setAdminIds(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
   };
 
   const handleCreate = async () => {
@@ -110,9 +126,12 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
 
     setCreating(true);
     try {
+      const adminList = [...adminIds];
       const { data, error } = await supabase.rpc('create_group_conversation', {
         p_name: trimmedName,
         p_participant_ids: selectedUsers.map(u => u.id),
+        p_admin_ids: adminList.length > 0 ? adminList : [],
+        p_can_add_members: canAddMembers,
       });
       if (error) throw error;
       if (!data) throw new Error('Failed to create group');
@@ -147,6 +166,25 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
             onChange={(e) => setGroupName(e.target.value)}
           />
 
+          {/* Who can add people */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Who can add people</Label>
+            <RadioGroup
+              value={canAddMembers}
+              onValueChange={(v) => setCanAddMembers(v as 'anyone' | 'admins_only')}
+              className="flex gap-3"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="anyone" id="anyone" />
+                <Label htmlFor="anyone" className="text-sm cursor-pointer">Anyone</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="admins_only" id="admins_only" />
+                <Label htmlFor="admins_only" className="text-sm cursor-pointer">Admins only</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
           {/* Selected Users */}
           {selectedUsers.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -163,6 +201,16 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-xs max-w-[100px] truncate">{user.display_name}</span>
+                  <button
+                    onClick={() => toggleAdmin(user.id)}
+                    className={cn(
+                      "ml-0.5 hover:text-foreground transition-colors",
+                      adminIds.has(user.id) ? "text-primary" : "text-muted-foreground"
+                    )}
+                    title={adminIds.has(user.id) ? "Remove admin" : "Make admin"}
+                  >
+                    <ShieldCheck className="h-3 w-3" />
+                  </button>
                   <button
                     onClick={() => removeSelected(user.id)}
                     className="ml-0.5 hover:text-foreground"
@@ -186,7 +234,7 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
           </div>
 
           {/* User Results */}
-          <ScrollArea className="h-[250px]">
+          <ScrollArea className="h-[200px]">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -215,10 +263,13 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
                         {user.display_name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="text-left">
+                    <div className="flex-1 text-left">
                       <p className="font-medium text-foreground">{user.display_name}</p>
                       <p className="text-sm text-muted-foreground">@{user.username}</p>
                     </div>
+                    {adminIds.has(user.id) && (
+                      <ShieldCheck className="h-4 w-4 text-primary ml-2" />
+                    )}
                   </Button>
                 ))}
               </div>
