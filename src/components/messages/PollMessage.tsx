@@ -66,7 +66,6 @@ export const PollMessage: React.FC<PollMessageProps> = ({ messageId, currentUser
   }
 
   const hasVoted = poll.user_vote !== null;
-  const maxVotes = Math.max(...Object.values(poll.vote_counts), 1);
 
   return (
     <div className="mt-1.5 p-3 rounded-lg bg-muted/40 border border-border/50">
