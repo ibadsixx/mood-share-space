@@ -158,6 +158,7 @@ const Messages = () => {
           otherUser={activeConversation?.other_user || null}
           conversationType={activeConversation?.type}
           conversationName={activeConversation?.name}
+          conversationDescription={activeConversation?.description}
           messages={messages}
           firstUnreadIndex={firstUnreadIndex}
           currentUserId={currentUserId}

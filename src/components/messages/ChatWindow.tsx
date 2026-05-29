@@ -38,6 +38,7 @@ interface ChatWindowProps {
   otherUser: OtherUser | null;
   conversationType?: string;
   conversationName?: string;
+  conversationDescription?: string | null;
   messages: Message[];
   firstUnreadIndex?: number;
   currentUserId: string;
@@ -55,6 +56,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   otherUser,
   conversationType,
   conversationName,
+  conversationDescription,
   messages,
   firstUnreadIndex,
   currentUserId,
@@ -512,6 +514,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   "font-semibold transition-colors truncate",
                   vanishingMessagesEnabled ? "text-zinc-100" : "text-foreground"
                 )}>#{conversationName}</h3>
+                {conversationDescription && (
+                  <p className={cn(
+                    "text-xs transition-colors truncate mt-0.5",
+                    vanishingMessagesEnabled ? "text-zinc-400" : "text-muted-foreground/70"
+                  )}>{conversationDescription}</p>
+                )}
                 <p className={cn(
                   "text-xs transition-colors truncate",
                   vanishingMessagesEnabled ? "text-zinc-400" : "text-muted-foreground"
