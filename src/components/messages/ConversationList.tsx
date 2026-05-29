@@ -151,6 +151,11 @@ const ConversationItem = memo(({
             {online ? 'Online' : formatLastSeen(conversation.other_user?.last_seen_at)}
           </p>
         )}
+        {isChannel && conversation.description && (
+          <p className="text-xs text-muted-foreground/60 truncate mt-0.5">
+            {conversation.description}
+          </p>
+        )}
       </div>
     </button>
   );
