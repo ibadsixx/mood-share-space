@@ -4,7 +4,7 @@ import { CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Video, Info, Users, Flame, X, Camera } from 'lucide-react';
+import { Phone, Video, Info, Users, Flame, X, Camera, Hash, UserPlus, UserCheck, Megaphone, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { MessageBubble, Message } from './MessageBubble';
@@ -35,6 +35,7 @@ type OtherUser = {
 
 interface ChatWindowProps {
   otherUser: OtherUser | null;
+  conversationType?: string;
   conversationName?: string;
   messages: Message[];
   firstUnreadIndex?: number;
@@ -51,6 +52,7 @@ interface ChatWindowProps {
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
   otherUser,
+  conversationType,
   conversationName,
   messages,
   firstUnreadIndex,
@@ -85,6 +87,50 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const { toggleReaction, fetchReactions, getMessageReactions } = useMessageReactions(conversationId);
   const { blockStatus, blockUser, unblockUser } = useBlocks(otherUser?.id || '', currentUserId);
   const { deleteMessage, pinMessage, reportMessage: submitReport, getPinnedMessages } = useMessageActions(conversationId, currentUserId);
+
+  const isChannel = conversationType === 'channel';
+  const [channelRole, setChannelRole] = useState<string | null>(null);
+  const [channelStats, setChannelStats] = useState<{ follower_count: number; owner_name: string; moderator_count: number } | null>(null);
+
+  // Fetch channel role and stats on mount
+  useEffect(() => {
+    if (!conversationId || !isChannel) {
+      setChannelRole(null);
+      setChannelStats(null);
+      return;
+    }
+    supabase.rpc('get_channel_user_role', { p_conversation_id: conversationId })
+      .then(({ data }) => setChannelRole(data || null));
+    supabase.rpc('get_channel_stats', { p_conversation_id: conversationId })
+      .then(({ data }) => {
+        if (data && data.length > 0) setChannelStats(data[0]);
+      });
+  }, [conversationId, isChannel]);
+
+  const canPost = channelRole === 'owner' || channelRole === 'moderator';
+  const isFollower = channelRole === 'follower';
+
+  const handleFollowChannel = async () => {
+    if (!conversationId) return;
+    const { error } = await supabase.rpc('follow_channel', { p_conversation_id: conversationId });
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      setChannelRole('follower');
+      toast({ title: 'Following', description: `You are now following #${conversationName}` });
+    }
+  };
+
+  const handleUnfollowChannel = async () => {
+    if (!conversationId) return;
+    const { error } = await supabase.rpc('unfollow_channel', { p_conversation_id: conversationId });
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      setChannelRole(null);
+      toast({ description: `Unfollowed #${conversationName}` });
+    }
+  };
 
   // Vanish mode: swipe gesture state
   const swipeStartY = useRef<number | null>(null);
@@ -307,9 +353,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const isInCall = status !== 'idle';
 
   if (!otherUser) {
-    if (conversationName) {
+    if (conversationName && !isChannel) {
       // Group conversation: show group header without short-circuiting
       // fall through to the main render
+    } else if (conversationName && isChannel) {
+      // Channel: fall through to main render with channel header
     } else {
       return (
         <div className="flex-1 flex items-center justify-center bg-muted/30">
@@ -397,27 +445,48 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         )}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-            <Avatar className="w-10 h-10">
-              {otherUser ? (
-                <>
-                  <AvatarImage src={otherUser.profile_pic} alt={otherUser.display_name} />
+            {isChannel ? (
+              <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center shrink-0">
+                <Hash className="h-5 w-5 text-orange-500" />
+              </div>
+            ) : (
+              <Avatar className="w-10 h-10">
+                {otherUser ? (
+                  <>
+                    <AvatarImage src={otherUser.profile_pic} alt={otherUser.display_name} />
+                    <AvatarFallback className={cn(
+                      "bg-primary text-primary-foreground",
+                      vanishingMessagesEnabled && "ring-2 ring-orange-500/50"
+                    )}>
+                      {otherUser.display_name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </>
+                ) : (
                   <AvatarFallback className={cn(
                     "bg-primary text-primary-foreground",
                     vanishingMessagesEnabled && "ring-2 ring-orange-500/50"
                   )}>
-                    {otherUser.display_name.charAt(0).toUpperCase()}
+                    <Users className="h-5 w-5" />
                   </AvatarFallback>
-                </>
-              ) : (
-                <AvatarFallback className={cn(
-                  "bg-primary text-primary-foreground",
-                  vanishingMessagesEnabled && "ring-2 ring-orange-500/50"
+                )}
+              </Avatar>
+            )}
+            {isChannel ? (
+              <div className="min-w-0">
+                <h3 className={cn(
+                  "font-semibold transition-colors truncate",
+                  vanishingMessagesEnabled ? "text-zinc-100" : "text-foreground"
+                )}>#{conversationName}</h3>
+                <p className={cn(
+                  "text-xs transition-colors truncate",
+                  vanishingMessagesEnabled ? "text-zinc-400" : "text-muted-foreground"
                 )}>
-                  <Users className="h-5 w-5" />
-                </AvatarFallback>
-              )}
-            </Avatar>
-            {otherUser ? (
+                  {channelStats
+                    ? `${channelStats.follower_count} followers · ${channelStats.owner_name}`
+                    : 'Channel'}
+                </p>
+              </div>
+            ) : otherUser ? (
               <div>
                 <h3 className={cn(
                   "font-semibold transition-colors",
@@ -458,35 +527,70 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
 
             <div className="flex items-center space-x-2">
-              {/* Call Buttons */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleStartCall('voice')}
-                disabled={isInCall}
-                className={cn(
-                  "h-10 w-10 p-0 transition-colors",
-                  vanishingMessagesEnabled
-                    ? "hover:bg-zinc-700/50 text-zinc-400 hover:text-zinc-100"
-                    : "hover:bg-primary/10 hover:text-primary"
-                )}
-              >
-                <Phone className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleStartCall('video')}
-                disabled={isInCall}
-                className={cn(
-                  "h-10 w-10 p-0 transition-colors",
-                  vanishingMessagesEnabled
-                    ? "hover:bg-zinc-700/50 text-zinc-400 hover:text-zinc-100"
-                    : "hover:bg-primary/10 hover:text-primary"
-                )}
-              >
-                <Video className="h-5 w-5" />
-              </Button>
+              {isChannel ? (
+                <>
+                  {canPost && channelStats && (
+                    <div className="flex items-center gap-1.5 mr-1">
+                      <Megaphone className="h-3.5 w-3.5 text-orange-500" />
+                      <span className="text-xs text-muted-foreground hidden sm:inline">Publisher</span>
+                    </div>
+                  )}
+                  {isFollower && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleUnfollowChannel}
+                      className="h-8 text-xs gap-1"
+                    >
+                      <UserCheck className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Following</span>
+                    </Button>
+                  )}
+                  {!channelRole && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleFollowChannel}
+                      className="h-8 text-xs gap-1"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Follow</span>
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Call Buttons */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleStartCall('voice')}
+                    disabled={isInCall}
+                    className={cn(
+                      "h-10 w-10 p-0 transition-colors",
+                      vanishingMessagesEnabled
+                        ? "hover:bg-zinc-700/50 text-zinc-400 hover:text-zinc-100"
+                        : "hover:bg-primary/10 hover:text-primary"
+                    )}
+                  >
+                    <Phone className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleStartCall('video')}
+                    disabled={isInCall}
+                    className={cn(
+                      "h-10 w-10 p-0 transition-colors",
+                      vanishingMessagesEnabled
+                        ? "hover:bg-zinc-700/50 text-zinc-400 hover:text-zinc-100"
+                        : "hover:bg-primary/10 hover:text-primary"
+                    )}
+                  >
+                    <Video className="h-5 w-5" />
+                  </Button>
+                </>
+              )}
 
               <Button
                 variant="ghost"
@@ -597,21 +701,54 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         />
 
         {/* Message Input */}
-        <MessageInput
-          onSendMessage={(content, mediaUrl, replyToId) => {
-            onSendMessage(content, mediaUrl, replyToId);
-          }}
+        {isChannel ? (
+          canPost ? (
+            <MessageInput
+              onSendMessage={(content, mediaUrl, replyToId) => {
+                onSendMessage(content, mediaUrl, replyToId);
+              }}
+              onSendGif={onSendGif}
+              onSendAudioMessage={onSendAudioMessage}
+              conversationId={conversationId}
+              disabled={loading}
+              placeholder={`Post to #${conversationName}...`}
+              replyTo={replyTo}
+              onCancelReply={() => setReplyTo(null)}
+              quickEmoji={quickEmoji}
+              vanishing={vanishingMessagesEnabled}
+            />
+          ) : (
+            <div className={cn(
+              "px-4 py-3 border-t transition-colors",
+              vanishingMessagesEnabled ? "border-zinc-700/50 bg-zinc-900/30" : "border-border bg-muted/20"
+            )}>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Hash className="h-4 w-4 text-orange-400" />
+                <span>
+                  {canPost === false
+                    ? 'Only the channel owner and moderators can post. You are following this channel.'
+                    : 'Follow this channel to see updates.'}
+                </span>
+              </div>
+            </div>
+          )
+        ) : (
+          <MessageInput
+            onSendMessage={(content, mediaUrl, replyToId) => {
+              onSendMessage(content, mediaUrl, replyToId);
+            }}
 
-          onSendGif={onSendGif}
-          onSendAudioMessage={onSendAudioMessage}
-          conversationId={conversationId}
-          disabled={loading}
-          placeholder={`Message ${otherUser.display_name}...`}
-          replyTo={replyTo}
-          onCancelReply={() => setReplyTo(null)}
-          quickEmoji={quickEmoji}
-          vanishing={vanishingMessagesEnabled}
-        />
+            onSendGif={onSendGif}
+            onSendAudioMessage={onSendAudioMessage}
+            conversationId={conversationId}
+            disabled={loading}
+            placeholder={`Message ${otherUser?.display_name || '...'}...`}
+            replyTo={replyTo}
+            onCancelReply={() => setReplyTo(null)}
+            quickEmoji={quickEmoji}
+            vanishing={vanishingMessagesEnabled}
+          />
+        )}
       </div>
 
       {/* Chat Info Panel */}

@@ -156,6 +156,7 @@ const Messages = () => {
         <ChatWindow
           key={activeConversationId || 'no-conversation'}
           otherUser={activeConversation?.other_user || null}
+          conversationType={activeConversation?.type}
           conversationName={activeConversation?.name}
           messages={messages}
           firstUnreadIndex={firstUnreadIndex}

@@ -4205,16 +4205,30 @@ export type Database = {
         }
         Returns: string
       }
-      join_channel: {
+      follow_channel: {
         Args: { p_conversation_id: string }
         Returns: undefined
       }
-      leave_channel: {
+      unfollow_channel: {
         Args: { p_conversation_id: string }
         Returns: undefined
       }
       delete_channel: {
         Args: { p_conversation_id: string }
+        Returns: undefined
+      }
+      add_channel_moderator: {
+        Args: {
+          p_conversation_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      remove_channel_moderator: {
+        Args: {
+          p_conversation_id: string
+          p_user_id: string
+        }
         Returns: undefined
       }
       get_channel_members: {
@@ -4227,6 +4241,22 @@ export type Database = {
           role: string
           joined_at: string
         }[]
+      }
+      can_post_in_channel: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
+      }
+      get_channel_stats: {
+        Args: { p_conversation_id: string }
+        Returns: {
+          follower_count: number
+          owner_name: string
+          moderator_count: number
+        }[]
+      }
+      get_channel_user_role: {
+        Args: { p_conversation_id: string }
+        Returns: string
       }
       determine_request_category: {
         Args: { receiver_id: string; sender_id: string }
