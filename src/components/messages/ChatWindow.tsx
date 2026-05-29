@@ -104,6 +104,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       return;
     }
     setChannelRoleLoading(true);
+    setChannelRole(null);
+    setChannelStats(null);
     supabase.rpc('get_channel_user_role', { p_conversation_id: conversationId })
       .then(({ data }) => setChannelRole(data || null))
       .finally(() => setChannelRoleLoading(false));
