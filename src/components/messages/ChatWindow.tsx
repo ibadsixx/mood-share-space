@@ -127,22 +127,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const canPost = channelRole === 'owner' || channelRole === 'moderator';
   const isFollower = channelRole === 'follower';
 
-  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
-  const [replyText, setReplyText] = useState('');
+  const [replyTo, setReplyTo] = useState<ReplyToMessage | null>(null);
 
-  const handleReplyInChannel = async () => {
-    if (!conversationId || !replyToMessage || !replyText.trim()) return;
+  const handleReplyInChannel = async (content?: string, _mediaUrl?: string, replyToId?: string) => {
+    if (!conversationId || !replyToId || !content?.trim()) return;
     const { data, error } = await supabase.rpc('send_channel_reply', {
       p_conversation_id: conversationId,
-      p_reply_to_id: replyToMessage.id,
-      p_content: replyText.trim(),
+      p_reply_to_id: replyToId,
+      p_content: content.trim(),
       p_sender_id: currentUserId,
     });
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      setReplyToMessage(null);
-      setReplyText('');
+      setReplyTo(null);
     }
   };
 
@@ -715,7 +713,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                           sender_profile: msg.sender_profile,
                         };
                         if (isChannel && isFollower) {
-                          setReplyToMessage(msg);
+                          setReplyTo(replyInfo);
                         } else {
                           setReplyTo(replyInfo);
                         }
@@ -786,66 +784,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               />
             </div>
           ) : (
-            <div>
-              {/* Follower reply input */}
-              {replyToMessage && (
-                <div className={cn(
-                  "px-4 py-2 border-t flex items-center gap-2 transition-colors",
-                  vanishingMessagesEnabled ? "border-zinc-700/50 bg-zinc-900/30" : "border-border bg-muted/30"
-                )}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-xs text-muted-foreground truncate">
-                        Replying to @{replyToMessage.sender_profile?.display_name || '...'}
-                      </span>
-                      <button
-                        onClick={() => { setReplyToMessage(null); setReplyText(''); }}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleReplyInChannel();
-                          }
-                        }}
-                        placeholder="Write a reply..."
-                        className={cn(
-                          "flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground",
-                          vanishingMessagesEnabled && "text-zinc-100"
-                        )}
-                      />
-                      <Button
-                        size="sm"
-                        onClick={handleReplyInChannel}
-                        disabled={!replyText.trim()}
-                        className="h-7 text-xs px-3"
-                      >
-                        Reply
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div className={cn(
-                "px-4 py-3 border-t transition-colors",
-                vanishingMessagesEnabled ? "border-zinc-700/50 bg-zinc-900/30" : "border-border bg-muted/20"
-              )}>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Hash className="h-4 w-4 text-orange-400" />
-                  <span>
-                    You can react to messages, vote in polls, and reply to individual messages.
-                  </span>
-                </div>
-              </div>
-            </div>
+            <MessageInput
+              onSendMessage={handleReplyInChannel}
+              onSendGif={undefined}
+              onSendAudioMessage={undefined}
+              conversationId={conversationId}
+              placeholder="Reply to a message..."
+              replyTo={replyTo}
+              onCancelReply={() => setReplyTo(null)}
+              quickEmoji={undefined}
+              vanishing={vanishingMessagesEnabled}
+            />
           )
         ) : (
           <MessageInput
