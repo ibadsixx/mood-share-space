@@ -1,6 +1,7 @@
 -- Fix get_conversations_with_info to return NULL other_participant for channels
 -- The original LATERAL join arbitrarily picks a follower for channels.
-CREATE OR REPLACE FUNCTION public.get_conversations_with_info(p_user_id uuid DEFAULT auth.uid())
+DROP FUNCTION IF EXISTS public.get_conversations_with_info(uuid) CASCADE;
+CREATE FUNCTION public.get_conversations_with_info(p_user_id uuid DEFAULT auth.uid())
 RETURNS TABLE (
   conversation_id uuid,
   type text,
