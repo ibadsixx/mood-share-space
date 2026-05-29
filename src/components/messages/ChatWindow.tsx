@@ -92,6 +92,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const isChannel = conversationType === 'channel';
   const [channelRole, setChannelRole] = useState<string | null>(null);
+  const [channelRoleLoading, setChannelRoleLoading] = useState(false);
   const [channelStats, setChannelStats] = useState<{ follower_count: number; owner_name: string; moderator_count: number } | null>(null);
 
   // Fetch channel role and stats on mount
@@ -99,10 +100,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!conversationId || !isChannel) {
       setChannelRole(null);
       setChannelStats(null);
+      setChannelRoleLoading(false);
       return;
     }
+    setChannelRoleLoading(true);
     supabase.rpc('get_channel_user_role', { p_conversation_id: conversationId })
-      .then(({ data }) => setChannelRole(data || null));
+      .then(({ data }) => setChannelRole(data || null))
+      .finally(() => setChannelRoleLoading(false));
     supabase.rpc('get_channel_stats', { p_conversation_id: conversationId })
       .then(({ data }) => {
         if (data && data.length > 0) setChannelStats(data[0]);
@@ -568,7 +572,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                       <span className="hidden sm:inline">Following</span>
                     </Button>
                   )}
-                  {!channelRole && (
+                  {!channelRole && !channelRoleLoading && (
                     <Button
                       variant="default"
                       size="sm"
