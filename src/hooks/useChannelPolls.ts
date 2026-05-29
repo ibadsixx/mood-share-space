@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface PollData {
@@ -12,13 +12,15 @@ export interface PollData {
 
 export const useChannelPolls = (conversationId?: string) => {
   const [loading, setLoading] = useState(false);
+  const creatingRef = useRef(false);
 
   const createPoll = useCallback(async (
     question: string,
     options: string[],
     senderId: string,
   ): Promise<string | null> => {
-    if (!conversationId) return null;
+    if (!conversationId || creatingRef.current) return null;
+    creatingRef.current = true;
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc('send_poll_message', {
@@ -33,6 +35,7 @@ export const useChannelPolls = (conversationId?: string) => {
       console.error('Error creating poll:', error);
       return null;
     } finally {
+      creatingRef.current = false;
       setLoading(false);
     }
   }, [conversationId]);
