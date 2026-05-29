@@ -587,6 +587,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                       <span className="hidden sm:inline">Following</span>
                     </Button>
                   )}
+                  {channelRoleLoading && (
+                    <div className="h-8 w-20 bg-muted rounded-md animate-pulse" />
+                  )}
                   {!channelRole && !channelRoleLoading && (
                     <Button
                       variant="default"
@@ -750,7 +753,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
         {/* Message Input */}
         {isChannel ? (
-          canPost ? (
+          channelRoleLoading ? (
+            <div className={cn(
+              "px-4 py-3 border-t",
+              vanishingMessagesEnabled ? "border-zinc-700/50" : "border-border"
+            )}>
+              <div className="h-9 bg-muted rounded-md animate-pulse" />
+            </div>
+          ) : canPost ? (
             <div>
               {conversationId && (
                 <div className={cn(
