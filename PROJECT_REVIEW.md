@@ -79,7 +79,7 @@ Every verifiable claim in this document was re-checked against the working tree;
 ### Stale Build Artifact + Orphan Migration Script Scrub (Aug 22, 2026)
 
 - Follow-up to the Aug 21 provider-neutral scrub (`3e8f522` / `4966d6c`) — two leftovers still violated the gateway-only rule:
-  - **Stale `gateway/dist/` build output** (untracked, gitignored) was compiled from pre-scrub source and contained baked-in direct-provider endpoints (`api.supabase.com/v1/projects/{ref}/database/query`, `project_url like '%.supabase.co'`). `dist/` deleted and regenerated via `tsc` from the clean source — compiled `infrastructureDb.js` is now env-driven (`INFRA_QUERY_API_TEMPLATE`) with no provider URLs.
+  - **Stale `gateway/dist/` build output** (untracked, gitignored) was compiled from pre-scrub source and contained baked-in direct-provider endpoints (a hardcoded direct-to-provider SQL-query URL template plus provider-host matching patterns). `dist/` deleted and regenerated via `tsc` from the clean source — compiled `infrastructureDb.js` is now env-driven (`INFRA_QUERY_API_TEMPLATE`) with no provider URLs.
   - **Orphaned `scripts/apply-migration.ts`** (referenced by no doc or package.json script) still created a direct service-role database client and printed provider-dashboard instructions ("Dashboard → Project Settings → API", "run in SQL Editor"). Rewritten provider-neutral as an env-driven single-file runner mirroring `apply-all-migrations.ts`: same `MIGRATION_SQL_ENDPOINT` / `MIGRATION_ACCESS_TOKEN` / optional `MIGRATION_PROJECT_REF` contract; on failure it prints the SQL for manual execution in any authorized database console. Script typecheck ✓.
 - No `.env` files modified.
 
