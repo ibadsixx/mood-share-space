@@ -77,6 +77,45 @@ export interface HomeFeedPost {
   } | null;
 }
 
+// The gateway has no server push for table changes (postgres_changes listeners
+// never fire), so the feed polls for newer posts instead of waiting for a reload.
+const FEED_POLL_INTERVAL_MS = 60_000;
+
+// Window event dispatched after a post is successfully created anywhere in the
+// app, so already-mounted feed instances pick it up without waiting for the next poll.
+export const POST_CREATED_EVENT = 'tone:post-created';
+
+interface RawFeedPost {
+  media_type?: string | null;
+  shared_post?: HomeFeedPost['shared_post'];
+  group_posts?: Array<{ groups?: { id?: string; name?: string } | null }>;
+  [key: string]: unknown;
+}
+
+function mapFeedPosts(data: RawFeedPost[] | null, unfollowedGroupIds: string[]): HomeFeedPost[] {
+  return ((data || []).map((post: RawFeedPost) => ({
+    ...post,
+    media_type: (post.media_type === 'image' || post.media_type === 'video')
+      ? post.media_type as 'image' | 'video'
+      : null,
+    shared_post: post.shared_post,
+    group_name: post.group_posts?.[0]?.groups?.name || null,
+    group_id: post.group_posts?.[0]?.groups?.id || null,
+  })) as unknown as HomeFeedPost[]).filter(p =>
+    !p.group_id || !unfollowedGroupIds.includes(p.group_id)
+  );
+}
+
+// Groups the user has explicitly unfollowed — their posts are hidden from the feed.
+async function loadUnfollowedGroupIds(userId?: string): Promise<string[]> {
+  if (!userId) return [];
+  const { data: unfollowRows } = await gateway
+    .from('group_follows' as any)
+    .select('group_id')
+    .eq('user_id', userId);
+  return ((unfollowRows || []) as Array<{ group_id: string }>).map(row => row.group_id);
+}
+
 export const useHomeFeed = () => {
   const [posts, setPosts] = useState<HomeFeedPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,36 +130,13 @@ export const useHomeFeed = () => {
     try {
       setLoading(true);
       const currentOffset = resetPosts ? 0 : offset;
-
-      // Load groups the current user has explicitly unfollowed so we can hide their posts.
-      let unfollowedGroupIds: string[] = [];
-      if (user) {
-        const { data: unfollowRows } = await gateway
-          .from('group_follows' as any)
-          .select('group_id')
-          .eq('user_id', user.id);
-        unfollowedGroupIds = (unfollowRows || []).map((r: any) => r.group_id);
-      }
+      const unfollowedGroupIds = await loadUnfollowedGroupIds(user?.id);
 
       const { data, error } = await postsApi.getFeedPosts(currentOffset, POSTS_PER_PAGE);
 
       if (error) throw error;
 
-      const postsWithTypedMedia = (data || []).map(post => {
-        const groupPost = (post as any).group_posts?.[0];
-        const groupInfo = groupPost?.groups;
-        return {
-          ...post,
-          media_type: (post.media_type === 'image' || post.media_type === 'video') 
-            ? post.media_type as 'image' | 'video'
-            : null,
-          shared_post: post.shared_post,
-          group_name: groupInfo?.name || null,
-          group_id: groupInfo?.id || null,
-        };
-      }).filter((p: any) =>
-        !p.group_id || !unfollowedGroupIds.includes(p.group_id)
-      ) as HomeFeedPost[];
+      const postsWithTypedMedia = mapFeedPosts(data, unfollowedGroupIds);
 
       if (resetPosts) {
         setPosts(postsWithTypedMedia);
@@ -152,6 +168,27 @@ export const useHomeFeed = () => {
     setOffset(0);
     fetchPosts(true);
   }, [fetchPosts]);
+
+  // Silent check for posts that appeared since the feed was loaded (e.g. by other
+  // users or from another surface). New rows are prepended; existing rows and any
+  // deeper pagination the user has already loaded are left untouched.
+  const checkForNewPosts = useCallback(async () => {
+    try {
+      const unfollowedGroupIds = await loadUnfollowedGroupIds(user?.id);
+
+      const { data, error } = await postsApi.getFeedPosts(0, POSTS_PER_PAGE);
+      if (error || !data || data.length === 0) return;
+
+      const latest = mapFeedPosts(data, unfollowedGroupIds);
+      setPosts(prev => {
+        const known = new Set(prev.map(p => p.id));
+        const fresh = latest.filter(p => !known.has(p.id));
+        return fresh.length > 0 ? [...fresh, ...prev] : prev;
+      });
+    } catch {
+      // Polling must never disrupt the UI — ignore transient failures.
+    }
+  }, [user]);
 
   const toggleLike = useCallback(async (postId: string) => {
     if (!user) return;
@@ -402,6 +439,7 @@ export const useHomeFeed = () => {
       });
 
       if (!scheduledAt) {
+        window.dispatchEvent(new CustomEvent(POST_CREATED_EVENT));
         refresh();
       }
       
@@ -421,6 +459,28 @@ export const useHomeFeed = () => {
   useEffect(() => {
     fetchPosts(true);
   }, []);
+
+  // Poll for new posts, catch up instantly when the tab becomes visible again,
+  // and refresh immediately when any surface dispatches POST_CREATED_EVENT.
+  useEffect(() => {
+    if (!user) return;
+
+    const onVisible = () => {
+      if (!document.hidden) checkForNewPosts();
+    };
+    const onPostCreated = () => checkForNewPosts();
+    const interval = window.setInterval(() => {
+      if (!document.hidden) checkForNewPosts();
+    }, FEED_POLL_INTERVAL_MS);
+
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener(POST_CREATED_EVENT, onPostCreated);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener(POST_CREATED_EVENT, onPostCreated);
+    };
+  }, [user, checkForNewPosts]);
 
   return {
     posts,
