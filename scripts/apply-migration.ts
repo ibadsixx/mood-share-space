@@ -1,70 +1,90 @@
 /**
- * Apply a Supabase migration by executing raw SQL via the service_role client.
+ * Apply a SINGLE SQL migration against a configured SQL execution endpoint.
+ *
+ * Provider-neutral: everything is read from environment variables.
  *
  * Usage:
- *   SUPABASE_SERVICE_ROLE_KEY="..." npx tsx scripts/apply-migration.ts 20260528000000_add_e2ee_columns.sql
+ *   MIGRATION_SQL_ENDPOINT="https://..." \
+ *   MIGRATION_ACCESS_TOKEN="..." \
+ *   npx tsx scripts/apply-migration.ts <migration-file>.sql
  *
- * Get your service_role key from: Supabase Dashboard → Project Settings → API
+ * Optional:
+ *   MIGRATION_PROJECT_REF — required when MIGRATION_SQL_ENDPOINT contains {ref}.
  */
-import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ENDPOINT_TEMPLATE = process.env.MIGRATION_SQL_ENDPOINT;
+const PROJECT_REF = process.env.MIGRATION_PROJECT_REF ?? '';
+const ACCESS_TOKEN = process.env.MIGRATION_ACCESS_TOKEN;
 
-if (!SUPABASE_URL) {
-  console.error('Missing VITE_SUPABASE_URL environment variable');
-  console.error('Set it to your Supabase project URL (do not commit it).');
+if (!ENDPOINT_TEMPLATE) {
+  console.error('Missing MIGRATION_SQL_ENDPOINT');
+  console.error('Set it to the HTTP endpoint that executes SQL (POST { query }); use {ref} for the project ref placeholder.');
   process.exit(1);
 }
 
-if (!SERVICE_ROLE_KEY) {
-  console.error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
-  console.error('Get it from: Supabase Dashboard → Project Settings → API');
+if (ENDPOINT_TEMPLATE.includes('{ref}') && !PROJECT_REF) {
+  console.error('MIGRATION_SQL_ENDPOINT contains {ref} but MIGRATION_PROJECT_REF is not set.');
+  process.exit(1);
+}
+
+if (!ACCESS_TOKEN) {
+  console.error('Missing MIGRATION_ACCESS_TOKEN');
+  console.error('Export a token authorized to run SQL against the target database.');
   process.exit(1);
 }
 
 const migrationFile = process.argv[2];
 if (!migrationFile) {
-  console.error('Usage: SUPABASE_SERVICE_ROLE_KEY="..." npx tsx scripts/apply-migration.ts <migration-file.sql>');
+  console.error('Usage: npx tsx scripts/apply-migration.ts <migration-file>.sql');
   process.exit(1);
 }
 
-const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
+const filePath = resolve(process.cwd(), 'supabase', 'migrations', migrationFile);
+
+let sql = '';
+try {
+  sql = readFileSync(filePath, 'utf-8').trim();
+} catch {
+  console.error(`Cannot read migration file: ${filePath}`);
+  process.exit(1);
+}
+
+if (!sql) {
+  console.error(`${migrationFile} is empty.`);
+  process.exit(1);
+}
 
 async function main() {
-  const filePath = resolve(process.cwd(), 'supabase', 'migrations', migrationFile);
-  const sql = readFileSync(filePath, 'utf-8');
-
   console.log(`Applying migration: ${migrationFile}`);
 
-  const { error } = await adminClient.rpc('exec_sql', { sql });
-
-  if (error) {
-    // exec_sql doesn't exist by default — try direct SQL via REST
-    console.warn('exec_sql RPC not available, trying REST endpoint...');
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/`, {
+  const response = await fetch(
+    ENDPOINT_TEMPLATE!.replace('{ref}', encodeURIComponent(PROJECT_REF)),
+    {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${ACCESS_TOKEN}`,
         'Content-Type': 'application/json',
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
       },
-    });
-    console.error('REST fallback also failed. Apply the SQL manually:');
-    console.log('\n--- SQL to run in Supabase SQL Editor ---');
-    console.log(sql);
-    console.log('--- end ---');
-    process.exit(1);
+      body: JSON.stringify({ query: sql }),
+    }
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`SQL failed (${response.status}): ${text}`);
   }
 
   console.log('Migration applied successfully!');
 }
 
-main().catch((err) => {
-  console.error('Migration failed:', err);
+main().catch((err: unknown) => {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error('Migration failed:', message.split('\n')[0]);
+  console.error('\nApply the SQL manually in any database console authorized for this project:');
+  console.log(`\n--- SQL for ${migrationFile} ---`);
+  console.log(sql);
+  console.log('--- end ---');
   process.exit(1);
 });
