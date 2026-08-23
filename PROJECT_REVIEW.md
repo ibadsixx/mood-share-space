@@ -28,7 +28,7 @@
 
 ## Architecture
 
-- SPA with React Router (flat routing, ~30+ routes)
+- SPA with React Router (flat routing, 53 routes)
 - Provider composition: Auth → Call → PageSwitch → Theme → Query → Tooltip
 - **Unified API layer** (`src/api/`) — 14 domain modules with typed functions, sits between hooks/components and gateway client
 - Custom hooks (~85+) encapsulate all API calls and business logic
@@ -36,8 +36,67 @@
 - Database: 80+ tables with auto-generated TypeScript types, 230 SQL migrations
 - 5 Edge Functions (geocoding, GIF search, audio transcription, scheduled posts, expired message cleanup)
 - All 230 migrations applied via the gateway infrastructure layer
+- **Host availability coupling:** each of the 13 backend projects is an independent Supabase project with its own failure modes — Free-plan hosts auto-pause after 7 days of low database activity (paid hosts never do), and a paused host takes its domains down while the gateway itself stays healthy. Mitigated Aug 23, 2026: the gateway runs a keep-alive prober (genuine read-only queries, no synthetic data) against every registered host — ~10 staggered probes per host per day via the persisted project-health scheduler — and exposes per-host status at `/api/project-health` (`/api/keep-alive` retained as alias) — full design in `tone-api-gateway.md` → Host Project Pausing Risk
 
 ## Recent Changes
+
+### Project-Health Scheduler Upgrade (Aug 23, 2026, gateway)
+
+- **Keep-alive module renamed `src/keep-alive/` → `src/project-health/`** — exports `projectHealth` (with `keepAliveScheduler`/`keepAlive` back-compat aliases). Routes move to the canonical `/api/project-health` mount; `/api/keep-alive` is retained as a deprecated alias (same router), and both are registered before the top-level `/:domain` wildcards so they are never shadowed.
+- **From one daily burst to staggered probing** — per-project probe slots are now persisted in a new `keep_alive_state` table (`src/db/migrations/003_create_keep_alive_state.sql`, applied via the infra layer): each active host is probed `KEEP_ALIVE_CHECKS_PER_DAY` times per 24h (default 10 → one every ~2h 24m), claimed only when due, so schedules survive serverless cold starts and DB engagement is spread across the day instead of a single 03:00 UTC burst.
+- **Three drivers** — (a) Vercel Cron now fires every 10 minutes (`*/10 * * * *` in `vercel.json`) at `/api/project-health/run`, each call being a tick that probes only due projects; (b) live traffic opportunistically drives self-throttled ticks via `keepAliveScheduler.maybeTick()` in `src/api/middleware.ts` (fire-and-forget, never blocks requests); (c) the dev server keeps its interval scheduler + boot tick. `?force=1` still runs a full immediate round over every active project; the run route accepts GET as well as POST (Vercel Cron sends GET).
+- **Health status persisted to the registry** — successful probes now also stamp `health_status='online'` on `infrastructure_projects` via new `updateProjectHealthStatus()`.
+- Verification: gateway `tsc --noEmit` ✓ 0 errors. Docs updated in step: `tone-api-gateway.md` (routes table, Host Project Pausing Risk design items 1 & 3, endpoints table).
+
+### Full Claim Re-Verification Audit (Aug 23, 2026, docs-only)
+
+Every verifiable claim in this document was re-checked against the working tree; all hold except minor drift, now corrected in place:
+
+- **Line-count table refreshed** — `useConversations.ts` 977 → 950, `MessageBubble.tsx` 932 → 974, `Settings.tsx` 914 → 907 (still exactly 10 non-generated files >1,000 lines).
+- **Tree section fixed** — `AuthProvider` lives in `src/hooks/useAuth.tsx`, not `src/contexts/` (`contexts/` holds Call/PageSwitch/HeaderAvatarMenu + `call/` subfolder); route count corrected ~30+ → 53.
+- **Confirmed accurate:** `.env` still tracked by git and absent from `.gitignore`; regex injection at `gateway.ts:133-139`; ECDH keys at `useEncryptionKeys.ts:100`; token at `gateway.ts:858`; unsanitized comment insert at `useComments.ts:90`; Rules-of-Hooks violation at `usePosts.tsx:80`; channel `send()` local-only broadcast; story-view read-then-write race; module-scope `QueryClient`; dual `Conversation` type definitions; 13/89 hooks on the API layer; only `useMusicLibrary.ts` on React Query; 4 test files / no e2e dir; 538 `console.log` statements; 100,190 total source lines; 165 files importing `@/api`/`@/lib/gateway`, zero importing `integrations/supabase/client`; emoji.json 3,808 entries == 3,808 PNGs with exactly the 10 rendered categories; frontend tsc ✓ 0 errors; gateway tsc ✓ 0 errors at `bfdc228` (the pre-existing `busboy`/`routes.ts` errors noted in earlier entries are gone).
+
+### Gateway Remediation + Keep-Alive Prober (Aug 23, 2026, gateway `bfdc228`)
+
+- **Five documented gateway defects fixed** — rate limiting is now actually enforced (sign-up 5/min, sign-in 20/min, general 1000/min/IP; clients may see `429` under bursts where none appeared before), the circuit breaker keys failures to the project actually attempted, `constantTimeCompare` no longer leaks length, notification retries back off and dead-letter after 5 attempts, and the identity authority is explicit (`AUTH_DOMAIN`, default `'users'`).
+- **No auth changes for this SPA** — token verification still runs against the same authority project as before; the frontend's single global session (`tone-auth-token`) keeps working unchanged.
+- **Keep-alive prober added** — every active backend host now receives one genuine read-only query per day (Vercel Cron at 03:00 UTC), keeping Free-plan Supabase projects out of the automatic inactivity pause without any synthetic data. Host status visible at `/api/keep-alive` (ACTIVE/UNREACHABLE, last activity, latency, failure streaks). **Superseded same day** by the Project-Health Scheduler Upgrade above (`/api/project-health`, staggered persisted schedule).
+- Verification: gateway tsc ✓ 0 errors; behavioral smoke tests ✓. Pushed to `ibadsixx/gateway`; frontend untouched.
+
+### Complete Emoji Catalog (Aug 22, 2026, frontend `cbfa6ea`)
+
+- **`public/emoji/emoji.json` regenerated with all 3,808 emojis** — the previous catalog covered only **665 of 3,808** PNGs in `public/emoji/` and was the reason picker search looked empty for most assets. The new file is 1:1 with the folder: every PNG has exactly one entry, no duplicates, no missing files.
+- **Flags included** — all 294 regional-indicator pairs are now present under the `Flags` category (the repo's canonical generator script skips them).
+- **Schema unchanged** — `{emoji, name, category, url}`, matching the `EmojiData` interface in `src/services/emojiService.ts`; categories restricted to the exact 10 IDs the pickers render (`Smileys, People, Animals, Nature, Food, Travel, Activities, Objects, Symbols, Flags`) so every entry is reachable via a tab.
+- **Names preserved** — real display names from the old 665 entries ("Slightly Smiling Face", "flag Ascension Island") were kept; the remaining entries use the filename code as name per repo convention (no offline emoji-name dataset is available; `scripts/generateEmojiJson.js` does the same).
+- **Caveat:** rerunning `scripts/generateEmojiJson.js` would overwrite this file with a flagless, 9-category version — the script needs updating before it is used again.
+- Verification: entries == PNGs == unique URLs (3,808); zero invalid categories. Committed and pushed to `ibadsixx/tone-your-social-voice`.
+
+### Provider-Neutral Script Pushed (Aug 22, 2026, frontend `ff82d0a`)
+
+- The rewritten `scripts/apply-migration.ts` (env-driven single-file SQL runner mirroring `apply-all-migrations.ts`) was committed and pushed alongside the emoji catalog update.
+
+### Stale Build Artifact + Orphan Migration Script Scrub (Aug 22, 2026)
+
+- Follow-up to the Aug 21 provider-neutral scrub (`3e8f522` / `4966d6c`) — two leftovers still violated the gateway-only rule:
+  - **Stale `gateway/dist/` build output** (untracked, gitignored) was compiled from pre-scrub source and contained baked-in direct-provider endpoints (`api.supabase.com/v1/projects/{ref}/database/query`, `project_url like '%.supabase.co'`). `dist/` deleted and regenerated via `tsc` from the clean source — compiled `infrastructureDb.js` is now env-driven (`INFRA_QUERY_API_TEMPLATE`) with no provider URLs.
+  - **Orphaned `scripts/apply-migration.ts`** (referenced by no doc or package.json script) still created a direct service-role database client and printed provider-dashboard instructions ("Dashboard → Project Settings → API", "run in SQL Editor"). Rewritten provider-neutral as an env-driven single-file runner mirroring `apply-all-migrations.ts`: same `MIGRATION_SQL_ENDPOINT` / `MIGRATION_ACCESS_TOKEN` / optional `MIGRATION_PROJECT_REF` contract; on failure it prints the SQL for manual execution in any authorized database console. Script typecheck ✓.
+- No `.env` files modified.
+
+### Local Video Preview Blank After Camera Re-enable (Aug 21, 2026, frontend `5389f01`)
+
+- **Symptom:** toggling the camera off then back on restored video for the remote party (the same track is re-enabled via `track.enabled` — WebRTC negotiation untouched), but the caller's own floating preview stayed blank.
+- **Root cause:** the PiP `<video>` is rendered conditionally on `!isVideoOff` (`src/components/calls/ActiveCallWindow.tsx`), so camera-off **unmounted** the element. Camera-on mounted a fresh `<video>`, but the attach effect depended only on `[localStream]` — and the stream identity never changes (`src/services/webrtc.ts` just flips `track.enabled` on the existing track) — so the new element kept `srcObject = null`.
+- **Fix:** the local attach effect now depends on `[localStream, isVideoOff]`; whenever the preview remounts it re-applies `srcObject = localStream` and calls `play()`. No new MediaStream is created anywhere — the same track/stream is reused end to end.
+- **Same-class latent fix:** the remote `<video>` renders conditionally on `status === 'connected'`, but its effect lacked `status` as a dependency — a stream arriving before `connected` would never attach. It is now `[remoteStream, status]`.
+- **Verification:** `npx tsc --noEmit` ✓ 0 errors; eslint on the changed file ✓ clean. Pushed to `ibadsixx/tone-your-social-voice`.
+
+### Provider-Neutral Scripts + Gateway Endpoint Scrub (Aug 21, 2026, frontend `3e8f522`, gateway `4966d6c`)
+
+- **Repo-wide scrub continued:** no source file may embed direct-database keys or links — everything must route through the gateway or env configuration.
+- **Migration scripts rewritten provider-neutral** (`scripts/migrate.sh`, `scripts/apply-all-migrations.ts`) — both are now env-driven SQL runners: `MIGRATION_SQL_ENDPOINT` (accepts POST `{ sql }` with Bearer auth), `MIGRATION_ACCESS_TOKEN`, optional `MIGRATION_PROJECT_REF` consumed via a `{ref}` placeholder in the endpoint URL. The manual path (print SQL for pasting into a database console) is retained; all direct-to-provider dashboard instructions and endpoints were removed. Script typecheck ✓; `bash -n migrate.sh` ✓.
+- **Gateway usage metrics de-hardcoded** — `collectUsageMetrics()` in `gateway/src/infrastructure/database/infrastructureDb.ts` no longer bakes its SQL-execution endpoint into source: the base URL now comes from `INFRA_QUERY_API_TEMPLATE` (supports a `{ref}` placeholder) and project refs are parsed generically from each project's stored URL. With the variable unset, metrics collection logs a warning and skips — set it in Vercel env vars to keep the feature active. Gateway `tsc --noEmit` ✓.
+- Both commits pushed; Vercel auto-deploys from `main`.
 
 ### Personalized Call-Log Labels (Aug 21, 2026, frontend `442631e`)
 
@@ -97,7 +156,7 @@
 - **ICE config no longer stuck on a stale cache** (`src/services/webrtc.ts`) — `loadIceServers` cached its first result forever, pinning STUN-only (or a 401-failed config) for the whole session. It now caches successful results with a 5-minute TTL, retries on 401 after a session refresh, and never caches a failure.
 - **Connection-quality stats read the live peer connection** (`src/contexts/call/useConnectionQuality.ts`) — the hook now takes the `WebRTCService` and reads `getPeerConnection()` at each collection tick, so it can't hold a stale `RTCPeerConnection` after `resetCallState()` recreates the service.
 - **Verification:** `npx tsc --noEmit` ✓ 0 errors (frontend); gateway `tsc` shows only the pre-existing `busboy`/`routes.ts` errors. `eslint` on the changed files: 0 errors, 1 pre-existing warning (`react-refresh` on `useCall` export). Both commits pushed to `ibadsixx/tone-your-social-voice` (`4c78c9c`) and `ibadsixx/gateway` (`67ce1bd`).
-- **Documented production caveat** (`tone-api-gateway.md`) — the SSE hub is process-local and Vercel Hobby functions cap at 300s, so gateway signaling is intended for local dev / best-effort in production; signals in flight during a subscriber reconnect are lost (no replay). Shared pub/sub or a long-lived relay would be needed for production-grade signaling.
+- **Documented production caveat** (`tone-api-gateway.md`) — **superseded Aug 17, 2026 (`983bf60`):** publishes are now relayed across gateway instances over a shared Supabase Realtime broadcast bus, so cross-instance call signaling works on Vercel. Remaining caveats: Vercel caps the function at 300s (`maxDuration` in `vercel.json`), so SSE streams are killed mid-call for calls >~5 minutes and in-flight signals during a reconnect gap are still lost (no replay); and `delivered=0` is reported when the peer's connection lives on another instance even though the bus relayed the signal.
 
 ### Latest — Calls via Gateway SSE, Voice Audio Fix, Chat UX (Aug 14, 2026)
 
@@ -117,13 +176,13 @@
 - **`is` operator (`src/lib/gateway.ts`)** — `matchFilter` now resolves `null`, `true`, and `false` values instead of treating everything except `null` as a string comparison.
 - **Bulk update fallback (`src/lib/gateway.ts`)** — the gateway only supports single-row `PUT /api/v1/:domain/:id`, so `.update()` calls without an `id=eq.` filter now fetch all rows, apply filters client-side (`applyFilters`), and issue one PUT per matched `id` (`_bulkUpdate`). Handles 401 by refreshing the session (or clearing the token and redirecting to `/auth`). Trade-off: N+1 PUTs with no transaction — a mid-loop failure leaves partial updates.
 - **Count joins (`src/lib/gateway.ts`)** — join specs whose columns are `count` now attach `[{ count: N }]` to the parent row instead of an empty/array result.
-- **PeopleYouMayKnow without RPC (`src/hooks/usePeopleYouMayKnow.ts`)** — the gateway's `/api/rpc/:function` proxy (`gateway/src/api/routes.ts:283`, mounted at `routes.ts:390`) requires a Bearer token and routes to the `users` project by default (only `seed_default_ad_topics` is overridden to `ad_topics`), so `get_people_you_may_know` could not be exercised on the live deployment — no working token is obtainable (sign-up 400, sign-in 401). The hook now reproduces the RPC client-side from 4 parallel table queries (`profiles`, `friends`, `followers`, `blocks`): builds an undirected accepted-friend graph, counts mutual friends, excludes already-related/followed/blocked users, and sorts by `mutual_friends_count DESC, created_at DESC` to match the RPC. `blocks`/`followers` fetch failures degrade to "no blocks"/"no follows" with a `console.warn`. Trade-off: fetches the entire `profiles` and `friends` tables per render.
+- **PeopleYouMayKnow without RPC (`src/hooks/usePeopleYouMayKnow.ts`)** — the gateway's `/api/rpc/:function` proxy (`gateway/src/api/routes.ts:344`, mounted at `routes.ts:421`) requires a Bearer token and routes to the `users` project by default (`RPC_DOMAIN_OVERRIDES` routes `seed_default_ad_topics` → `ad_topics` plus 17 blocking functions → `blocking`), so `get_people_you_may_know` could not be exercised on the live deployment — no working token is obtainable (sign-up 400, sign-in 401). The hook now reproduces the RPC client-side from 4 parallel table queries (`profiles`, `friends`, `followers`, `blocks`): builds an undirected accepted-friend graph, counts mutual friends, excludes already-related/followed/blocked users, and sorts by `mutual_friends_count DESC, created_at DESC` to match the RPC. `blocks`/`followers` fetch failures degrade to "no blocks"/"no follows" with a `console.warn`. Trade-off: fetches the entire `profiles` and `friends` tables per render.
 - **Error/retry UX** — `useNotifications`, `useFollowedHashtagsFeed`, and `useExplorePosts` now expose `error` state (plus a `retry` counter / `refresh()` that re-runs the effect). `NotificationsDropdown`, `NotificationsPage`, `FollowedHashtags`, and `Search` render error states with Retry buttons instead of silent empty/spinner states.
 - **Verification:** `npx tsc --noEmit` ✓ 0 errors.
 
 ### Latest — Feature-Flag Refresh & Chat RPC Migration (Aug 4, 2026)
 
-- **Gateway feature-flag refresh (`gateway/src/dev.ts`, commit `e3ee66d`)** — the 60s `refreshRegistry()` interval now calls `featureFlags.enable(domain)` for every domain after reload. This resolves the cold-start caveat below: domains registered in the live infra DB now activate on the next periodic refresh instead of requiring a Vercel instance restart.
+- **Gateway feature-flag refresh (`gateway/src/dev.ts`, commit `e3ee66d`)** — the 60s `refreshRegistry()` interval now calls `featureFlags.enable(domain)` for every domain after reload. **Scope correction (Aug 23, 2026):** that periodic refresh lives only in the local dev server (`src/dev.ts`); the Vercel handler (`api/[...slug].ts`) enables flags once per cold start and never refreshes in place — so on production, newly registered domains activate on the next instance cold start rather than via a live refresh.
 - **Chat RPCs replaced with gateway table queries (`src/api/conversations.ts`, `src/hooks/useConversations.ts`, `src/hooks/useMessagingSystem.ts`, commit `c57b6f2`)** — the monolith-era chat RPCs (`get_or_create_dm`, `get_conversations_with_info`, `mark_messages_read`, `get_message_read_status`, `get_my_read_message_ids`, `mark_message_delivered`) join tables spread across multiple physical projects and 42P01 on every live call (e.g. `relation "blocks" does not exist` when opening a DM). They were replaced with per-domain gateway table queries: `getOrCreateDM`, `markConversationMessagesRead`, `getConversationReadStatus`, `getMyReadMessageIds`, `markMessageDelivered` added to `src/api/conversations.ts` (+161 lines); `useConversations.ts` and `useMessagingSystem.ts` rewritten to consume them. Matches the "do not route these RPCs anywhere" note in `tone-api-gateway.md`.
 - **Verification:** `npx tsc --noEmit` ✓ 0 errors (both projects).
 
@@ -203,14 +262,14 @@
 ### Gateway Domain Registration — "Failed to Load X: Not Found" Toasts (July 2026)
 
 - **Problem:** Screens fired "Failed to load friends" / "Failed to load other names" error toasts (`src/hooks/useFriends.ts:86`, `src/hooks/useOtherNames.ts:36`).
-- **Root cause:** the gateway is **table-as-domain** — `GET /api/:domain` returns `404 {"error":"Not found"}` when `featureFlags.isEnabled(domain)` is false (`gateway/src/api/routes.ts:306-311`), and flags are only enabled for domains present in the live infra DB `infrastructure_projects` table at cold start (`gateway/api/[...slug].ts:45-49` → `projectManager.load()`). ~80 of the ~108 tables the frontend queries via `gateway.from('<table>')` had never been registered as domains.
+- **Root cause:** the gateway is **table-as-domain** — `GET /api/:domain` returns `404 {"error":"Not found"}` when `featureFlags.isEnabled(domain)` is false (`gateway/src/api/routes.ts:97-99`), and flags are only enabled for domains present in the live infra DB `infrastructure_projects` table at cold start (`gateway/api/[...slug].ts:45-49` → `projectManager.load()`). ~80 of the ~108 tables the frontend queries via `gateway.from('<table>')` had never been registered as domains.
 - **Fix (config-only, no gateway source changes):** registered the missing domains in the live infra DB, each cloned from the credentials of the project that hosts the table (probed per table; `infrastructure_projects` + `domains` kept in sync; inserts idempotent via the infra DB service client, no keys written to files). Result: **98/105** frontend-queried tables routable (3 of the original 108 entries were later re-audited as storage buckets, not tables).
   - users host (48 domains): `users`, `friends`, `follows`, `followers`, `friendships`, `mentions`, `other_names`, `user_activity`, `post_notifications`, `reactions`, `privacy_settings`, `search_history`, `notification_preferences`, etc.
   - `stories` project (10): `stories` + 9 `story_*` tables
   - `conversations` project (9): `conversations`, `messages`, `message_requests`, `message_reactions`, `message_reports`, `pinned_messages`, `conversation_clears/participants/reports`
   - `posts` project (7): `posts`, `likes`, `post_shares`, `post_tags`, `reported_posts`, `saved_posts`, `shares`
   - `groups` (5), `advertisers` (5), `profiles` (4), `comments` (4), `pages` (3), `music` (2), plus single-table hosts `hashtags`, `blocking`, `notifications`.
-- **Still open (re-audited Aug 2, 2026):** 7 frontend-queried tables lack a domain — `media_library`, `restricted_users`, `trusted_devices` (all created by app migrations in the users project but missed by the probe), `blocks` (only `blocking` is registered — table/domain name mismatch), `blocked_nicknames`, `hashtag_follows`, `message_audios`. `avatars`, `covers`, and `group_covers` are storage buckets (`gateway.storage.from('...')`), not tables. **Cold-start caveat fixed (Aug 4, 2026, gateway `e3ee66d`):** the 60s `refreshRegistry()` interval now re-enables feature flags for every refreshed domain (`src/dev.ts`), so domains registered in the live infra DB activate on the next refresh cycle instead of requiring a Vercel instance restart.
+- **Still open (re-audited Aug 2, 2026):** 7 frontend-queried tables lack a domain — `media_library`, `restricted_users`, `trusted_devices` (all created by app migrations in the users project but missed by the probe), `blocks` (only `blocking` is registered — table/domain name mismatch), `blocked_nicknames`, `hashtag_follows`, `message_audios`. `avatars`, `covers`, and `group_covers` are storage buckets (`gateway.storage.from('...')`), not tables. **Cold-start caveat (partially addressed Aug 4, 2026, gateway `e3ee66d`; re-audited Aug 23, 2026):** the 60s `refreshRegistry()` interval now re-enables feature flags (`src/dev.ts`) — but only in the local dev server; on Vercel, flags are enabled once per instance cold start (`api/[...slug].ts`), so new domains activate as instances recycle rather than via an in-place refresh.
 
 ### Mobile-First Responsive Layout
 
@@ -665,7 +724,7 @@ tone-your-social-voice/
     │   └── FriendRequestsDropdown.tsx — Received/Sent tabs, max 10, people suggestions
     ├── pages/           — 25+ page components
     ├── hooks/           — 80+ custom hooks (import from @/api or @/lib/gateway)
-    ├── contexts/        — Auth, Call, PageSwitch, HeaderAvatarMenu
+    ├── contexts/        — Call, PageSwitch, HeaderAvatarMenu (+ call/ subfolder); Auth lives in `src/hooks/useAuth.tsx`
     ├── lib/             — gateway.ts (compatibility client), crypto, audioEngine, player, utils, reactions
     ├── services/        — webrtc.ts
     ├── integrations/    — Supabase types only (client.ts is a dead module when env vars absent)
@@ -728,7 +787,7 @@ The API Gateway routes requests to 13 separate backend projects by domain:
 
 ### Gateway Compatibility Client (`src/lib/gateway.ts`)
 
-A ~1146-line SDK-compatible client that translates chainable queries to gateway REST API calls, with client-side filtering for unsupported gateway features:
+A ~1157-line SDK-compatible client that translates chainable queries to gateway REST API calls, with client-side filtering for unsupported gateway features:
 
 - **Query builder:** `.from()`, `.select()`, `.eq()`, `.neq()`, `.gt()`, `.gte()`, `.lt()`, `.lte()`, `.in()`, `.like()`, `.ilike()`, `.or()`, `.not()`, `.is()`, `.order()`, `.limit()`, `.range()`, `.single()`, `.maybeSingle()`, `.count()`
 - **CRUD:** `.insert()`, `.update()`, `.delete()`, `.upsert()` with proper URL routing (`/api/` for POST/GET, `/api/v1/` for PUT/DELETE)
@@ -760,7 +819,7 @@ A ~1146-line SDK-compatible client that translates chainable queries to gateway 
 5. ~~**Sub-tables inaccessible**~~ — **RESOLVED July 2026** — related tables (likes, shares, saved_posts, friends, other_names, etc.) now have their own gateway domains
 6. **PUT/DELETE require `/v1/` prefix** — Not available at base `/api/` path
 7. **Gateway lacks query filtering** — Resolved client-side: `.eq()`, `.order()`, `.limit()` etc. fetch all records and apply filtering/sorting/pagination in the browser. **Trade-off: fetches full table per request. Won't scale.**
-8. **RPC proxying auth-gated & users-only** — `/api/rpc/:function` exists (`src/api/routes.ts:283`, mounted at `routes.ts:390`) but requires a Bearer token and routes to the `users` project by default (only `seed_default_ad_topics` is overridden); unusable on the live deployment without a token
+8. **RPC proxying auth-gated & users-only default** — `/api/rpc/:function` exists (`src/api/routes.ts:344`, mounted at `routes.ts:421`) but requires a Bearer token; `RPC_DOMAIN_OVERRIDES` routes `seed_default_ad_topics` → `ad_topics` plus 17 blocking functions → `blocking`, everything else defaults to `users`; unusable on the live deployment without a token
 9. **Gateway lacks storage proxying** — `/api/storage/upload` endpoint doesn't exist yet
 10. **Realtime degraded** — Broadcast channels work locally; postgres_changes subscriptions are no-ops
 11. **Only 13/89 hooks use the API layer** — remaining hooks call gateway directly, duplicating queries
@@ -768,18 +827,18 @@ A ~1146-line SDK-compatible client that translates chainable queries to gateway 
 13. **TypeScript strictness disabled** — `noImplicitAny: false`, `strictNullChecks: false`
 14. **Near-zero test coverage** — 4 test files, zero component/hook/integration tests
 15. **10 files over 1000 lines** (excluding auto-generated `types.ts`) — largest is `PageDetail.tsx` at 1939 lines
-16. **100+ console.log statements** in production hooks
+16. **500+ `console.log` statements** in production source (538 across `src/`)
 
 ### Remaining Gateway-Side Work
 
 For full functionality, the gateway needs:
 
 1. **Query filtering** — ~~URL query params for `.eq()`, `.order()`, `.limit()`, `.range()`, `.in()`, `.or()`, `.ilike()`~~ Done client-side; server-side still recommended to avoid fetching all records
-2. **RPC proxying** — `POST /api/rpc/:function` exists (`src/api/routes.ts:283`, mounted at `routes.ts:390`) but only routes to the `users` project (or `seed_default_ad_topics` → `ad_topics`) and requires a Bearer token; no working token obtainable on the live deployment
+2. **RPC proxying** — `POST /api/rpc/:function` exists (`src/api/routes.ts:344`, mounted at `routes.ts:421`) and requires a Bearer token; blocking RPCs + `seed_default_ad_topics` are routed via `RPC_DOMAIN_OVERRIDES`, everything else defaults to the `users` project; remaining per-function routing needs verification with a working token
 3. **Auth middleware** — JWT validation or API key system (data routes require a Bearer token, but system endpoints return 503 because `ADMIN_API_KEY` is undefined)
 4. **Storage proxying** — File upload passthrough via the gateway
 5. **Realtime/WebSocket support** — Proxy realtime connections via the gateway
-6. ~~**Remove or protect `/api/system/databases`** — never expose service keys publicly~~ **DONE** — endpoint removed from gateway source (`src/api/routes.ts:242`)
+6. ~~**Remove or protect `/api/system/databases`** — never expose service keys publicly~~ **DONE** — endpoint removed from gateway source (`src/api/routes.ts:273`)
 
 ### Security Notes
 
@@ -787,9 +846,9 @@ For full functionality, the gateway needs:
 - Gateway authentication is **partial** — data routes require a Bearer token (401 without one); system endpoints except `/health` are admin-gated but 503 while `ADMIN_API_KEY` is undefined
 - ~~Gateway exposes service keys via `GET /api/system/databases` (critical vulnerability)~~ — endpoint removed (Aug 2026); system endpoints admin-gated (503 while `ADMIN_API_KEY` undefined)
 - ECDH private keys stored in `localStorage` (`src/hooks/useEncryptionKeys.ts:100`) — vulnerable to XSS
-- Auth tokens (`access_token`, `refresh_token`) stored in `localStorage` (`src/lib/gateway.ts:530`) — single XSS compromises auth + encryption
+- Auth tokens (`access_token`, `refresh_token`) stored in `localStorage` (`src/lib/gateway.ts:858`) — single XSS compromises auth + encryption
 - No input sanitization on user-generated content (`src/hooks/useComments.ts:90`) — stored XSS risk
-- Regex injection in gateway filter builder (`src/lib/gateway.ts:99-104`) — ReDoS possible
+- Regex injection in gateway filter builder (`src/lib/gateway.ts:132-139`) — ReDoS possible
 - No Content Security Policy headers on `index.html`
 - No CSRF protection on gateway fetch calls
 - Original RLS policies no longer apply through gateway
@@ -800,7 +859,7 @@ For full functionality, the gateway needs:
 1. **Add gateway authentication** — Implement JWT or API key validation
 2. ~~**Remove `/api/system/databases` endpoint** — Never expose service keys publicly~~ **DONE** — removed from gateway source
 3. **Fix offline databases** — Verify/restore `profiles` (auth-gated, returns 401 without a Bearer token); `groups` is now online
-4. **Extend gateway RPC proxying** — the `/api/rpc/:function` proxy exists (`src/api/routes.ts:283`, mounted at `routes.ts:390`) but is auth-gated and defaults to the `users` project; 20+ RPC functions need domain routing and a working token
+4. **Extend gateway RPC proxying** — the `/api/rpc/:function` proxy exists (`src/api/routes.ts:344`, mounted at `routes.ts:421`) but is auth-gated; `RPC_DOMAIN_OVERRIDES` already routes `seed_default_ad_topics` → `ad_topics` and 17 blocking functions → `blocking` — verify remaining users-default functions with a working token
 5. **Add gateway storage proxying** — File uploads need passthrough
 6. **Refactor large components** — Break down 10 files >1000 lines (excluding auto-generated `types.ts`) into smaller, focused components
 7. **Add unit tests** — Target critical paths: auth flow, encryption, post creation, messaging
@@ -825,18 +884,18 @@ The application has been fully migrated to use the API Gateway with a clean 3-la
 | # | Issue | File | Impact |
 |---|-------|------|--------|
 | 1 | **ECDH private keys stored in `localStorage`** | `src/hooks/useEncryptionKeys.ts:100` | A single XSS attack compromises all E2E encrypted messages. Private encryption keys should use IndexedDB with isolation or be kept only in memory. |
-| 2 | **Auth tokens + private keys both in `localStorage`** | `src/lib/gateway.ts:530` | Auth session (`access_token`, `refresh_token`) stored alongside encryption keys. One XSS compromises both authentication and message encryption. |
+| 2 | **Auth tokens + private keys both in `localStorage`** | `src/lib/gateway.ts:858` | Auth session (`access_token`, `refresh_token`) stored alongside encryption keys. One XSS compromises both authentication and message encryption. |
 | 3 | **No input sanitization on user-generated content** | `src/hooks/useComments.ts:90` | Comment content inserted with only `.trim()` — no XSS sanitization. Stored XSS rendered to all users across posts, comments, messages. |
-| 4 | **`.env` committed to repo** | `.env` | Currently benign (`VITE_API_GATEWAY_URL` only) — hygiene/process issue, not a live vulnerability. Not in `.gitignore`; add it. |
+| 4 | **`.env` committed to repo** | `.env` | Currently benign (`VITE_API_GATEWAY_URL` only) — hygiene/process issue, not a live vulnerability. Re-verified Aug 21, 2026: the file is **still tracked by git** and absent from `.gitignore`; untrack it (`git rm --cached .env`) and add it to `.gitignore`. |
 
 ### High
 
 | # | Issue | File | Impact |
 |---|-------|------|--------|
-| 5 | **Regex injection in gateway filter builder** | `src/lib/gateway.ts:99-104` | `like` and `ilike` filter operations interpolate user-supplied patterns into `new RegExp()` without escaping special regex characters. Potential ReDoS. |
+| 5 | **Regex injection in gateway filter builder** | `src/lib/gateway.ts:132-139` | `like` and `ilike` filter operations interpolate user-supplied patterns into `new RegExp()` without escaping special regex characters. Potential ReDoS. |
 | 6 | **Auth token leaked via console.log** | `src/hooks/useFileUpload.ts:45` | `console.log('[useFileUpload] ✅ User authenticated:', user.id)` — sensitive user data logged to console in production. Multiple other hooks log user IDs and project data. |
-| 7 | **No CSRF protection** | `src/lib/gateway.ts:536-540` | `_gatewayFetch` sends auth tokens via `Authorization` header but has no CSRF token. Since this is a SPA calling a separate gateway origin, SameSite cookies don't apply. |
-| 8 | **Client-side filtering fetches entire tables** | `src/lib/gateway.ts:303-306` | When gateway ignores query params, client fetches ALL rows per table into the browser. Catastrophic for performance at scale. The comment on line 28 acknowledges this. |
+| 7 | **No CSRF protection** | `src/lib/gateway.ts:864` | `_gatewayFetch` sends auth tokens via `Authorization` header but has no CSRF token. Since this is a SPA calling a separate gateway origin, SameSite cookies don't apply. |
+| 8 | **Client-side filtering fetches entire tables** | `src/lib/gateway.ts:478-482` | When gateway ignores query params, client fetches ALL rows per table into the browser. Catastrophic for performance at scale. The comment on line 478 acknowledges this. |
 | 9 | ~~**Supabase client created with wrong credentials**~~ | `src/integrations/supabase/client.ts` | ~~`SUPABASE_ANON_KEY` set to `VITE_API_GATEWAY_URL` instead of actual key.~~ **RESOLVED** — `client.ts` is now a type-only re-export; no client is created and no env vars are read. |
 
 ### Medium
@@ -844,7 +903,7 @@ The application has been fully migrated to use the API Gateway with a clean 3-la
 | # | Issue | File | Impact |
 |---|-------|------|--------|
 | 10 | **No Content Security Policy headers** | `index.html` | No CSP meta tag or headers. For an app with encryption, rich media, and user content, this is a significant gap. |
-| 11 | **`like` filter creates regex from user input** | `src/lib/gateway.ts:99` | `const pattern = val.replace(/%/g, '.*'); return new RegExp('^${pattern}$', 'i').test(...)` — no escaping of regex special characters. |
+| 11 | **`like` filter creates regex from user input** | `src/lib/gateway.ts:133-135` | `const pattern = val.replace(/%/g, '.*'); return new RegExp('^${pattern}$', 'i').test(...)` — no escaping of regex special characters. |
 
 ---
 
@@ -854,10 +913,10 @@ The application has been fully migrated to use the API Gateway with a clean 3-la
 |---|-------|------|----------|--------|
 | 1 | **`getUserPosts` calls hook as plain function** — breaks Rules of Hooks | `src/hooks/usePosts.tsx:80-82` | High | Open |
 | 2 | ~~**Broken negation logic in `applyFilters`** — `!matches` condition makes negation always true~~ | `src/lib/gateway.ts:81` | High | **FIXED** — Arrow function + simplified negation logic |
-| 3 | **`send()` on channels is a no-op for server** — real-time updates to other users won't work | `src/lib/gateway.ts:516-522` | High | Open |
+| 3 | **`send()` on channels is a no-op for server** — real-time updates to other users won't work | `src/lib/gateway.ts:843-849` | High | Open |
 | 4 | ~~**`hasActiveStories` always returns `false`**~~ — ~~wrong count extraction from `_countOnly` path~~ | `src/api/stories.ts:29-31` | Medium | **NO LONGER PRESENT** — current implementation uses `.select('id').gt('expires_at', ...).limit(1)` + `length > 0`; no count extraction involved |
 | 5 | **Story view count race condition** — read-then-write, not atomic | `src/hooks/useStories.ts:217-223` | Medium | Open |
-| 6 | **`QueryClient` created at module scope** — persists between test runs | `src/App.tsx:46` | Low | Open |
+| 6 | **`QueryClient` created at module scope** — persists between test runs | `src/App.tsx:48` | Low | Open |
 | 7 | **`fetchConversationsDirectly` returns wrong shape** — local `Conversation` type conflicts with `api/types.ts` type | `src/hooks/useConversations.ts:71-96` | Low | Open |
 | 8 | **Column selection broken with nested joins** — complex select strings with PostgREST nested joins (e.g., `group_members!...(...)`) caused `parseSelect` to return partial columns instead of full rows | `src/lib/gateway.ts:326-340` | High | **FIXED** — `parseSelectColumns()` + `hasNestedJoins()` helpers added |
 | 9 | ~~**Call state stuck after WebRTC disconnect** — `onConnectionStateChange` calls `resetCallState()` without sending `call-ended` to remote peer; remote stays busy~~ | `src/contexts/call/CallContext.tsx:127-157` | Critical | **FIXED (Aug 19, 2026)** — sends `call-ended` + logs to DB before `resetCallState()`; added `beforeunload` listener for tab close |
@@ -870,21 +929,20 @@ The application has been fully migrated to use the API Gateway with a clean 3-la
 
 ### TypeScript Strictness Disabled
 
-`tsconfig.json:3-6`:
+`tsconfig.app.json:25` has `"strict": false`; `tsconfig.json` sets `"noImplicitAny": false` (line 4) and `"strictNullChecks": false` (line 13):
 ```
 "noImplicitAny": false,
-"noUnusedLocals": false,
-"noUnusedParameters": false,
-"strict": false,
 "strictNullChecks": false
 ```
 
 With `strict: false` and `strictNullChecks: false`, TypeScript catches very few bugs. The `any` type is used extensively:
 - `src/lib/gateway.ts` — 13 `(fb as any)` casts (16 `as any` total) to bypass type checking
-- `src/lib/gateway.ts:543` — `_parseJson` returns `Promise<any>`
+- `src/lib/gateway.ts:871` — `_parseJson` returns `Promise<any>`
 - Most hooks use `catch (error: any)`
 
-### Files Over 1000 Lines
+### Largest Source Files
+
+10 non-generated files exceed 1,000 lines (the last four entries below are close runners-up under 1,000):
 
 | File | Lines |
 |------|-------|
@@ -895,13 +953,13 @@ With `strict: false` and `strictNullChecks: false`, TypeScript catches very few 
 | `src/components/CreateStoryDialog.tsx` | 1346 |
 | `src/pages/Editor.tsx` | 1248 |
 | `src/pages/EditorPublish.tsx` | 1199 |
-| `src/components/messages/ChatInfoPanel.tsx` | 1182 |
+| `src/components/messages/ChatInfoPanel.tsx` | 1179 |
 | `src/api/users.ts` | 1153 |
 | `src/components/AboutSection.tsx` | 1076 |
-| `src/lib/gateway.ts` | 1146 |
-| `src/hooks/useConversations.ts` | 977 |
-| `src/components/messages/MessageBubble.tsx` | 932 |
-| `src/pages/Settings.tsx` | 914 |
+| `src/lib/gateway.ts` | 1157 |
+| `src/hooks/useConversations.ts` | 950 |
+| `src/components/messages/MessageBubble.tsx` | 974 |
+| `src/pages/Settings.tsx` | 907 |
 | `src/components/messages/ChatWindow.tsx` | 899 |
 
 ### API Layer Barely Used
@@ -925,18 +983,18 @@ The remaining 76 hooks call `gateway` directly, duplicating select strings and q
 
 ### React Query Unused Despite Being Installed
 
-`@tanstack/react-query` is in `package.json:45` and `QueryClientProvider` wraps the app (`App.tsx:49`), but only 1 of the 89 hooks (`src/hooks/useMusicLibrary.ts`) uses `useQuery`/`useMutation`. Every other hook uses manual `useState`/`useEffect`/`fetch` — no caching, no dedup, no stale-while-revalidate, no background refetching, no retry logic.
+`@tanstack/react-query` is in `package.json:44` and `QueryClientProvider` wraps the app (`App.tsx:50`), but only 1 of the 89 hooks (`src/hooks/useMusicLibrary.ts`) uses `useQuery`/`useMutation`. Every other hook uses manual `useState`/`useEffect`/`fetch` — no caching, no dedup, no stale-while-revalidate, no background refetching, no retry logic.
 
 ### Excessive console.log in Production
 
 Over 100 `console.log`, `console.error`, and `console.warn` statements in hooks alone:
-- `src/hooks/useFileUpload.ts` — 12 console.log statements with emoji prefixes
-- `src/hooks/useEditorProject.ts` — 16 console.log statements
-- `src/lib/storage.ts` — 11 console.log statements
+- `src/hooks/useFileUpload.ts` — 5 console.log statements with emoji prefixes (10 incl. error/warn)
+- `src/hooks/useEditorProject.ts` — 14 console.log statements (20 incl. error/warn)
+- `src/lib/storage.ts` — 8 console.log statements (14 incl. error/warn)
 
 ### Gateway Code Duplication
 
-`src/lib/gateway.ts` (1146 lines) contains `GatewayQueryBuilder` (lines 353-428) and `PostgrestFilterBuilder` (lines 127-351) with nearly identical filter/order/limit/offset methods duplicated between the two classes.
+`src/lib/gateway.ts` (1157 lines) contains `GatewayQueryBuilder` (line 674) and `PostgrestFilterBuilder` (lines 296-673) with nearly identical filter/order/limit/offset methods duplicated between the two classes.
 
 ---
 
@@ -971,7 +1029,7 @@ Only 4 test files exist in `src/__tests__/`:
 | Dev server | ✓ Running at `http://localhost:8080/` |
 | `.env` | ✓ Only `VITE_API_GATEWAY_URL` |
 | Hardcoded credentials | ✓ Removed from `client.ts` |
-| Gateway client | ✓ `src/lib/gateway.ts` (1146 lines) — column selection, join cardinality, `not.` serialization fixed |
+| Gateway client | ✓ `src/lib/gateway.ts` (1157 lines) — column selection, join cardinality, `not.` serialization fixed |
 | API layer | ✓ `src/api/` — 14 domain modules (18 files), typed functions |
 | Import migration | ✓ 160 files: `supabase` → `gateway` or `api` |
 | Posts domain | ✓ 5 files migrated to `postsApi.*` |
@@ -981,9 +1039,9 @@ Only 4 test files exist in `src/__tests__/`:
 | Vite build | ✓ Success |
 | Gateway query filtering | ✓ Client-side (fetches all, filters in browser) |
 | Gateway auth | ✗ Partial — data routes require Bearer; system endpoints admin-gated but 503 (`ADMIN_API_KEY` undefined) |
-| Gateway RPC | ✗ Partial — `/api/rpc/:function` exists (`routes.ts:283`) but auth-gated, users-project-default, unverified without a token |
+| Gateway RPC | ✗ Partial — `/api/rpc/:function` exists (`routes.ts:344`) but auth-gated, users-project-default, unverified without a token |
 | Gateway storage | ✗ Not implemented |
-| Gateway realtime | ✗ Not implemented |
+| Gateway realtime | ✗ Partial — SSE bridge only (call signaling via `/api/realtime`, Aug 14, 2026; cross-instance bus relay Aug 17, `983bf60`); `postgres_changes` subscriptions remain no-ops |
 | Tests | ✗ 4 files, zero component/hook/integration tests |
 | CI/CD | ✗ Not configured |
 | TypeScript strictness | ✗ Disabled (`strict: false`) |
@@ -996,7 +1054,7 @@ Only 4 test files exist in `src/__tests__/`:
 1. **Rotate and remove exposed credentials** — `.env` committed to git; ensure no secrets are ever stored client-side
 2. **Move private keys out of `localStorage`** — use IndexedDB or in-memory-only storage for ECDH keys (`src/hooks/useEncryptionKeys.ts:100`)
 3. **Add input sanitization** — XSS-proof all user-generated content before rendering (`src/hooks/useComments.ts:90`)
-4. **Fix regex injection** — escape special characters before interpolation into `new RegExp()` (`src/lib/gateway.ts:99-104`)
+4. **Fix regex injection** — escape special characters before interpolation into `new RegExp()` (`src/lib/gateway.ts:132-139`)
 5. **Implement server-side query filtering** in the gateway — stop fetching entire tables to the browser
 6. **Complete API layer migration** — move remaining hooks off direct `gateway` calls to `src/api/` modules (posts, groups, profiles, blocking, ads, notifications, conversations now migrated; 76 hooks remain)
 7. **Adopt React Query** — replace manual `useState`/`useEffect`/`fetch` with `useQuery`/`useMutation` for caching and dedup
@@ -1006,7 +1064,7 @@ Only 4 test files exist in `src/__tests__/`:
 11. **Add CI/CD** — linting, type checking, tests on every push
 12. **Add Content Security Policy headers** — prevent XSS, inline script injection, and data exfiltration
 13. **Remove console.log statements** — replace with structured logging or remove entirely for production
-14. **Fix bugs** — `getUserPosts` Rules of Hooks violation (`usePosts.tsx:80`), dead channel `send()` (`gateway.ts:516`)
+14. **Fix bugs** — `getUserPosts` Rules of Hooks violation (`usePosts.tsx:80`), dead channel `send()` (`gateway.ts:843`)
 15. **Verify/restore profiles host project** — the profiles host is auth-gated (returns 401 without a Bearer token) and unverified; profile page shows an empty state until confirmed with a valid token
 
 ### Running the Project
