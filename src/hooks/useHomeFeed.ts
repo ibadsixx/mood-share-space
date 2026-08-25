@@ -55,6 +55,11 @@ export interface HomeFeedPost {
   thumbnail?: string | null;
   group_name?: string | null;
   group_id?: string | null;
+  audience_type?: string | null;
+  audience_user_ids?: string[] | null;
+  audience_excluded_user_ids?: string[] | null;
+  audience_list_id?: string | null;
+  visibility?: string | null;
   profiles: {
     username: string;
     display_name: string;
@@ -92,7 +97,12 @@ interface RawFeedPost {
   [key: string]: unknown;
 }
 
-function mapFeedPosts(data: RawFeedPost[] | null, unfollowedGroupIds: string[]): HomeFeedPost[] {
+function mapFeedPosts(
+  data: RawFeedPost[] | null,
+  unfollowedGroupIds: string[],
+  viewerId: string | undefined,
+  friendIds: Set<string>
+): HomeFeedPost[] {
   return ((data || []).map((post: RawFeedPost) => ({
     ...post,
     media_type: (post.media_type === 'image' || post.media_type === 'video')
@@ -102,7 +112,8 @@ function mapFeedPosts(data: RawFeedPost[] | null, unfollowedGroupIds: string[]):
     group_name: post.group_posts?.[0]?.groups?.name || null,
     group_id: post.group_posts?.[0]?.groups?.id || null,
   })) as unknown as HomeFeedPost[]).filter(p =>
-    !p.group_id || !unfollowedGroupIds.includes(p.group_id)
+    (!p.group_id || !unfollowedGroupIds.includes(p.group_id)) &&
+    (!viewerId || isPostVisibleToViewer(p, viewerId, friendIds))
   );
 }
 
@@ -114,6 +125,69 @@ async function loadUnfollowedGroupIds(userId?: string): Promise<string[]> {
     .select('group_id')
     .eq('user_id', userId);
   return ((unfollowRows || []) as Array<{ group_id: string }>).map(row => row.group_id);
+}
+
+// Loads the current user's accepted friend IDs for audience filtering.
+async function loadFriendIds(userId?: string): Promise<Set<string>> {
+  if (!userId) return new Set();
+  const { data } = await gateway
+    .from('friends')
+    .select('requester_id, receiver_id')
+    .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+    .eq('status', 'accepted');
+  const ids = new Set<string>();
+  for (const row of (data || []) as Array<{ requester_id: string; receiver_id: string }>) {
+    if (row.requester_id !== userId) ids.add(row.requester_id);
+    if (row.receiver_id !== userId) ids.add(row.receiver_id);
+  }
+  return ids;
+}
+
+// Determines whether a post is visible to the current user based on its audience settings.
+// The gateway uses service_role keys that bypass RLS, so audience enforcement happens here.
+function isPostVisibleToViewer(
+  post: HomeFeedPost,
+  viewerId: string,
+  friendIds: Set<string>
+): boolean {
+  const authorId = post.user_id;
+
+  // Authors always see their own posts.
+  if (viewerId === authorId) return true;
+
+  // Non-public visibility hides the post from everyone except the author.
+  if (post.visibility && post.visibility !== 'public') return false;
+
+  const audience = post.audience_type;
+
+  // Default / public — visible to everyone.
+  if (!audience || audience === 'public') return true;
+
+  // Only me — visible to the author only (already returned above).
+  if (audience === 'only_me') return false;
+
+  // Friends — visible when viewer and author are mutual friends.
+  if (audience === 'friends') return friendIds.has(authorId);
+
+  // Friends except — friends minus excluded list.
+  if (audience === 'friends_except') {
+    if (!friendIds.has(authorId)) return false;
+    const excluded = post.audience_excluded_user_ids;
+    return !excluded || !excluded.includes(viewerId);
+  }
+
+  // Specific friends — viewer must be in the explicit user list.
+  if (audience === 'specific') {
+    const allowed = post.audience_user_ids;
+    return !!allowed && allowed.includes(viewerId);
+  }
+
+  // Custom list — audience_list_id references an audience_lists row; without
+  // a membership lookup we conservatively hide the post.
+  if (audience === 'custom_list') return false;
+
+  // Unknown audience type — hide.
+  return false;
 }
 
 export const useHomeFeed = () => {
@@ -130,13 +204,16 @@ export const useHomeFeed = () => {
     try {
       setLoading(true);
       const currentOffset = resetPosts ? 0 : offset;
-      const unfollowedGroupIds = await loadUnfollowedGroupIds(user?.id);
+      const [unfollowedGroupIds, friendIds] = await Promise.all([
+        loadUnfollowedGroupIds(user?.id),
+        loadFriendIds(user?.id)
+      ]);
 
       const { data, error } = await postsApi.getFeedPosts(currentOffset, POSTS_PER_PAGE);
 
       if (error) throw error;
 
-      const postsWithTypedMedia = mapFeedPosts(data, unfollowedGroupIds);
+      const postsWithTypedMedia = mapFeedPosts(data, unfollowedGroupIds, user?.id, friendIds);
 
       if (resetPosts) {
         setPosts(postsWithTypedMedia);
@@ -174,12 +251,15 @@ export const useHomeFeed = () => {
   // deeper pagination the user has already loaded are left untouched.
   const checkForNewPosts = useCallback(async () => {
     try {
-      const unfollowedGroupIds = await loadUnfollowedGroupIds(user?.id);
+      const [unfollowedGroupIds, friendIds] = await Promise.all([
+        loadUnfollowedGroupIds(user?.id),
+        loadFriendIds(user?.id)
+      ]);
 
       const { data, error } = await postsApi.getFeedPosts(0, POSTS_PER_PAGE);
       if (error || !data || data.length === 0) return;
 
-      const latest = mapFeedPosts(data, unfollowedGroupIds);
+      const latest = mapFeedPosts(data, unfollowedGroupIds, user?.id, friendIds);
       setPosts(prev => {
         const known = new Set(prev.map(p => p.id));
         const fresh = latest.filter(p => !known.has(p.id));

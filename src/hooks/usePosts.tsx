@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { postsApi } from '@/api';
+import { gateway } from '@/lib/gateway';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Post {
   id: string;
@@ -11,6 +13,10 @@ interface Post {
   created_at: string;
   type: 'normal_post' | 'profile_picture_update' | 'cover_photo_update' | 'shared_post' | 'reel';
   shared_post_id?: string | null;
+  audience_type?: string | null;
+  audience_user_ids?: string[] | null;
+  audience_excluded_user_ids?: string[] | null;
+  visibility?: string | null;
   profiles: {
     username: string;
     display_name: string;
@@ -31,10 +37,47 @@ interface Post {
   } | null;
 }
 
+async function loadFriendIds(userId: string): Promise<Set<string>> {
+  const { data } = await gateway
+    .from('friends')
+    .select('requester_id, receiver_id')
+    .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+    .eq('status', 'accepted');
+  const ids = new Set<string>();
+  for (const row of (data || []) as Array<{ requester_id: string; receiver_id: string }>) {
+    if (row.requester_id !== userId) ids.add(row.requester_id);
+    if (row.receiver_id !== userId) ids.add(row.receiver_id);
+  }
+  return ids;
+}
+
+function isPostVisibleToViewer(
+  post: Post,
+  viewerId: string,
+  friendIds: Set<string>
+): boolean {
+  if (viewerId === post.user_id) return true;
+  if (post.visibility && post.visibility !== 'public') return false;
+
+  const audience = post.audience_type;
+  if (!audience || audience === 'public') return true;
+  if (audience === 'only_me') return false;
+  if (audience === 'friends') return friendIds.has(post.user_id);
+  if (audience === 'friends_except') {
+    if (!friendIds.has(post.user_id)) return false;
+    return !post.audience_excluded_user_ids?.includes(viewerId);
+  }
+  if (audience === 'specific') {
+    return !!post.audience_user_ids && post.audience_user_ids.includes(viewerId);
+  }
+  return false;
+}
+
 export const usePosts = (userId?: string) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const fetchPosts = async () => {
     if (!userId) {
@@ -54,7 +97,14 @@ export const usePosts = (userId?: string) => {
         shared_post: post.shared_post
       }));
 
-      setPosts(postsWithTypedMedia);
+      // When viewing another user's profile, filter by audience settings.
+      // The gateway uses service_role which bypasses RLS, so we filter client-side.
+      if (user && user.id !== userId) {
+        const friendIds = await loadFriendIds(user.id);
+        setPosts(postsWithTypedMedia.filter(p => isPostVisibleToViewer(p, user.id, friendIds)));
+      } else {
+        setPosts(postsWithTypedMedia);
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
