@@ -94,7 +94,10 @@ export const useSearch = (query: string, debounceMs: number = 300) => {
     setError(null);
 
     try {
-      const searchPattern = `%${searchQuery.trim()}%`;
+      // Strip a leading "@" so typing @username matches purely on username.
+      let term = searchQuery.trim();
+      if (term.startsWith('@')) term = term.slice(1);
+      const searchPattern = `%${term}%`;
 
       // Search profiles (people) - RLS automatically excludes blocked users
       const { data: profiles, error: profilesError } = await gateway

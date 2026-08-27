@@ -61,10 +61,11 @@ export async function updateProfile(id: string, data: Partial<Profile>): Promise
 }
 
 export async function searchProfiles(query: string, excludeUserId?: string): Promise<ApiResult<Profile[]>> {
+  const term = query.trim().replace(/^@/, '');
   let q = gateway
     .from('profiles')
     .select('id, username, display_name, profile_pic')
-    .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`);
+    .or(`username.ilike.%${term}%,display_name.ilike.%${term}%`);
   if (excludeUserId) q = q.neq('id', excludeUserId);
   return q.limit(20) as Promise<ApiResult<Profile[]>>;
 }

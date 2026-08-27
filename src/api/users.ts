@@ -1130,7 +1130,8 @@ export async function getMultipleUsers(userIds: string[]): Promise<ApiResult<{ i
 }
 
 export async function searchUsers(query: string, limit: number = 20): Promise<ApiResult<{ id: string; username: string; display_name: string; profile_pic: string | null }[]>> {
-  return gateway.from('profiles').select('id, username, display_name, profile_pic').or(`display_name=ilike.%${query}%,username=ilike.%${query}%`).limit(limit) as Promise<ApiResult<{ id: string; username: string; display_name: string; profile_pic: string | null }[]>>;
+  const term = query.trim().replace(/^@/, '');
+  return gateway.from('profiles').select('id, username, display_name, profile_pic').or(`display_name=ilike.%${term}%,username=ilike.%${term}%`).limit(limit) as Promise<ApiResult<{ id: string; username: string; display_name: string; profile_pic: string | null }[]>>;
 }
 
 export async function getUserStats(userId: string): Promise<ApiResult<{ posts: number; followers: number; following: number; friends: number }>> {
