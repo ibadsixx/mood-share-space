@@ -56,16 +56,28 @@ export const usePeopleYouMayKnow = (limit: number = 10): UsePeopleYouMayKnowRetu
       // The gateway's /api/rpc proxy is auth-gated and defaults to the users
       // project, so the get_people_you_may_know RPC cannot be called reliably.
       // Reproduce its logic client-side from table queries.
-      const [profilesRes, friendsRes, followersRes] = await Promise.all([
+      // Also read auth.users: many accounts predate profile auto-creation and
+      // have no `profiles` row, so without this they would never be suggested.
+      const [profilesRes, usersRes, friendsRes, followersRes] = await Promise.all([
         gateway.from('profiles').select('*').order('created_at', { ascending: false }),
+        gateway.from('users').select('id, email, raw_user_meta_data, created_at'),
         gateway.from('friends').select('*'),
         gateway.from('followers').select('*').eq('follower_id', user.id),
       ]);
 
       if (profilesRes.error) throw new Error(profilesRes.error.message);
       if (friendsRes.error) throw new Error(friendsRes.error.message);
+      if (usersRes.error) {
+        console.warn('[usePeopleYouMayKnow] Auth users fetch failed:', usersRes.error.message);
+      }
 
       const profiles = (profilesRes.data || []) as ProfileRow[];
+      const authUsers = (usersRes.data || []) as Array<{
+        id: string;
+        email?: string | null;
+        raw_user_meta_data?: Record<string, unknown> | null;
+        created_at?: string;
+      }>;
       const friendships = (friendsRes.data || []) as FriendRow[];
 
       // Accepted friend graph (undirected) for mutual-friend counting.
@@ -100,19 +112,50 @@ export const usePeopleYouMayKnow = (limit: number = 10): UsePeopleYouMayKnowRetu
       const { data: userBlockedIds } = await blockingApi.getBlockedUserIds(user.id);
       for (const id of userBlockedIds || []) blockedIds.add(id);
 
+      // Merge profiles rows with auth.users. Accounts missing a profile row are
+      // reconstructed from their sign-up metadata so the widget lists everyone.
+      const sanitizeUsername = (value: string) =>
+        value
+          .toLowerCase()
+          .replace(/[^a-z0-9_.]/g, '_')
+          .replace(/^[_.]+|[_.]+$/g, '')
+          .slice(0, 30);
+
+      const profileById = new Map<string, ProfileRow>();
+      for (const p of profiles) profileById.set(p.id, p);
+      const authById = new Map<string, (typeof authUsers)[number]>();
+      for (const u of authUsers) authById.set(u.id, u);
+
+      const candidateIds = new Set<string>([...profileById.keys(), ...authById.keys()]);
+
+      const personById = new Map<string, Omit<SuggestedPerson, 'mutual_friends_count'>>();
       const createdById = new Map<string, string>();
-      for (const p of profiles) {
-        createdById.set(p.id, p.created_at || '');
+
+      for (const id of candidateIds) {
+        const p = profileById.get(id);
+        const u = authById.get(id);
+        const meta = (u?.raw_user_meta_data ?? {}) as Record<string, unknown>;
+        const metaUsername = typeof meta.username === 'string' ? meta.username.trim() : '';
+        const metaDisplayName = typeof meta.display_name === 'string' ? meta.display_name.trim() : '';
+        const emailPrefix = sanitizeUsername(u?.email?.split('@')[0] ?? '');
+
+        personById.set(id, {
+          id,
+          username: p?.username || metaUsername || emailPrefix || `user_${id.slice(0, 8)}`,
+          display_name: p?.display_name || metaDisplayName || metaUsername || emailPrefix || 'Tone User',
+          profile_pic: p?.profile_pic ?? null,
+        });
+        createdById.set(id, p?.created_at || u?.created_at || '');
       }
 
       const result: SuggestedPerson[] = [];
-      for (const p of profiles) {
-        if (p.id === user.id) continue;
-        if (relatedUserIds.has(p.id)) continue;
-        if (followedIds.has(p.id)) continue;
-        if (blockedIds.has(p.id)) continue;
+      for (const id of candidateIds) {
+        if (id === user.id) continue;
+        if (relatedUserIds.has(id)) continue;
+        if (followedIds.has(id)) continue;
+        if (blockedIds.has(id)) continue;
 
-        const candidateFriends = friendGraph.get(p.id);
+        const candidateFriends = friendGraph.get(id);
         let mutual = 0;
         if (candidateFriends) {
           for (const fid of candidateFriends) {
@@ -120,13 +163,7 @@ export const usePeopleYouMayKnow = (limit: number = 10): UsePeopleYouMayKnowRetu
           }
         }
 
-        result.push({
-          id: p.id,
-          username: p.username,
-          display_name: p.display_name,
-          profile_pic: p.profile_pic ?? null,
-          mutual_friends_count: mutual,
-        });
+        result.push({ ...personById.get(id)!, mutual_friends_count: mutual });
       }
 
       // Match the RPC ordering: mutual friends DESC, then created_at DESC.

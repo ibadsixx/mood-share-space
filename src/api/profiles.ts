@@ -74,6 +74,36 @@ export async function getProfilesByIds(ids: string[]): Promise<ApiResult<Profile
   return gateway.from('profiles').select('id, username, display_name, profile_pic').in('id', ids) as Promise<ApiResult<Profile[]>>;
 }
 
+/**
+ * An auth.users row as exposed via the gateway's `users` domain. Every signed-up
+ * account exists here, even when it has no `profiles` row yet (legacy sign-ups
+ * predate profile auto-creation), so this is the canonical "all existing users"
+ * source.
+ */
+export interface AuthUserRow {
+  id: string;
+  email?: string | null;
+  raw_user_meta_data?: Record<string, unknown> | null;
+  created_at?: string;
+}
+
+export async function getAuthUsers(): Promise<ApiResult<AuthUserRow[]>> {
+  return gateway.from('users').select('id, email, raw_user_meta_data, created_at') as Promise<ApiResult<AuthUserRow[]>>;
+}
+
+export async function findAuthUserByUsername(username: string): Promise<AuthUserRow | null> {
+  const q = username?.toLowerCase();
+  if (!q) return null;
+  const { data, error } = await getAuthUsers();
+  if (error) {
+    console.warn('[profiles] findAuthUserByUsername failed:', error);
+    return null;
+  }
+  return (
+    (data || []).find((r) => String(r.raw_user_meta_data?.username ?? '').toLowerCase() === q) ?? null
+  );
+}
+
 export interface EnsureProfileUser {
   id: string;
   email?: string | null;

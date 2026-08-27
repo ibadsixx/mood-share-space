@@ -27,28 +27,28 @@ const ProfilePage = () => {
     }
   }, [username, user]);
 
-  const isSelf = (name: string) =>
-    !!user &&
-    String((user.user_metadata as Record<string, unknown> | undefined)?.username ?? '').toLowerCase() === name.toLowerCase();
-
   const fetchProfile = async () => {
     if (!username) return;
     
     try {
       let { data, error } = await profilesApi.getProfileByUsername(username);
 
-      // New accounts have no profiles row until ensureProfile creates it; if
-      // the URL is the viewer's own username, self-heal instead of 404ing.
-      if (!error && !data && isSelf(username)) {
-        const created = await profilesApi.ensureProfile({
-          id: user?.id ?? '',
-          email: user?.email,
-          user_metadata: user?.user_metadata,
-        });
-        if (created?.username) {
-          const retried = await profilesApi.getProfileByUsername(created.username);
-          data = retried.data;
-          error = retried.error;
+      // The account may predate profile auto-creation, so it exists in
+      // auth.users but has no `profiles` row yet. Look it up and create the
+      // row on the fly instead of 404ing.
+      if (!error && !data) {
+        const authUser = await profilesApi.findAuthUserByUsername(username);
+        if (authUser) {
+          const created = await profilesApi.ensureProfile({
+            id: authUser.id,
+            email: authUser.email,
+            user_metadata: authUser.raw_user_meta_data,
+          });
+          if (created?.username) {
+            const retried = await profilesApi.getProfileByUsername(created.username);
+            data = retried.data;
+            error = retried.error;
+          }
         }
       }
 
