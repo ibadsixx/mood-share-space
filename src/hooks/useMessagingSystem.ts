@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { gateway } from '@/lib/gateway';
 import { useToast } from '@/hooks/use-toast';
 import { getOrCreateDM } from '@/api/conversations';
+import { createNotification } from '@/hooks/useNotifications';
 
 export type MessageSystemError = {
   code: string;
@@ -154,6 +155,13 @@ export const useMessagingSystem = (currentUserId?: string) => {
             }
           };
         }
+
+        createNotification({
+          userId: receiverId,
+          actorId: currentUserId,
+          type: 'message_request',
+          message: 'sent you a message request'
+        });
 
         return { success: true };
       }

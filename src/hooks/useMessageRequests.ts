@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { gateway } from '@/lib/gateway';
 import { useToast } from '@/hooks/use-toast';
+import { createNotification } from '@/hooks/useNotifications';
 
 type MessageRequest = {
   id: string;
@@ -215,6 +216,13 @@ export const useMessageRequests = (currentUserId?: string) => {
       toast({
         title: "Request sent",
         description: "Your message request has been sent",
+      });
+
+      createNotification({
+        userId: receiverId,
+        actorId: currentUserId,
+        type: 'message_request',
+        message: 'sent you a message request'
       });
 
       return true;
