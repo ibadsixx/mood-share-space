@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { gateway } from '@/lib/gateway';
+import { profilesApi } from '@/api';
 import { useToast } from '@/hooks/use-toast';
 
 interface GatewayUser {
@@ -41,6 +42,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [mfaFactorId, setMfaFactorId] = useState<string | undefined>(undefined);
   const { toast } = useToast();
 
+  // New accounts never get a profiles row created server-side; creating it on
+  // every session/sign-in ensures it exists before any page tries to read it.
+  const ensureUserProfile = (authUser: GatewayUser | null | undefined) => {
+    if (!authUser?.id) return;
+    profilesApi
+      .ensureProfile({
+        id: authUser.id,
+        email: authUser.email,
+        user_metadata: authUser.user_metadata,
+      })
+      .catch((err) => console.warn('[Auth] ensureProfile failed:', err));
+  };
+
   useEffect(() => {
     let mounted = true;
     let sessionResolved = false;
@@ -62,6 +76,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(session);
           setUser(session?.user ?? null);
           setLoading(false);
+          ensureUserProfile(session?.user ?? null);
         }
       }
     );
@@ -85,6 +100,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (session) {
             setSession(session);
             setUser(session.user);
+            ensureUserProfile(session.user);
           }
           setLoading(false);
         }

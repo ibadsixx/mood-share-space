@@ -73,3 +73,64 @@ export async function getProfilesByIds(ids: string[]): Promise<ApiResult<Profile
   if (ids.length === 0) return { data: [], error: null };
   return gateway.from('profiles').select('id, username, display_name, profile_pic').in('id', ids) as Promise<ApiResult<Profile[]>>;
 }
+
+export interface EnsureProfileUser {
+  id: string;
+  email?: string | null;
+  user_metadata?: {
+    username?: unknown;
+    display_name?: unknown;
+  } | null;
+}
+
+function sanitizeUsername(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9_.]/g, '_')
+    .replace(/^[_.]+|[_.]+$/g, '')
+    .slice(0, 30);
+}
+
+/**
+ * Guarantees a `profiles` row exists for the given auth user.
+ *
+ * New accounts never get a profile row created server-side (the gateway's
+ * auth endpoint only calls `admin.createUser`, and the legacy
+ * `on_auth_user_created` trigger was dropped on the live users project), so
+ * without this the profile page would hang on "Loading profile..." forever.
+ *
+ * Best-effort and idempotent: reads first, inserts only when missing, and
+ * re-reads if a concurrent tab wins the race. Never overwrites an existing
+ * row. Returns the profile (created or pre-existing) or `null` on failure.
+ */
+export async function ensureProfile(user: EnsureProfileUser): Promise<Profile | null> {
+  if (!user?.id) return null;
+
+  const { data: existing, error: lookupError } = await getProfileById(user.id);
+  if (lookupError) {
+    console.warn('[ensureProfile] Profile lookup failed:', lookupError);
+  }
+  if (existing) return existing;
+
+  const metadata = user.user_metadata || {};
+  const rawUsername = typeof metadata.username === 'string' ? metadata.username.trim() : '';
+  const rawDisplayName = typeof metadata.display_name === 'string' ? metadata.display_name.trim() : '';
+  const emailPrefix = sanitizeUsername(user.email?.split('@')[0] ?? '');
+  const username = rawUsername || emailPrefix || `user_${user.id.slice(0, 8)}`;
+  const displayName = rawDisplayName || rawUsername || emailPrefix || 'Tone User';
+
+  const { data: created, error: insertError } = await gateway
+    .from('profiles')
+    .insert({ id: user.id, username, display_name: displayName })
+    .select('*')
+    .maybeSingle();
+
+  if (insertError) {
+    const { data: after } = await getProfileById(user.id);
+    if (after) return after;
+    console.warn('[ensureProfile] Could not create profile:', insertError);
+    return null;
+  }
+
+  return created ?? null;
+}
