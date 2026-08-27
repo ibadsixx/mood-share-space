@@ -101,7 +101,7 @@ export const useSearch = (query: string, debounceMs: number = 300) => {
         .from('profiles')
         .select('id, display_name, username, profile_pic')
         .or(`display_name.ilike.${searchPattern},username.ilike.${searchPattern}`)
-        .limit(5);
+        .limit(20);
 
       if (profilesError) throw profilesError;
 
@@ -145,6 +145,12 @@ export const useSearch = (query: string, debounceMs: number = 300) => {
           avatar: undefined
         })) || []
       };
+
+      // Alphabetical ordering: as each character is typed the narrowed results
+      // are listed A→Z, making the reduction predictable and scannable.
+      for (const section of [searchResults.people, searchResults.pages, searchResults.groups]) {
+        section.sort((a, b) => a.name.localeCompare(b.name));
+      }
 
       setResults(searchResults);
     } catch (err: any) {

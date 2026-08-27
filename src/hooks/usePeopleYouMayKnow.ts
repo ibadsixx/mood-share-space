@@ -58,11 +58,12 @@ export const usePeopleYouMayKnow = (limit: number = 10): UsePeopleYouMayKnowRetu
       // Reproduce its logic client-side from table queries.
       // Also read auth.users: many accounts predate profile auto-creation and
       // have no `profiles` row, so without this they would never be suggested.
-      const [profilesRes, usersRes, friendsRes, followersRes] = await Promise.all([
+      // Every profile is suggested (friends/followed are included too); only
+      // the current user and blocked users are skipped.
+      const [profilesRes, usersRes, friendsRes] = await Promise.all([
         gateway.from('profiles').select('*').order('created_at', { ascending: false }),
         gateway.from('users').select('id, email, raw_user_meta_data, created_at'),
         gateway.from('friends').select('*'),
-        gateway.from('followers').select('*').eq('follower_id', user.id),
       ]);
 
       if (profilesRes.error) throw new Error(profilesRes.error.message);
@@ -82,12 +83,7 @@ export const usePeopleYouMayKnow = (limit: number = 10): UsePeopleYouMayKnowRetu
 
       // Accepted friend graph (undirected) for mutual-friend counting.
       const friendGraph = new Map<string, Set<string>>();
-      // Any friendship row (any status) linking the current user to a candidate
-      // excludes that candidate (matches the RPC's NOT EXISTS check).
-      const relatedUserIds = new Set<string>();
       for (const f of friendships) {
-        if (f.requester_id === user.id) relatedUserIds.add(f.receiver_id);
-        if (f.receiver_id === user.id) relatedUserIds.add(f.requester_id);
         if (f.status !== 'accepted') continue;
         if (!friendGraph.has(f.requester_id)) friendGraph.set(f.requester_id, new Set());
         if (!friendGraph.has(f.receiver_id)) friendGraph.set(f.receiver_id, new Set());
@@ -96,16 +92,6 @@ export const usePeopleYouMayKnow = (limit: number = 10): UsePeopleYouMayKnowRetu
       }
 
       const myFriends = friendGraph.get(user.id) ?? new Set<string>();
-
-      // Users the current user already follows are excluded.
-      const followedIds = new Set<string>();
-      if (followersRes.error) {
-        console.warn('[usePeopleYouMayKnow] Followers fetch failed:', followersRes.error.message);
-      } else {
-        for (const fl of (followersRes.data || []) as Array<{ following_id: string }>) {
-          followedIds.add(fl.following_id);
-        }
-      }
 
       // Blocked users (both directions) are excluded.
       const blockedIds = new Set<string>();
@@ -151,8 +137,6 @@ export const usePeopleYouMayKnow = (limit: number = 10): UsePeopleYouMayKnowRetu
       const result: SuggestedPerson[] = [];
       for (const id of candidateIds) {
         if (id === user.id) continue;
-        if (relatedUserIds.has(id)) continue;
-        if (followedIds.has(id)) continue;
         if (blockedIds.has(id)) continue;
 
         const candidateFriends = friendGraph.get(id);

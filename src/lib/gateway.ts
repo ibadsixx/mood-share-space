@@ -43,6 +43,24 @@ interface ParsedFilter {
   negated: boolean;
 }
 
+function parseDotFilter(filterStr: string): ParsedFilter | null {
+  let f = filterStr.replace(/^\(|\)$/g, '');
+  let negated = false;
+  if (f.startsWith('not.')) {
+    negated = true;
+    f = f.slice(4);
+  }
+  const firstDot = f.indexOf('.');
+  if (firstDot === -1) return null;
+  const col = f.slice(0, firstDot);
+  const rest = f.slice(firstDot + 1);
+  const opDot = rest.indexOf('.');
+  if (opDot === -1) return null;
+  const op = rest.slice(0, opDot);
+  const rawVal = parseToken(rest.slice(opDot + 1));
+  return { col, op, rawVal, negated };
+}
+
 function parseFilter(filterStr: string): ParsedFilter | null {
   let f = filterStr.replace(/^\(|\)$/g, '');
   let negated = false;
@@ -59,6 +77,11 @@ function parseFilter(filterStr: string): ParsedFilter | null {
   const op = rest.slice(0, dotIdx);
   const rawVal = parseToken(rest.slice(dotIdx + 1));
   return { col, op, rawVal, negated };
+}
+
+function parseOrCondition(cond: string): ParsedFilter | null {
+  const trimmed = cond.trim();
+  return trimmed.includes('=') ? parseFilter(trimmed) : parseDotFilter(trimmed);
 }
 
 function applyFilters(data: Record<string, unknown>[], filters: string[]): Record<string, unknown>[] {
@@ -84,7 +107,7 @@ function applyFilters(data: Record<string, unknown>[], filters: string[]): Recor
       if (current.trim()) orConditions.push(current.trim());
 
       result = result.filter(row => orConditions.some(cond => {
-        const pf = parseFilter(cond);
+        const pf = parseOrCondition(cond);
         if (!pf) return true;
         const m = matchFilter(row[pf.col], pf.op, pf.rawVal);
         return pf.negated ? !m : m;
@@ -131,11 +154,11 @@ function matchFilter(value: unknown, op: string, val: string): boolean {
     }
     case 'like': {
       const pattern = val.replace(/%/g, '.*');
-      return new RegExp(`^${pattern}$`, 'i').test(String(value));
+      return new RegExp(`^${pattern}$`).test(String(value));
     }
     case 'ilike': {
       const pattern = val.replace(/%/g, '.*');
-      return new RegExp(`^${pattern}$`).test(String(value));
+      return new RegExp(`^${pattern}$`, 'i').test(String(value));
     }
     case 'is': {
       if (val === 'null') return value === null || value === undefined;

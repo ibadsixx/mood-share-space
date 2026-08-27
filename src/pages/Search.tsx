@@ -26,7 +26,7 @@ const Search = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   
-  const { results, exploreResults, loading, error, totalResults, totalExploreResults } = useSearch(query);
+  const { results, exploreResults, loading, error, totalResults, totalExploreResults } = useSearch(query, 150);
   const { 
     posts: explorePosts, 
     loading: postsLoading, 
