@@ -71,8 +71,14 @@ export const useNotifications = () => {
       )
       .subscribe();
 
+    const pollInterval = setInterval(fetchNotifications, 30000);
+    const onFocus = () => fetchNotifications();
+    window.addEventListener('focus', onFocus);
+
     return () => {
       gateway.removeChannel(channel);
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', onFocus);
     };
   }, [user, retry]);
 
