@@ -148,14 +148,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           description: error.message,
           variant: "destructive"
         });
-      } else {
-        toast({
-          title: "Check your email",
-          description: "We've sent you a confirmation link to complete your registration."
-        });
+        return { error };
       }
 
-      return { error };
+      // Accounts are created pre-confirmed server-side (no email verification).
+      // Auto sign-in so registration gives immediate access.
+      const { error: signInError } = await gateway.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        toast({
+          title: "Account created",
+          description: "Your account is ready. Please sign in.",
+        });
+        return { error: null };
+      }
+
+      return { error: null };
     } catch (error: any) {
       toast({
         title: "Sign up failed",
