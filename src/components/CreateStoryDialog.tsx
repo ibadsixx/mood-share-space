@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -6,16 +6,62 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
-import { Upload, Type, Music, X, Check, ChevronLeft, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Trash2, RotateCw, Volume2, VolumeX, AtSign, Pen, Undo2, Redo2, Eraser } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Upload, Type, Music, X, Check, ChevronLeft, ChevronDown, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
+  Trash2, RotateCw, Volume2, VolumeX, AtSign, Pen, Undo2, Redo2, Eraser, Search, Settings, Camera, Video,
+  CheckSquare, LayoutTemplate, Newspaper, Plus, Globe, Users, Star, Lock,
+} from 'lucide-react';
 import { Stage, Layer, Text as KonvaText, Image as KonvaImage, Transformer, Group, Rect, Line } from 'react-konva';
 import Konva from 'konva';
 import { gateway } from '@/lib/gateway';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useStories } from '@/hooks/useStories';
+import { emojiService, type EmojiData } from '@/services/emojiService';
 
 const STAGE_W = 360;
 const STAGE_H = 640;
+
+type StoryPrivacy = 'public' | 'friends' | 'close_friends' | 'private';
+
+const PRIVACY_OPTIONS: { value: StoryPrivacy; label: string; description: string; icon: typeof Globe }[] = [
+  { value: 'public', label: 'Public', description: 'Anyone on Tone can see', icon: Globe },
+  { value: 'friends', label: 'Friends', description: 'Only your friends', icon: Users },
+  { value: 'close_friends', label: 'Close friends', description: 'Your close friends list', icon: Star },
+  { value: 'private', label: 'Only me', description: 'Just for you', icon: Lock },
+];
+
+interface LibraryMedia {
+  id: string;
+  file: File;
+  url: string;
+  kind: 'image' | 'video';
+  addedAt: number;
+  duration?: number;
+}
+
+const STORY_TEMPLATES: { id: string; name: string; colors: [string, string, string?]; accent?: string }[] = [
+  { id: 'sunset', name: 'Sunset', colors: ['#ff7e5f', '#feb47b'] },
+  { id: 'ocean', name: 'Ocean', colors: ['#2193b0', '#6dd5ed'] },
+  { id: 'berry', name: 'Berry', colors: ['#ee9ca7', '#ffdde1'] },
+  { id: 'night', name: 'Night', colors: ['#0f2027', '#2c5364'] },
+  { id: 'mango', name: 'Mango', colors: ['#f7971e', '#ffd200'] },
+  { id: 'grape', name: 'Grape', colors: ['#8E2DE2', '#4A00E0'] },
+  { id: 'snow', name: 'Snow', colors: ['#ece9e6', '#ffffff'] },
+  { id: 'rose', name: 'Rose', colors: ['#cc2b5e', '#753a88'] },
+  { id: 'mint', name: 'Mint', colors: ['#11998e', '#38ef7d'] },
+  { id: 'neon', name: 'Neon', colors: ['#fc4a1a', '#f7b733'] },
+  { id: 'royal', name: 'Royal', colors: ['#141e30', '#355c7d'] },
+  { id: 'blush', name: 'Blush', colors: ['#ff9a9e', '#fecfef'] },
+];
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 const FONT_OPTIONS = [
   { id: 'inter', name: 'Inter', css: 'Inter' },
@@ -42,8 +88,6 @@ const TEXT_COLORS = [
   '#FFFF00', '#FF00FF', '#00FFFF', '#FF6B6B', '#4ECDC4',
   '#45B7D1', '#96CEB4', '#FFEAA7', '#DFE6E9', '#FD79A8',
 ];
-
-const STICKER_EMOJIS = ['😀', '😂', '❤️', '🔥', '🎉', '✨', '🌟', '💪', '🙌', '👏', '😍', '🥰', '💯', '⭐', '🌈', '🎶', '📸', '💡', '🎯', '🚀'];
 
 const DRAW_COLORS = [
   '#FFFFFF', '#FF0000', '#FF6B00', '#FFD700', '#00FF00',
@@ -104,6 +148,21 @@ interface MusicData {
 
 function createId(): string {
   return `overlay-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+async function createTemplateFile(template: { id: string; name: string; colors: [string, string, string?] }): Promise<File> {
+  const canvas = document.createElement('canvas');
+  canvas.width = STAGE_W;
+  canvas.height = STAGE_H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas not supported');
+  const grad = ctx.createLinearGradient(0, 0, STAGE_W, STAGE_H);
+  template.colors.forEach((c, i) => grad.addColorStop(i / Math.max(template.colors.length - 1, 1), c));
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) throw new Error('Failed to generate template');
+  return new File([blob], `template-${template.id}.png`, { type: 'image/png' });
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -392,6 +451,29 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [activeTab, setActiveTab] = useState<'text' | 'stickers' | 'music'>('text');
+  const [stickerTab, setStickerTab] = useState<'emoji' | 'sticker'>('emoji');
+  const [catalogEmojis, setCatalogEmojis] = useState<EmojiData[]>([]);
+  const [catalogEmojisLoading, setCatalogEmojisLoading] = useState(true);
+  const [emojiSearch, setEmojiSearch] = useState('');
+  const [pickerPanel, setPickerPanel] = useState<'gallery' | 'templates' | 'music' | 'post'>('gallery');
+  const [libraryItems, setLibraryItems] = useState<LibraryMedia[]>([]);
+  const [libraryOrder, setLibraryOrder] = useState<'latest' | 'oldest'>('latest');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [privacy, setPrivacy] = useState<StoryPrivacy>('public');
+  const [posts, setPosts] = useState<{ id: string; media_url: string; media_type: string | null; created_at: string }[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [templateBusy, setTemplateBusy] = useState(false);
+  const [postBusy, setPostBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    emojiService.getAllEmojis()
+      .then((list) => { if (!cancelled) setCatalogEmojis(list); })
+      .finally(() => { if (!cancelled) setCatalogEmojisLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
   const [overlays, setOverlays] = useState<CanvasOverlay[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
@@ -417,17 +499,31 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
   const stageRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const transformerRef = useRef<any>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const stickerInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const libraryUrlsRef = useRef<Set<string>>(new Set());
+  const editQueueRef = useRef<{ file: File; url: string }[]>([]);
   const { user } = useAuth();
   const { createStory } = useStories();
 
   const selectedOverlay = overlays.find((o) => o.id === selectedId);
 
+  const filteredEmojis = useMemo(() => {
+    const query = emojiSearch.trim().toLowerCase();
+    if (!query) return catalogEmojis;
+    return catalogEmojis.filter((e) =>
+      e.name.toLowerCase().includes(query) ||
+      e.emoji.toLowerCase().includes(query) ||
+      e.category?.toLowerCase().includes(query)
+    );
+  }, [catalogEmojis, emojiSearch]);
+
   const reset = useCallback(() => {
     setStep('select');
     setFile(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    if (previewUrl && !libraryUrlsRef.current.has(previewUrl)) URL.revokeObjectURL(previewUrl);
     setPreviewUrl('');
     setUploading(false);
     setUploadProgress('');
@@ -449,23 +545,176 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
     setStrokes([]);
     setUndoStack([]);
     setRedoStack([]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   }, [previewUrl]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!f.type.startsWith('image/') && !f.type.startsWith('video/')) {
-      alert('Please select an image or video file');
-      return;
+  const clearLibrary = useCallback(() => {
+    libraryUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+    libraryUrlsRef.current.clear();
+    setLibraryItems([]);
+    setSelectedUrls(new Set());
+  }, []);
+
+  useEffect(() => () => clearLibrary(), [clearLibrary]);
+
+  const addMediaFiles = (fileList: FileList | File[]) => {
+    const incoming = Array.from(fileList);
+    const added: LibraryMedia[] = [];
+    for (const f of incoming) {
+      const isImage = f.type.startsWith('image/');
+      const isVideo = f.type.startsWith('video/');
+      if (!isImage && !isVideo) {
+        alert('Please select an image or video file');
+        continue;
+      }
+      if (f.size > 50 * 1024 * 1024) {
+        alert('File size must be less than 50MB');
+        continue;
+      }
+      const media: LibraryMedia = {
+        id: `media-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        file: f,
+        url: URL.createObjectURL(f),
+        kind: isVideo ? 'video' : 'image',
+        addedAt: Date.now(),
+      };
+      libraryUrlsRef.current.add(media.url);
+      added.push(media);
     }
-    if (f.size > 50 * 1024 * 1024) {
-      alert('File size must be less than 50MB');
-      return;
-    }
-    setFile(f);
-    setPreviewUrl(URL.createObjectURL(f));
+    if (added.length) setLibraryItems((prev) => [...prev, ...added]);
+  };
+
+  const removeItem = (item: LibraryMedia) => {
+    URL.revokeObjectURL(item.url);
+    libraryUrlsRef.current.delete(item.url);
+    setLibraryItems((prev) => prev.filter((i) => i.id !== item.id));
+    setSelectedUrls((prev) => {
+      const n = new Set(prev);
+      n.delete(item.url);
+      return n;
+    });
+  };
+
+  useEffect(() => {
+    const pending = libraryItems.filter((i) => i.kind === 'video' && i.duration == null);
+    if (!pending.length) return;
+    pending.forEach((item) => {
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.muted = true;
+      v.playsInline = true;
+      const onMeta = () => {
+        if (isFinite(v.duration)) {
+          setLibraryItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, duration: v.duration } : p)));
+        }
+        v.removeEventListener('loadedmetadata', onMeta);
+      };
+      v.addEventListener('loadedmetadata', onMeta);
+      v.src = item.url;
+    });
+  }, [libraryItems]);
+
+  useEffect(() => {
+    if (pickerPanel !== 'post' || !user || posts.length) return;
+    let cancelled = false;
+    setPostsLoading(true);
+    gateway
+      .from('posts')
+      .select('id, media_url, media_type, created_at')
+      .eq('user_id', user.id)
+      .not('media_url', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error('[CreateStory] Failed to load posts:', error);
+        } else {
+          setPosts(data || []);
+        }
+      })
+      .finally(() => { if (!cancelled) setPostsLoading(false); });
+    return () => { cancelled = true; };
+  }, [pickerPanel, user, posts.length]);
+
+  const sortedItems = useMemo(() => {
+    const arr = [...libraryItems];
+    arr.sort((a, b) => (libraryOrder === 'latest' ? b.addedAt - a.addedAt : a.addedAt - b.addedAt));
+    return arr;
+  }, [libraryItems, libraryOrder]);
+
+  const beginEdit = ({ file, url }: { file: File; url: string }) => {
+    setFile(file);
+    setPreviewUrl(url);
+    setOverlays([]);
+    setSelectedId(null);
+    setSelectedBg(false);
+    setBgTransform({ x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 });
+    setMediaRotation(0);
+    setVideoMuted(false);
+    setEditingTextId(null);
+    setStrokes([]);
+    setUndoStack([]);
+    setRedoStack([]);
     setStep('edit');
+  };
+
+  const openItem = (item: LibraryMedia) => {
+    if (selectMode) {
+      setSelectedUrls((prev) => {
+        const n = new Set(prev);
+        if (n.has(item.url)) n.delete(item.url);
+        else n.add(item.url);
+        return n;
+      });
+      return;
+    }
+    editQueueRef.current = [];
+    beginEdit({ file: item.file, url: item.url });
+  };
+
+  const handleShareSelected = () => {
+    const chosen = sortedItems.filter((i) => selectedUrls.has(i.url));
+    if (chosen.length === 0) return;
+    const [first, ...rest] = chosen;
+    setSelectMode(false);
+    setSelectedUrls(new Set());
+    setPickerPanel('gallery');
+    editQueueRef.current = rest.map((i) => ({ file: i.file, url: i.url }));
+    beginEdit({ file: first.file, url: first.url });
+  };
+
+  const handleSelectTemplate = async (template: typeof STORY_TEMPLATES[number]) => {
+    setTemplateBusy(true);
+    try {
+      const file = await createTemplateFile(template);
+      const url = URL.createObjectURL(file);
+      editQueueRef.current = [];
+      beginEdit({ file, url });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to create template');
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
+
+  const handleOpenPost = async (p: { id: string; media_url: string; media_type: string | null }) => {
+    setPostBusy(p.id);
+    try {
+      const res = await fetch(p.media_url);
+      if (!res.ok) throw new Error('Could not download that post');
+      const blob = await res.blob();
+      const ext = p.media_url.split('.').pop()?.split('?')[0] || (p.media_type === 'video' ? 'mp4' : 'jpg');
+      const file = new File([blob], `post.${ext}`, {
+        type: blob.type || (p.media_type === 'video' ? 'video/mp4' : 'image/jpeg'),
+      });
+      const url = URL.createObjectURL(file);
+      editQueueRef.current = [];
+      beginEdit({ file, url });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to add post to story');
+    } finally {
+      setPostBusy(null);
+    }
   };
 
   const handleAddText = () => {
@@ -492,23 +741,6 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
     setSelectedId(newOverlay.id);
   };
 
-  const handleAddSticker = (emoji: string) => {
-    const newOverlay: CanvasOverlay = {
-      id: createId(),
-      type: 'sticker',
-      emoji,
-      x: 100,
-      y: 100,
-      rotation: 0,
-      scaleX: 1,
-      scaleY: 1,
-      width: 60,
-      height: 60,
-    };
-    setOverlays((prev) => [...prev, newOverlay]);
-    setSelectedId(newOverlay.id);
-  };
-
   const handleAddImageSticker = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -530,6 +762,35 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
     };
     setOverlays((prev) => [...prev, newOverlay]);
     setSelectedId(newOverlay.id);
+  };
+
+  const handleAddCatalogEmoji = async (item: EmojiData) => {
+    const makeOverlay = (width: number, height: number): CanvasOverlay => ({
+      id: createId(),
+      type: 'image',
+      src: item.url,
+      x: 80,
+      y: 80,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+      width,
+      height,
+    });
+    try {
+      const img = await loadImage(item.url);
+      const maxDim = 120;
+      const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+      const w = Math.max(40, img.width * scale);
+      const h = Math.max(40, img.height * scale);
+      const overlay = makeOverlay(w, h);
+      setOverlays((prev) => [...prev, overlay]);
+      setSelectedId(overlay.id);
+    } catch {
+      const overlay = makeOverlay(80, 80);
+      setOverlays((prev) => [...prev, overlay]);
+      setSelectedId(overlay.id);
+    }
   };
 
   const updateOverlay = (id: string, updates: Partial<CanvasOverlay>) => {
@@ -730,7 +991,7 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
       const result = await createStory(
         file,
         JSON.stringify(captionData),
-        music?.url, music?.title, 'public',
+        music?.url, music?.title, privacy,
         music ? { startAt: music.startAt, duration: music.duration, source_type: music.source_type, video_id: music.video_id, thumbnail_url: music.thumbnail_url } : undefined,
       );
       if (result) {
@@ -746,6 +1007,12 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
             })));
           if (mentionError) console.error('[CreateStory] Failed to save mentions:', mentionError);
         }
+        const next = editQueueRef.current.shift();
+        if (next) {
+          beginEdit(next);
+          return;
+        }
+        editQueueRef.current = [];
         reset(); onOpenChange(false);
       }
     } catch (error) {
@@ -757,8 +1024,22 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
     }
   };
 
-  const handleClose = () => { if (!uploading) { reset(); onOpenChange(false); } };
-  const handleBack = () => { reset(); };
+  const handleClose = () => {
+    if (!uploading) {
+      editQueueRef.current = [];
+      reset();
+      setSelectMode(false);
+      setSelectedUrls(new Set());
+      clearLibrary();
+      onOpenChange(false);
+    }
+  };
+  const handleBack = () => {
+    editQueueRef.current = [];
+    setSelectMode(false);
+    setSelectedUrls(new Set());
+    reset();
+  };
 
   const scale = containerRef.current
     ? Math.min(containerRef.current.clientWidth / STAGE_W, (containerRef.current.clientHeight || 600) / STAGE_H)
@@ -770,17 +1051,17 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
 
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-4xl h-[90vh] p-0 gap-0 flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <DialogContent className="sm:max-w-4xl h-[100dvh] sm:h-[90vh] min-h-0 p-0 gap-0 flex flex-col">
+          <div className="flex shrink-0 items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border">
             <Button variant="ghost" size="icon" onClick={handleBack}><ChevronLeft className="h-5 w-5" /></Button>
-            <h1 className="text-lg font-semibold">Edit Story</h1>
-            <Button onClick={handleCreate} disabled={uploading} size="sm">
+            <h1 className="text-base sm:text-lg font-semibold truncate flex-1 min-w-0 text-center">Edit Story</h1>
+            <Button onClick={handleCreate} disabled={uploading} size="sm" className="shrink-0">
               {uploading ? <>{uploadProgress}</> : <><Check className="h-4 w-4 mr-1" /> Share</>}
             </Button>
           </div>
 
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-            <div ref={containerRef} className="flex-1 bg-background flex items-center justify-center p-4 min-h-[300px] relative overflow-hidden">
+            <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
+            <div ref={containerRef} className="shrink-0 md:shrink md:flex-1 bg-background flex items-center justify-center p-3 md:p-4 min-h-[300px] h-[40vh] md:h-auto relative overflow-hidden">
               <div style={{ width: STAGE_W * scale, height: STAGE_H * scale, position: 'relative' }}>
                 {editingTextId && editingOverlay && (
                   <EditableTextInput
@@ -1033,8 +1314,8 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
               </div>
             </div>
 
-            <div className="w-full md:w-80 border-t md:border-t-0 md:border-l border-border bg-background flex flex-col">
-              <div className="flex border-b border-border">
+            <div className="w-full flex-1 md:w-80 md:flex-none min-h-0 border-t md:border-t-0 md:border-l border-border bg-background flex flex-col">
+              <div className="flex shrink-0 border-b border-border">
                 {(['text', 'stickers', 'mentions', 'draw', 'music'] as const).map((tab) => (
                   <button
                     key={tab}
@@ -1044,21 +1325,21 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
                       setSelectedId(null);
                       setSelectedBg(false);
                     }}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors capitalize ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-sm font-medium transition-colors capitalize whitespace-nowrap ${
                       activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {tab === 'text' && <Type className="h-4 w-4" />}
+                    {tab === 'text' && <Type className="h-4 w-4 shrink-0" />}
                     {tab === 'stickers' && <span className="text-base">😀</span>}
-                    {tab === 'mentions' && <AtSign className="h-4 w-4" />}
-                    {tab === 'draw' && <Pen className="h-4 w-4" />}
-                    {tab === 'music' && <Music className="h-4 w-4" />}
-                    {tab}
+                    {tab === 'mentions' && <AtSign className="h-4 w-4 shrink-0" />}
+                    {tab === 'draw' && <Pen className="h-4 w-4 shrink-0" />}
+                    {tab === 'music' && <Music className="h-4 w-4 shrink-0" />}
+                    <span className="hidden md:inline">{tab}</span>
                   </button>
                 ))}
               </div>
 
-              <ScrollArea className="flex-1 p-4">
+              <ScrollArea className="flex-1 min-h-0 p-4">
                 {activeTab === 'text' && (
                   <div className="space-y-4">
                     <Button className="w-full" size="sm" onClick={handleAddText}>
@@ -1139,27 +1420,61 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
 
                 {activeTab === 'stickers' && (
                   <div className="space-y-4">
-                    <div>
-                      <Label className="text-xs font-medium mb-2 block">Emoji Stickers</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {STICKER_EMOJIS.map((emoji) => (
-                          <button key={emoji}
-                            className="w-10 h-10 rounded-lg bg-secondary hover:bg-secondary/80 flex items-center justify-center text-xl transition-colors"
-                            onClick={() => handleAddSticker(emoji)}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
+                    <div className="flex border-b border-border">
+                      {(['emoji', 'sticker'] as const).map((subTab) => (
+                        <button
+                          key={subTab}
+                          onClick={() => setStickerTab(subTab)}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium transition-colors capitalize ${
+                            stickerTab === subTab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {subTab}
+                        </button>
+                      ))}
+                    </div>
+                    {stickerTab === 'emoji' ? (
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search emojis..."
+                            value={emojiSearch}
+                            onChange={(e) => setEmojiSearch(e.target.value)}
+                            className="h-9 pl-8 text-sm"
+                          />
+                        </div>
+                        {catalogEmojisLoading ? (
+                          <p className="text-xs text-muted-foreground text-center py-6">Loading emojis...</p>
+                        ) : filteredEmojis.length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-6">No emojis found</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5 max-h-[320px] overflow-y-auto">
+                            {filteredEmojis.map((item) => (
+                              <button
+                                key={item.url}
+                                className="w-10 h-10 rounded-lg bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-colors overflow-hidden"
+                                onClick={() => handleAddCatalogEmoji(item)}
+                                title={item.name}
+                              >
+                                <img src={item.url} alt={item.name} className="w-8 h-8 object-contain" loading="lazy" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="border-t border-border pt-3">
-                      <Label className="text-xs font-medium mb-2 block">Custom Image</Label>
-                      <Button variant="outline" size="sm" className="w-full" onClick={() => stickerInputRef.current?.click()}>
-                        <Upload className="h-4 w-4 mr-1.5" />
-                        Upload Image
-                      </Button>
-                      <input ref={stickerInputRef} type="file" className="hidden" accept="image/*" onChange={handleAddImageSticker} />
-                    </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => stickerInputRef.current?.click()}>
+                          <Upload className="h-4 w-4 mr-1.5" />
+                          Upload Image
+                        </Button>
+                        <input ref={stickerInputRef} type="file" className="hidden" accept="image/*" onChange={handleAddImageSticker} />
+                        <p className="text-xs text-muted-foreground text-center">
+                          Upload a custom image to use as a sticker
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1327,19 +1642,281 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <div className="p-6 space-y-4">
-          <h2 className="text-lg font-semibold">Create Story</h2>
-          <div className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-border rounded-lg bg-accent/30">
-            <Upload className="w-10 h-10 mb-3 text-muted-foreground" />
-            <p className="mb-2 text-sm text-muted-foreground">Image or Video (MAX. 50MB)</p>
-            <Button variant="default" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-              <Upload className="h-4 w-4 mr-1.5" />
-              Choose File
-            </Button>
-          </div>
-          <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" onChange={handleFileSelect} disabled={uploading} />
+      <DialogContent className="sm:max-w-lg h-[100dvh] sm:h-[85vh] min-h-0 p-0 gap-0 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border">
+          <Popover open={privacyOpen} onOpenChange={setPrivacyOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Story settings">
+                <Settings className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72">
+              <p className="text-sm font-semibold mb-3">Who can see your story?</p>
+              <RadioGroup value={privacy} onValueChange={(v) => setPrivacy(v as StoryPrivacy)}>
+                {PRIVACY_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <label key={option.value} className="flex items-start gap-3 rounded-lg p-2 hover:bg-muted cursor-pointer">
+                      <RadioGroupItem value={option.value} id={`privacy-${option.value}`} className="mt-0.5" />
+                      <span className="flex-1 min-w-0">
+                        <span className="flex items-center gap-2 text-sm font-medium">
+                          <Icon className="h-4 w-4 text-muted-foreground" />
+                          {option.label}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">{option.description}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </RadioGroup>
+            </PopoverContent>
+          </Popover>
+          <h2 className="flex-1 min-w-0 text-center text-base font-semibold truncate">Add to Story</h2>
+          <Button variant="ghost" size="icon" onClick={handleClose} aria-label="Close">
+            <X className="h-5 w-5" />
+          </Button>
         </div>
+
+        {/* Quick access cards */}
+        <div className="flex shrink-0 gap-2 px-3 sm:px-4 pt-3">
+          {([
+            { key: 'templates', label: 'Templates', icon: LayoutTemplate },
+            { key: 'music', label: 'Music', icon: Music },
+            { key: 'post', label: 'Post', icon: Newspaper },
+          ] as const).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setPickerPanel(tab.key)}
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-sm font-medium transition-colors ${
+                pickerPanel === tab.key ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-muted'
+              }`}
+            >
+              <tab.icon className="h-4 w-4 shrink-0" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
+          {/* Gallery */}
+          {pickerPanel === 'gallery' && (
+            <>
+              <div className="flex shrink-0 items-center justify-between px-3 sm:px-4 py-2">
+                <Select value={libraryOrder} onValueChange={(v) => setLibraryOrder(v as 'latest' | 'oldest')}>
+                  <SelectTrigger className="h-8 w-[130px] text-sm">
+                    <SelectValue />
+                    <ChevronDown className="h-4 w-4" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="latest">Latest</SelectItem>
+                    <SelectItem value="oldest">Oldest</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant={selectMode ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    if (selectMode) setSelectedUrls(new Set());
+                    setSelectMode(!selectMode);
+                  }}
+                >
+                  <CheckSquare className="h-4 w-4 mr-1.5" />
+                  {selectMode ? 'Done' : 'Select'}
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 px-3 sm:px-4 pb-6">
+                <button
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="aspect-square rounded-lg bg-secondary flex flex-col items-center justify-center gap-1 hover:bg-secondary/70 transition-colors"
+                >
+                  <Camera className="h-6 w-6 text-muted-foreground" />
+                  <span className="text-[11px] text-muted-foreground">Camera</span>
+                </button>
+                <button
+                  onClick={() => videoInputRef.current?.click()}
+                  className="aspect-square rounded-lg bg-secondary flex flex-col items-center justify-center gap-1 hover:bg-secondary/70 transition-colors"
+                >
+                  <Video className="h-6 w-6 text-muted-foreground" />
+                  <span className="text-[11px] text-muted-foreground">Video</span>
+                </button>
+                {sortedItems.map((item) => {
+                  const selected = selectMode && selectedUrls.has(item.url);
+                  return (
+                    <div key={item.id} className="relative aspect-square rounded-lg overflow-hidden group">
+                      <button onClick={() => openItem(item)} className="absolute inset-0">
+                        {item.kind === 'image' ? (
+                          <img src={item.url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <video src={item.url} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                        )}
+                      </button>
+                      {item.kind === 'video' && item.duration != null && (
+                        <span className="absolute bottom-1 right-1 text-[10px] font-medium text-white bg-black/70 px-1 rounded pointer-events-none">
+                          {formatDuration(item.duration)}
+                        </span>
+                      )}
+                      {selectMode && (
+                        <>
+                          <div className={`absolute inset-0 pointer-events-none ${selected ? 'ring-2 ring-primary ring-inset' : ''}`} />
+                          <div
+                            className={`absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center border pointer-events-none ${
+                              selected ? 'bg-primary border-primary' : 'bg-black/40 border-white/70'
+                            }`}
+                          >
+                            {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                          </div>
+                        </>
+                      )}
+                      {!selectMode && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeItem(item); }}
+                          className="absolute top-1 left-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3 text-white" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                <button
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="aspect-square rounded-lg border border-dashed flex flex-col items-center justify-center gap-1 text-muted-foreground hover:bg-accent/50 transition-colors"
+                >
+                  <Plus className="h-6 w-6" />
+                  <span className="text-[11px]">Add</span>
+                </button>
+              </div>
+
+              {libraryItems.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center pb-6 px-4">
+                  Pick photos or videos from your device. Nothing is uploaded until you share your story.
+                </p>
+              )}
+
+              {selectMode && selectedUrls.size > 0 && (
+                <div className="shrink-0 sticky bottom-0 border-t border-border bg-background px-3 sm:px-4 py-2 flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{selectedUrls.size} selected</span>
+                  <Button size="sm" onClick={handleShareSelected}>
+                    <Check className="h-4 w-4 mr-1" /> Share
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Templates */}
+          {pickerPanel === 'templates' && (
+            <div className="p-4">
+              <Button variant="ghost" size="sm" onClick={() => setPickerPanel('gallery')} className="-ml-2 mb-3">
+                <ChevronLeft className="h-4 w-4 mr-1" /> Media
+              </Button>
+              <p className="text-sm font-medium mb-3">Story templates</p>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                {STORY_TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => handleSelectTemplate(template)}
+                    disabled={templateBusy}
+                    className="relative aspect-[9/16] rounded-lg overflow-hidden group hover:opacity-90 transition-opacity"
+                  >
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: `linear-gradient(135deg, ${template.colors.join(', ')})` }}
+                    />
+                    <div className="absolute inset-0 ring-1 ring-inset ring-border/50" />
+                    <span className="absolute bottom-1 left-1 right-1 text-left text-[10px] font-medium text-white drop-shadow">
+                      {template.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Music */}
+          {pickerPanel === 'music' && (
+            <div className="p-4 space-y-3">
+              <Button variant="ghost" size="sm" onClick={() => setPickerPanel('gallery')} className="-ml-2">
+                <ChevronLeft className="h-4 w-4 mr-1" /> Media
+              </Button>
+              <p className="text-sm font-medium">Add music to your story</p>
+              <MusicTab
+                music={music}
+                onSelect={(m) => { setMusic(m); if (m) setPickerPanel('gallery'); }}
+              />
+              <p className="text-xs text-muted-foreground">You can also change the music while editing your story.</p>
+            </div>
+          )}
+
+          {/* Post */}
+          {pickerPanel === 'post' && (
+            <div className="p-4">
+              <Button variant="ghost" size="sm" onClick={() => setPickerPanel('gallery')} className="-ml-2 mb-3">
+                <ChevronLeft className="h-4 w-4 mr-1" /> Media
+              </Button>
+              <p className="text-sm font-medium mb-3">Add a post to your story</p>
+              {postsLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Loading your posts...</p>
+              ) : posts.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No posts with media yet.</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                  {posts.map((p) => {
+                    const isVideo = p.media_type === 'video' || /\.mp4($|\?)/i.test(p.media_url);
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => handleOpenPost(p)}
+                        disabled={postBusy === p.id}
+                        className="relative aspect-square rounded-lg overflow-hidden"
+                      >
+                        {isVideo ? (
+                          <video src={p.media_url} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={p.media_url} alt="" loading="lazy" className="w-full h-full object-cover" />
+                        )}
+                        {isVideo && <Video className="absolute bottom-1 right-1 h-4 w-4 text-white drop-shadow pointer-events-none" />}
+                        {postBusy === p.id && (
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <span className="text-xs text-white">Loading</span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Hidden inputs for media capture/gallery */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => { if (e.target.files?.length) addMediaFiles(e.target.files); e.target.value = ''; }}
+        />
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => { if (e.target.files?.length) addMediaFiles(e.target.files); e.target.value = ''; }}
+        />
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*,video/*"
+          multiple
+          className="hidden"
+          onChange={(e) => { if (e.target.files?.length) addMediaFiles(e.target.files); e.target.value = ''; }}
+        />
       </DialogContent>
     </Dialog>
   );
