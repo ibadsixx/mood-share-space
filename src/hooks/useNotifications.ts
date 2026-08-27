@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { gateway } from '@/lib/gateway';
 import { notificationsApi, profilesApi } from '@/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,6 +33,8 @@ export const useNotifications = () => {
   const [retry, setRetry] = useState(0);
   const { user } = useAuth();
   const { toast } = useToast();
+  const skipFirstToast = useRef(true);
+  const seenNotificationIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) {
@@ -106,6 +108,20 @@ export const useNotifications = () => {
 
       setNotifications(notificationsWithActors || []);
       setUnreadCount(notificationsWithActors?.filter(n => !n.is_read).length || 0);
+
+      const newRequests = (notificationsWithActors || [])
+        .filter(n => n.type === 'message_request' && !n.is_read && !seenNotificationIds.current.has(n.id));
+      (notificationsWithActors || []).forEach(n => seenNotificationIds.current.add(n.id));
+
+      if (!skipFirstToast.current && newRequests.length > 0) {
+        for (const n of newRequests) {
+          toast({
+            title: n.actor?.display_name || 'Someone',
+            description: n.message,
+          });
+        }
+      }
+      skipFirstToast.current = false;
     } catch (error: any) {
       console.error('Error fetching notifications:', error);
       setError(error?.message || 'Failed to load notifications');
