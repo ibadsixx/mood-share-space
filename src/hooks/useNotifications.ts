@@ -53,7 +53,7 @@ export const useNotifications = () => {
       pollsOwned.current = true;
       pollInterval = setInterval(() => {
         if (document.visibilityState === 'visible') fetchNotifications();
-      }, 60000);
+      }, 15000);
     }
     const onFocus = () => fetchNotifications();
     window.addEventListener('focus', onFocus);
