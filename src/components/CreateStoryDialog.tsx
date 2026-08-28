@@ -1870,45 +1870,7 @@ export default function CreateStoryDialog({
     );
   }
 
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg h-[100dvh] sm:h-[85vh] min-h-0 p-0 gap-0 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex shrink-0 items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border">
-          <Popover open={privacyOpen} onOpenChange={setPrivacyOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Story settings">
-                <Settings className="h-5 w-5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-72">
-              <p className="text-sm font-semibold mb-3">Who can see your story?</p>
-              <RadioGroup value={privacy} onValueChange={(v) => setPrivacy(v as StoryPrivacy)}>
-                {PRIVACY_OPTIONS.map((option) => {
-                  const Icon = option.icon;
-                  return (
-                    <label key={option.value} className="flex items-start gap-3 rounded-lg p-2 hover:bg-muted cursor-pointer">
-                      <RadioGroupItem value={option.value} id={`privacy-${option.value}`} className="mt-0.5" />
-                      <span className="flex-1 min-w-0">
-                        <span className="flex items-center gap-2 text-sm font-medium">
-                          <Icon className="h-4 w-4 text-muted-foreground" />
-                          {option.label}
-                        </span>
-                        <span className="block text-xs text-muted-foreground">{option.description}</span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </RadioGroup>
-            </PopoverContent>
-          </Popover>
-          <h2 className="flex-1 min-w-0 text-center text-base font-semibold truncate">Add to Story</h2>
-          <Button variant="ghost" size="icon" onClick={handleClose} aria-label="Close">
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* Quick access cards */}
+    const quickCardsNode = (
         <div className="flex shrink-0 gap-2 px-3 sm:px-4 pt-3">
           {([
             { key: 'templates', label: 'Templates', icon: LayoutTemplate },
@@ -1928,6 +1890,9 @@ export default function CreateStoryDialog({
           ))}
         </div>
 
+    );
+
+    const pickerBody = (
         <div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
           {/* Gallery */}
           {pickerPanel === 'gallery' && (
@@ -2122,6 +2087,10 @@ export default function CreateStoryDialog({
           )}
         </div>
 
+    );
+
+    const pickerInputs = (
+      <>
         {/* Hidden inputs for media capture/gallery */}
         <input
           ref={cameraInputRef}
@@ -2147,7 +2116,70 @@ export default function CreateStoryDialog({
           className="hidden"
           onChange={(e) => { if (e.target.files?.length) addMediaFiles(e.target.files); e.target.value = ''; }}
         />
-      </DialogContent>
-    </Dialog>
-  );
+
+      </>
+    );
+
+    if (variant === 'page') {
+      return (
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col text-white overflow-hidden">
+          <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-3" style={{ paddingTop: 'max(env(safe-area-inset-top), 16px)' }}>
+            <Button variant="ghost" size="icon" className="text-white -ml-2" onClick={handleBack} aria-label="Back">
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+            <h2 className="flex-1 min-w-0 text-center text-base font-semibold truncate">Add to Story</h2>
+            <Button variant="ghost" size="icon" className="text-white -mr-2" onClick={handleClose} aria-label="Close">
+              <X className="h-6 w-6" />
+            </Button>
+          </div>
+          {quickCardsNode}
+          {pickerBody}
+          {pickerInputs}
+        </div>
+      );
+    }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-lg h-[100dvh] sm:h-[85vh] min-h-0 p-0 gap-0 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border">
+          <Popover open={privacyOpen} onOpenChange={setPrivacyOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Story settings">
+                <Settings className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72">
+              <p className="text-sm font-semibold mb-3">Who can see your story?</p>
+              <RadioGroup value={privacy} onValueChange={(v) => setPrivacy(v as StoryPrivacy)}>
+                {PRIVACY_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <label key={option.value} className="flex items-start gap-3 rounded-lg p-2 hover:bg-muted cursor-pointer">
+                      <RadioGroupItem value={option.value} id={`privacy-${option.value}`} className="mt-0.5" />
+                      <span className="flex-1 min-w-0">
+                        <span className="flex items-center gap-2 text-sm font-medium">
+                          <Icon className="h-4 w-4 text-muted-foreground" />
+                          {option.label}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">{option.description}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </RadioGroup>
+            </PopoverContent>
+          </Popover>
+          <h2 className="flex-1 min-w-0 text-center text-base font-semibold truncate">Add to Story</h2>
+          <Button variant="ghost" size="icon" onClick={handleClose} aria-label="Close">
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+          {quickCardsNode}
+          {pickerBody}
+          {pickerInputs}
+        </DialogContent>
+      </Dialog>
+    );
 }
