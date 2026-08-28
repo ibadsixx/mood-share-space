@@ -71,6 +71,11 @@ const ProfileHeader = ({
     }
   };
 
+  const handleSendFriendRequest = async () => {
+    await sendRequest();
+    followStatus.refetch();
+  };
+
   const renderFriendshipButton = () => {
     if (isOwnProfile || blockStatus.isBlocked || blockStatus.isBlockedBy) return null;
 
@@ -80,7 +85,7 @@ const ProfileHeader = ({
 
     if (!friendship.status) {
       return (
-        <Button onClick={sendRequest}>
+        <Button onClick={handleSendFriendRequest}>
           <UserPlus className="h-4 w-4 mr-2" />
           Add Friend
         </Button>
@@ -133,7 +138,7 @@ const ProfileHeader = ({
 
     if (friendship.status === 'REJECTED') {
       return (
-        <Button onClick={sendRequest}>
+        <Button onClick={handleSendFriendRequest}>
           <UserPlus className="h-4 w-4 mr-2" />
           Add Friend
         </Button>

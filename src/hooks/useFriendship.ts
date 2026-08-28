@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { gateway } from '@/lib/gateway';
 import { blockingApi } from '@/api';
 import { useToast } from '@/hooks/use-toast';
+import { createNotification } from '@/hooks/useNotifications';
 
 export const FRIEND_REQUEST_SENT_EVENT = 'tone:friend-request-sent';
 
@@ -99,6 +100,25 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
 
         if (error) throw error;
         friendshipData = data;
+
+        // Also follow when re-sending a previously declined request
+        const { error: followError } = await gateway
+          .from('followers')
+          .insert({
+            follower_id: currentUserId,
+            following_id: profileId
+          });
+
+        if (followError && followError.code !== '23505') {
+          throw followError;
+        }
+
+        await createNotification({
+          userId: profileId,
+          actorId: currentUserId,
+          type: 'follow',
+          message: 'started following you'
+        });
       } else if (!existing) {
         // Fresh request: insert a new row.
         const { data, error } = await gateway
@@ -125,6 +145,13 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
         if (followError && followError.code !== '23505') { // Ignore unique constraint violations
           throw followError;
         }
+
+        await createNotification({
+          userId: profileId,
+          actorId: currentUserId,
+          type: 'follow',
+          message: 'started following you'
+        });
       } else {
         // Already accepted — nothing to do, reflect current state.
         setFriendship(prev => ({ ...prev, status: 'ACCEPTED', loading: false }));
