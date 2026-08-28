@@ -460,7 +460,7 @@ export default function CreateStoryDialog({
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
-  const [activeTab, setActiveTab] = useState<'text' | 'stickers' | 'music'>('text');
+  const [activeTab, setActiveTab] = useState<'text' | 'stickers' | 'mentions' | 'draw' | 'music' | 'none'>(variant === 'page' ? 'none' : 'text');
   const [stickerTab, setStickerTab] = useState<'emoji' | 'sticker'>('emoji');
   const [catalogEmojis, setCatalogEmojis] = useState<EmojiData[]>([]);
   const [catalogEmojisLoading, setCatalogEmojisLoading] = useState(true);
@@ -1727,7 +1727,10 @@ export default function CreateStoryDialog({
             {railTools.map((tab) => (
               <button
                 key={tab}
-                onClick={() => { setActiveTab(tab); setDrawingMode(tab === 'draw'); setSelectedId(null); setSelectedBg(false); }}
+                onClick={() => {
+                  if (activeTab === tab) { setActiveTab('none'); setDrawingMode(false); setSelectedId(null); setSelectedBg(false); return; }
+                  setActiveTab(tab); setDrawingMode(tab === 'draw'); setSelectedId(null); setSelectedBg(false);
+                }}
                 className={`h-11 w-14 rounded-full flex items-center justify-center transition-colors ${
                   activeTab === tab ? 'bg-white/25 text-white' : 'text-white/90 hover:bg-white/10'
                 }`}
@@ -1737,7 +1740,10 @@ export default function CreateStoryDialog({
               </button>
             ))}
             <button
-              onClick={() => { setActiveTab('music'); setDrawingMode(false); setSelectedId(null); setSelectedBg(false); }}
+              onClick={() => {
+                if (activeTab === 'music') { setActiveTab('none'); setDrawingMode(false); setSelectedId(null); setSelectedBg(false); return; }
+                setActiveTab('music'); setDrawingMode(false); setSelectedId(null); setSelectedBg(false);
+              }}
               className={`h-11 w-14 rounded-full flex items-center justify-center transition-colors ${activeTab === 'music' ? 'bg-white/25 text-white' : 'text-white/90 hover:bg-white/10'}`}
               title="More"
             >
@@ -1755,12 +1761,12 @@ export default function CreateStoryDialog({
           </div>
 
           {/* Active tool bottom sheet */}
-          {activeTab !== 'music' && (
+          {activeTab !== 'none' && (
             <div className="absolute bottom-16 left-0 right-0 z-40 flex justify-center">
               <div className="w-full max-w-sm mx-4 rounded-2xl bg-neutral-900/95 backdrop-blur border border-white/10 overflow-hidden max-h-[42vh]">
                 <div className="flex items-center justify-between px-3 py-1 border-b border-white/10">
                   <span className="text-sm font-medium text-white">{tabIcons.find((i) => i.id === activeTab)?.label}</span>
-                  <button onClick={() => { setActiveTab('text'); setDrawingMode(false); if (!selectedId) setSelectedId(null); }} className="text-white/70 hover:text-white p-1" aria-label="Close panel">
+                  <button onClick={() => { setActiveTab('none'); setDrawingMode(false); setSelectedId(null); setSelectedBg(false); }} className="text-white/70 hover:text-white p-1" aria-label="Close panel">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
