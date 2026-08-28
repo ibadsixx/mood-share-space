@@ -1845,6 +1845,21 @@ export default function CreateStoryDialog({
                       </div>
                     </div>
                   )}
+                  {activeTab === 'music' && (
+                    <div className="space-y-3">
+                      <MusicTab music={music} onSelect={setMusic} />
+                      {isVideo && (
+                        <div className="flex items-center gap-2 pt-1">
+                          <Button variant="ghost" size="icon" className="w-7 h-7 text-white" onClick={() => setVideoMuted(prev => !prev)}>
+                            {videoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                          </Button>
+                          <span className="text-xs text-white/70">
+                            {videoMuted ? 'Video muted' : 'Video audio playing'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
