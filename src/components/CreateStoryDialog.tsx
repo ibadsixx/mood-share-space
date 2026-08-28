@@ -14,7 +14,8 @@ import {
   Upload, Type, Music, X, Check, ChevronLeft, ChevronDown, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
   Trash2, RotateCw, Volume2, VolumeX, AtSign, Pen, Undo2, Redo2, Eraser, Search, Settings, Camera, Video,
   CheckSquare, LayoutTemplate, Newspaper, Plus, Globe, Users, Star, Lock,
-  TrendingUp, Sparkles, Bookmark, Link2, Music2,
+  TrendingUp, Sparkles, Bookmark, Link2, Music2, Wand2, Shapes, Save, Download,
+  MoreHorizontal, Circle, Square, RectangleHorizontal,
 } from 'lucide-react';
 import { Stage, Layer, Text as KonvaText, Image as KonvaImage, Transformer, Group, Rect, Line } from 'react-konva';
 import Konva from 'konva';
@@ -104,6 +105,26 @@ const DRAW_TOOLS = [
   { id: 'highlighter', label: 'Marker' },
 ] as const;
 
+type StoryFilter = 'none' | 'bw' | 'sepia' | 'vivid' | 'warm' | 'cool';
+
+const FILTER_OPTIONS: { id: StoryFilter; label: string }[] = [
+  { id: 'none', label: 'None' },
+  { id: 'bw', label: 'B&W' },
+  { id: 'sepia', label: 'Sepia' },
+  { id: 'vivid', label: 'Vivid' },
+  { id: 'warm', label: 'Warm' },
+  { id: 'cool', label: 'Cool' },
+];
+
+type MediaShape = 'rectangle' | 'square' | 'circle' | 'rounded';
+
+const SHAPE_OPTIONS: { id: MediaShape; label: string }[] = [
+  { id: 'rectangle', label: 'Rectangle' },
+  { id: 'square', label: 'Square' },
+  { id: 'circle', label: 'Circle' },
+  { id: 'rounded', label: 'Rounded' },
+];
+
 interface DrawingStroke {
   id: string;
   points: number[];
@@ -178,7 +199,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-function KonvaImageLoader({ src, width, height }: { src: string; width: number; height: number }) {
+function KonvaImageLoader({ src, width, height, filter }: { src: string; width: number; height: number; filter?: StoryFilter }) {
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -186,10 +207,27 @@ function KonvaImageLoader({ src, width, height }: { src: string; width: number; 
     return () => { cancelled = true; };
   }, [src]);
   if (!img) return null;
-  return <KonvaImage image={img} width={width} height={height} />;
+  return <KonvaImage image={img} width={width} height={height} {...filterProps(filter)} />;
 }
 
-function KonvaVideoImage({ src, width, height, muted: mutedProp }: { src: string; width: number; height: number; muted: boolean }) {
+const filterProps = (filter?: StoryFilter) => {
+  switch (filter) {
+    case 'bw':
+      return { filters: [Konva.Filters.Grayscale] };
+    case 'sepia':
+      return { filters: [Konva.Filters.Sepia] };
+    case 'vivid':
+      return { filters: [Konva.Filters.Contrast, Konva.Filters.HSL], contrast: 40, saturation: 0.35 };
+    case 'warm':
+      return { filters: [Konva.Filters.RGBA, Konva.Filters.Brighten], red: 25, green: 5, blue: -20, brightness: 0.05 };
+    case 'cool':
+      return { filters: [Konva.Filters.RGBA, Konva.Filters.Brighten], red: -15, green: 5, blue: 30, brightness: 0.05 };
+    default:
+      return {};
+  }
+};
+
+function KonvaVideoImage({ src, width, height, muted: mutedProp, filter }: { src: string; width: number; height: number; muted: boolean; filter?: StoryFilter }) {
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
   const imageRef = useRef<any>(null);
   const animRef = useRef<number>(0);
@@ -229,7 +267,7 @@ function KonvaVideoImage({ src, width, height, muted: mutedProp }: { src: string
   }, [video]);
 
   if (!video) return null;
-  return <KonvaImage ref={imageRef} image={video} width={width} height={height} />;
+  return <KonvaImage ref={imageRef} image={video} width={width} height={height} {...filterProps(filter)} />;
 }
 
 function EditableTextInput({ x, y, width, height, text, fontFamily, fontSize, fontWeight, fontStyle, textDecoration, textAlign, fill, onChange, onClose }: {
@@ -591,6 +629,10 @@ export default function CreateStoryDialog({
   const [redoStack, setRedoStack] = useState<DrawingStroke[][]>([]);
   const isDrawingRef = useRef(false);
   const drawingLineRef = useRef<any>(null);
+  const [filter, setFilter] = useState<StoryFilter>('none');
+  const [mediaShape, setMediaShape] = useState<MediaShape>('rectangle');
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreTab, setMoreTab] = useState<'menu' | 'effects' | 'shape' | 'mention' | 'save' | 'more'>('menu');
 
   const stageRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -641,6 +683,10 @@ export default function CreateStoryDialog({
     setStrokes([]);
     setUndoStack([]);
     setRedoStack([]);
+    setFilter('none');
+    setMediaShape('rectangle');
+    setMoreOpen(false);
+    setMoreTab('menu');
   }, [previewUrl]);
 
   const clearLibrary = useCallback(() => {
@@ -1167,6 +1213,35 @@ export default function CreateStoryDialog({
     reset();
   };
 
+  const handleSaveToDevice = () => {
+    setMoreOpen(false);
+    try {
+      const node = stageRef.current;
+      if (!node) return;
+      node.getStage().setAttr('width', STAGE_W * 2);
+      node.getStage().setAttr('height', STAGE_H * 2);
+      const uri = node.toDataURL({ pixelRatio: 2 });
+      node.getStage().setAttr('width', STAGE_W);
+      node.getStage().setAttr('height', STAGE_H);
+      const a = document.createElement('a');
+      a.href = uri;
+      a.download = 'my-story.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      console.error('[CreateStoryDialog] Save failed:', e);
+    }
+  };
+
+  const closeMore = () => {
+    setMoreOpen(false);
+    setMoreTab('menu');
+    setDrawingMode(false);
+    setSelectedId(null);
+    setSelectedBg(false);
+  };
+
   const scale = containerRef.current
     ? Math.min(containerRef.current.clientWidth / STAGE_W, (containerRef.current.clientHeight || 600) / STAGE_H)
     : 1;
@@ -1233,6 +1308,31 @@ export default function CreateStoryDialog({
                         scaleX={bgTransform.scaleX}
                         scaleY={bgTransform.scaleY}
                         draggable
+                        clipFunc={(ctx: any) => {
+                          if (mediaShape === 'rectangle') return;
+                          const w = STAGE_W;
+                          const h = STAGE_H;
+                          if (mediaShape === 'square') {
+                            ctx.beginPath();
+                            ctx.rect(0, (h - w) / 2, w, w);
+                          } else if (mediaShape === 'circle') {
+                            ctx.beginPath();
+                            ctx.arc(w / 2, h / 2, Math.min(w, h) / 2, 0, Math.PI * 2);
+                          } else {
+                            const r = 72;
+                            ctx.beginPath();
+                            ctx.moveTo(r, 0);
+                            ctx.lineTo(w - r, 0);
+                            ctx.quadraticCurveTo(w, 0, w, r);
+                            ctx.lineTo(w, h - r);
+                            ctx.quadraticCurveTo(w, h, w - r, h);
+                            ctx.lineTo(r, h);
+                            ctx.quadraticCurveTo(0, h, 0, h - r);
+                            ctx.lineTo(0, r);
+                            ctx.quadraticCurveTo(0, 0, r, 0);
+                          }
+                          ctx.closePath();
+                        }}
                         onClick={() => { setSelectedId(null); setSelectedBg(true); }}
                         onTap={() => { setSelectedId(null); setSelectedBg(true); }}
                         onDragEnd={handleBgDragEnd}
@@ -1248,9 +1348,9 @@ export default function CreateStoryDialog({
                           scaleY={mediaRotation % 180 !== 0 ? STAGE_W / STAGE_H : 1}
                         >
                           {isVideo ? (
-                            <KonvaVideoImage src={previewUrl} width={STAGE_W} height={STAGE_H} muted={videoMuted} />
+                            <KonvaVideoImage src={previewUrl} width={STAGE_W} height={STAGE_H} muted={videoMuted} filter={filter} />
                           ) : (
-                            <KonvaImageLoader src={previewUrl} width={STAGE_W} height={STAGE_H} />
+                            <KonvaImageLoader src={previewUrl} width={STAGE_W} height={STAGE_H} filter={filter} />
                           )}
                         </Group>
                       </Group>
@@ -1814,6 +1914,7 @@ export default function CreateStoryDialog({
               <button
                 key={tab}
                 onClick={() => {
+                  setMoreOpen(false);
                   if (activeTab === tab) { setActiveTab('none'); setDrawingMode(false); setSelectedId(null); setSelectedBg(false); return; }
                   setActiveTab(tab); setDrawingMode(tab === 'draw'); setSelectedId(null); setSelectedBg(false);
                 }}
@@ -1827,15 +1928,142 @@ export default function CreateStoryDialog({
             ))}
             <button
               onClick={() => {
-                if (activeTab === 'music') { setActiveTab('none'); setDrawingMode(false); setSelectedId(null); setSelectedBg(false); return; }
-                setActiveTab('music'); setDrawingMode(false); setSelectedId(null); setSelectedBg(false);
+                if (activeTab !== 'none') { setActiveTab('none'); setDrawingMode(false); setSelectedId(null); setSelectedBg(false); }
+                setMoreOpen(true); setMoreTab('menu');
               }}
-              className={`h-11 w-14 rounded-full flex items-center justify-center transition-colors ${activeTab === 'music' ? 'bg-white/25 text-white' : 'text-white/90 hover:bg-white/10'}`}
+              className={`h-11 w-14 rounded-full flex items-center justify-center transition-colors ${moreOpen ? 'bg-white/25 text-white' : 'text-white/90 hover:bg-white/10'}`}
               title="More"
             >
               <span className="text-white text-lg leading-none">⌄</span>
             </button>
           </div>
+
+          {/* More menu bottom sheet */}
+          {moreOpen && (
+            <div className="absolute bottom-16 left-0 right-0 z-40 flex justify-center">
+              <div className="w-full max-w-sm mx-4 rounded-2xl bg-neutral-900/95 backdrop-blur border border-white/10 overflow-hidden max-h-[55vh]">
+                <div className="flex items-center justify-between px-3 py-1 border-b border-white/10">
+                  <span className="text-sm font-medium text-white">
+                    {moreTab === 'menu' ? 'More' :
+                      moreTab === 'effects' ? 'Effects' :
+                      moreTab === 'shape' ? 'Select Shape' :
+                      moreTab === 'mention' ? 'Mention @' :
+                      moreTab === 'save' ? 'Save' : 'More Tools'}
+                  </span>
+                  <button onClick={closeMore} className="text-white/70 hover:text-white p-1" aria-label="Close panel">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="max-h-[calc(55vh-40px)] overflow-y-auto p-3">
+
+                  {moreTab === 'menu' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {([
+                        { id: 'effects', label: 'Effects', icon: <Wand2 className="h-5 w-5" /> },
+                        { id: 'shape', label: 'Shape', icon: <Shapes className="h-5 w-5" /> },
+                        { id: 'mention', label: 'Mention', icon: <AtSign className="h-5 w-5" /> },
+                        { id: 'save', label: 'Save', icon: <Save className="h-5 w-5" /> },
+                        { id: 'more', label: 'More...', icon: <MoreHorizontal className="h-5 w-5" /> },
+                      ] as const).map((item) => (
+                        <button key={item.id} onClick={() => setMoreTab(item.id)}
+                          className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white">
+                          {item.icon}
+                          <span className="text-xs font-medium">{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {moreTab === 'effects' && (
+                    <div className="flex flex-wrap gap-2">
+                      {FILTER_OPTIONS.map((f) => (
+                        <button
+                          key={f.id}
+                          onClick={() => { setFilter(f.id); }}
+                          className={`flex-1 min-w-[30%] px-3 py-2 rounded-lg text-xs font-medium transition-colors ${filter === f.id ? 'bg-white text-black' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {moreTab === 'shape' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {SHAPE_OPTIONS.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => { setMediaShape(s.id); }}
+                          className={`flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-sm transition-colors ${mediaShape === s.id ? 'bg-white text-black' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                        >
+                          {s.id === 'circle' ? <Circle className="h-4 w-4" /> : s.id === 'square' ? <Square className="h-4 w-4" /> : s.id === 'rounded' ? <Square className="h-4 w-4" /> : <RectangleHorizontal className="h-4 w-4" />}
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {moreTab === 'mention' && (
+                    <div className="space-y-3">
+                      <div>
+                        <Input
+                          placeholder="Search by name or @username..."
+                          value={mentionSearch}
+                          onChange={(e) => setMentionSearch(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        {mentionSearching ? (
+                          <p className="text-xs text-white/50 text-center py-4">Searching...</p>
+                        ) : mentionResults.length > 0 ? (
+                          mentionResults.map((u) => (
+                            <button key={u.id} onClick={() => { handleSelectMention(u); closeMore(); }}
+                              className="w-full flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg transition-colors">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={u.profile_pic || undefined} />
+                                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                                  {u.display_name[0]?.toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="text-left">
+                                <p className="font-semibold text-sm text-white">{u.display_name}</p>
+                                <p className="text-xs text-white/60">@{u.username}</p>
+                              </div>
+                            </button>
+                          ))
+                        ) : mentionSearch.trim() ? (
+                          <p className="text-xs text-white/50 text-center py-4">No users found</p>
+                        ) : (
+                          <p className="text-xs text-white/50 text-center py-4">Type a name or username to mention someone</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {moreTab === 'save' && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-white/60">Save the edited media to your device.</p>
+                      <Button className="w-full" onClick={handleSaveToDevice}>
+                        <Download className="h-4 w-4 mr-1.5" /> Download to Device
+                      </Button>
+                    </div>
+                  )}
+
+                  {moreTab === 'more' && (
+                    <div className="space-y-2">
+                      <button onClick={() => { reset(); closeMore(); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white">
+                        <RotateCw className="h-4 w-4" /> Reset all edits
+                      </button>
+                      <p className="text-xs text-white/40 text-center pt-2">More tools coming soon...</p>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Bottom share bar */}
           <div className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-3 bg-gradient-to-t from-black/70 to-transparent">
