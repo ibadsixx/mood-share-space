@@ -107,7 +107,10 @@ export const useNotifications = () => {
       if (!hasLoaded.current) setLoading(true);
       setError(null);
 
-      const { data, error } = await notificationsApi.getNotifications(user.id, 20);
+      const [{ data, error }, unread] = await Promise.all([
+        notificationsApi.getNotifications(user.id, 20),
+        notificationsApi.getUnreadCount(user.id),
+      ]);
 
       if (error) throw error;
 
@@ -125,7 +128,7 @@ export const useNotifications = () => {
       })) as Notification[];
 
       setNotifications(notificationsWithActors || []);
-      setUnreadCount(notificationsWithActors?.filter(n => !n.is_read).length || 0);
+      setUnreadCount(unread);
       hasLoaded.current = true;
 
       const newRequests = (notificationsWithActors || [])
@@ -160,7 +163,7 @@ export const useNotifications = () => {
       setNotifications(prev =>
         prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
       );
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      setUnreadCount(await notificationsApi.getUnreadCount(user.id));
     } catch (error: any) {
       console.error('Error marking notification as read:', error);
     }
@@ -177,7 +180,7 @@ export const useNotifications = () => {
       setNotifications(prev =>
         prev.map(n => ({ ...n, is_read: true }))
       );
-      setUnreadCount(0);
+      setUnreadCount(await notificationsApi.getUnreadCount(user.id));
 
       toast({
         title: "All notifications marked as read",

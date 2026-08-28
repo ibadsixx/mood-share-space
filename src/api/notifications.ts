@@ -23,6 +23,6 @@ export async function deleteNotification(id: string): Promise<ApiResult<null>> {
 }
 
 export async function getUnreadCount(userId: string): Promise<number> {
-  const { data } = await gateway.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', userId).eq('is_read', false);
+  const { data } = await gateway.from('notifications').select('*', { count: 'exact' }).eq('user_id', userId).eq('is_read', false);
   return (data as unknown as number) || 0;
 }
