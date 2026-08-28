@@ -25,6 +25,8 @@ export interface Notification {
   };
 }
 
+let backgroundPollOwner = false;
+
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -35,6 +37,9 @@ export const useNotifications = () => {
   const { toast } = useToast();
   const skipFirstToast = useRef(true);
   const seenNotificationIds = useRef<Set<string>>(new Set());
+  const pollsOwned = useRef(false);
+  const hasLoaded = useRef(false);
+  const profileCache = useRef<Map<string, Notification['actor']>>(new Map());
 
   useEffect(() => {
     if (!user) {
@@ -42,8 +47,17 @@ export const useNotifications = () => {
       return;
     }
 
-    fetchNotifications();
-    
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    if (!backgroundPollOwner) {
+      backgroundPollOwner = true;
+      pollsOwned.current = true;
+      pollInterval = setInterval(() => {
+        if (document.visibilityState === 'visible') fetchNotifications();
+      }, 60000);
+    }
+    const onFocus = () => fetchNotifications();
+    window.addEventListener('focus', onFocus);
+
     // Set up realtime subscription
     const channel = gateway
       .channel('notifications-changes')
@@ -73,14 +87,16 @@ export const useNotifications = () => {
       )
       .subscribe();
 
-    const pollInterval = setInterval(fetchNotifications, 30000);
-    const onFocus = () => fetchNotifications();
-    window.addEventListener('focus', onFocus);
+    fetchNotifications();
 
     return () => {
       gateway.removeChannel(channel);
-      clearInterval(pollInterval);
+      if (pollInterval) clearInterval(pollInterval);
       window.removeEventListener('focus', onFocus);
+      if (pollsOwned.current) {
+        backgroundPollOwner = false;
+        pollsOwned.current = false;
+      }
     };
   }, [user, retry]);
 
@@ -88,32 +104,35 @@ export const useNotifications = () => {
     if (!user) return;
 
     try {
-      setLoading(true);
+      if (!hasLoaded.current) setLoading(true);
       setError(null);
 
       const { data, error } = await notificationsApi.getNotifications(user.id, 20);
 
       if (error) throw error;
 
-      // Fetch actor profiles separately
+      // Fetch actor profiles, reusing already-fetched profiles across polls
       const actorIds = data?.map(n => n.actor_id) || [];
-      const { data: profiles } = await profilesApi.getProfilesByIds(actorIds);
+      const uncachedIds = actorIds.filter(id => !profileCache.current.has(id));
+      if (uncachedIds.length > 0) {
+        const { data: profiles } = await profilesApi.getProfilesByIds(uncachedIds);
+        (profiles || []).forEach(p => profileCache.current.set(p.id, p));
+      }
 
-      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
-      
       const notificationsWithActors = data?.map(n => ({
         ...n,
-        actor: profilesMap.get(n.actor_id)
+        actor: profileCache.current.get(n.actor_id)
       })) as Notification[];
 
       setNotifications(notificationsWithActors || []);
       setUnreadCount(notificationsWithActors?.filter(n => !n.is_read).length || 0);
+      hasLoaded.current = true;
 
       const newRequests = (notificationsWithActors || [])
         .filter(n => n.type === 'message_request' && !n.is_read && !seenNotificationIds.current.has(n.id));
       (notificationsWithActors || []).forEach(n => seenNotificationIds.current.add(n.id));
 
-      if (!skipFirstToast.current && newRequests.length > 0) {
+      if (!skipFirstToast.current && pollsOwned.current && newRequests.length > 0) {
         for (const n of newRequests) {
           toast({
             title: n.actor?.display_name || 'Someone',
