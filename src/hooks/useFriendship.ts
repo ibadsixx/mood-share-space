@@ -3,6 +3,8 @@ import { gateway } from '@/lib/gateway';
 import { blockingApi } from '@/api';
 import { useToast } from '@/hooks/use-toast';
 
+export const FRIEND_REQUEST_SENT_EVENT = 'tone:friend-request-sent';
+
 interface FriendshipStatus {
   id: string | null;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | null;
@@ -140,6 +142,8 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
         title: 'Friend request sent',
         description: 'Your friend request has been sent successfully.',
       });
+
+      window.dispatchEvent(new CustomEvent(FRIEND_REQUEST_SENT_EVENT));
     } catch (error: any) {
       toast({
         title: 'Error',

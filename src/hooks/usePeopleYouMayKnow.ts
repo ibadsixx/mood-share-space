@@ -3,6 +3,7 @@ import { gateway } from '@/lib/gateway';
 import { blockingApi } from '@/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { FRIEND_REQUEST_SENT_EVENT } from '@/hooks/useFriendship';
 
 export interface SuggestedPerson {
   id: string;
@@ -218,6 +219,8 @@ export const usePeopleYouMayKnow = (limit: number = 10): UsePeopleYouMayKnowRetu
         title: 'Friend request sent',
         description: 'Your friend request has been sent successfully.',
       });
+
+      window.dispatchEvent(new CustomEvent(FRIEND_REQUEST_SENT_EVENT));
 
       return true;
     } catch (err: any) {

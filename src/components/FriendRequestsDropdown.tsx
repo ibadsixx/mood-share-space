@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { gateway } from '@/lib/gateway';
 import { UserPlus, UserCheck, X, Loader2, User, Users } from 'lucide-react';
 import { usePeopleYouMayKnow, SuggestedPerson } from '@/hooks/usePeopleYouMayKnow';
+import { useFriendRequestLiveUpdates } from '@/hooks/useFriendRequestLiveUpdates';
 
 interface PendingRequest {
   id: string;
@@ -51,9 +52,9 @@ const FriendRequestsDropdown: React.FC = () => {
   const [loadingSent, setLoadingSent] = useState(false);
   const { suggestions, loading: loadingSuggestions, sendFriendRequest, removeSuggestion } = usePeopleYouMayKnow(5);
 
-  const fetchRequests = useCallback(async () => {
+  const fetchRequests = useCallback(async (silent = false) => {
     if (!user?.id) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const { data, error } = await gateway
         .from('friends')
@@ -115,6 +116,8 @@ const FriendRequestsDropdown: React.FC = () => {
       fetchSentRequests();
     }
   }, [open, fetchRequests, fetchSentRequests]);
+
+  useFriendRequestLiveUpdates(() => fetchRequests(true), !!user?.id);
 
   const handleAccept = async (requestId: string) => {
     setActionLoading(requestId);

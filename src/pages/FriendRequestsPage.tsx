@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { gateway } from '@/lib/gateway';
 import { usePeopleYouMayKnow } from '@/hooks/usePeopleYouMayKnow';
+import { useFriendRequestLiveUpdates } from '@/hooks/useFriendRequestLiveUpdates';
 import { ArrowLeft, UserCheck, UserPlus, X, Loader2, User, Users } from 'lucide-react';
 
 interface PendingRequest {
@@ -42,9 +43,9 @@ const FriendRequestsPage = () => {
   const [loadingSent, setLoadingSent] = useState(false);
   const { suggestions, loading: loadingSuggestions, sendFriendRequest, removeSuggestion } = usePeopleYouMayKnow(5);
 
-  const fetchRequests = useCallback(async () => {
+  const fetchRequests = useCallback(async (silent = false) => {
     if (!user?.id) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const { data, error } = await gateway
         .from('friends')
@@ -71,9 +72,9 @@ const FriendRequestsPage = () => {
     }
   }, [user?.id]);
 
-  const fetchSentRequests = useCallback(async () => {
+  const fetchSentRequests = useCallback(async (silent = false) => {
     if (!user?.id) return;
-    setLoadingSent(true);
+    if (!silent) setLoadingSent(true);
     try {
       const { data, error } = await gateway
         .from('friends')
@@ -104,6 +105,11 @@ const FriendRequestsPage = () => {
     fetchRequests();
     fetchSentRequests();
   }, [fetchRequests, fetchSentRequests]);
+
+  useFriendRequestLiveUpdates(() => {
+    fetchRequests(true);
+    fetchSentRequests(true);
+  }, !!user?.id);
 
   const handleAccept = async (requestId: string) => {
     setActionLoading(requestId);
