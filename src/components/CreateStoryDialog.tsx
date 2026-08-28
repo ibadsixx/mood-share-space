@@ -6,12 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useMusicLibrary } from '@/hooks/useMusicLibrary';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Upload, Type, Music, X, Check, ChevronLeft, ChevronDown, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
   Trash2, RotateCw, Volume2, VolumeX, AtSign, Pen, Undo2, Redo2, Eraser, Search, Settings, Camera, Video,
   CheckSquare, LayoutTemplate, Newspaper, Plus, Globe, Users, Star, Lock,
+  TrendingUp, Sparkles, Bookmark, Link2, Music2,
 } from 'lucide-react';
 import { Stage, Layer, Text as KonvaText, Image as KonvaImage, Transformer, Group, Rect, Line } from 'react-konva';
 import Konva from 'konva';
@@ -265,6 +268,22 @@ function MusicTab({ music, onSelect }: { music: MusicData | null; onSelect: (m: 
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
 
+  const { tracks, trendingTracks, popularTracks, weeklyTopTracks, isLoading } = useMusicLibrary();
+
+  const handlePick = (track: { url: string; title: string; artist?: string | null; duration?: number | null; source_type: string; video_id?: string | null; thumbnail_url?: string | null }) => {
+    onSelect({
+      url: track.url,
+      title: track.title,
+      artist: track.artist || undefined,
+      startAt: 0,
+      endAt: Math.min(track.duration || 15, 15),
+      duration: track.duration || 15,
+      source_type: track.source_type,
+      video_id: track.video_id,
+      thumbnail_url: track.thumbnail_url,
+    });
+  };
+
   const handleAddUrl = async () => {
     if (!url.trim()) return;
     setSearching(true);
@@ -314,22 +333,89 @@ function MusicTab({ music, onSelect }: { music: MusicData | null; onSelect: (m: 
     );
   }
 
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
-        <Input
-          placeholder="Paste YouTube/SoundCloud URL"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className="h-9 text-sm"
-        />
-        <Button size="sm" className="h-9" onClick={handleAddUrl} disabled={searching || !url.trim()}>
-          {searching ? '...' : 'Add'}
-        </Button>
+  const renderTrackList = (list: { url: string; title: string; artist?: string | null; source_type: string; thumbnail_url?: string | null; video_id?: string | null; duration?: number | null }[], empty: string) => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-[180px]">
+          <Music className="h-6 w-6 animate-pulse text-muted-foreground" />
+        </div>
+      );
+    }
+    if (!list.length) {
+      return <p className="text-xs text-muted-foreground text-center py-10">{empty}</p>;
+    }
+    return (
+      <div className="space-y-1">
+        {list.map((track) => (
+          <button
+            key={track.url}
+            onClick={() => handlePick(track)}
+            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors text-left"
+          >
+            {track.thumbnail_url ? (
+              <img src={track.thumbnail_url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+            ) : (
+              <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center shrink-0">
+                <Music2 className="h-4 w-4 text-muted-foreground" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{track.title}</p>
+              {track.artist && <p className="text-xs text-muted-foreground truncate">{track.artist}</p>}
+            </div>
+          </button>
+        ))}
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
-      <p className="text-xs text-muted-foreground">Paste a music URL to add background music</p>
-    </div>
+    );
+  };
+
+  return (
+    <Tabs defaultValue="liked" className="w-full">
+      <TabsList className="grid w-full grid-cols-4">
+        <TabsTrigger value="liked" className="text-xs flex items-center gap-1">
+          <Sparkles className="h-3.5 w-3.5" /> For you
+        </TabsTrigger>
+        <TabsTrigger value="trending" className="text-xs flex items-center gap-1">
+          <TrendingUp className="h-3.5 w-3.5" /> Trending
+        </TabsTrigger>
+        <TabsTrigger value="saved" className="text-xs flex items-center gap-1">
+          <Bookmark className="h-3.5 w-3.5" /> Saved
+        </TabsTrigger>
+        <TabsTrigger value="add" className="text-xs flex items-center gap-1">
+          <Link2 className="h-3.5 w-3.5" /> Add
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="liked" className="mt-3 max-h-64 overflow-y-auto">
+        {renderTrackList(popularTracks, 'No recommendations yet. Add some music to build your profile.')}
+      </TabsContent>
+
+      <TabsContent value="trending" className="mt-3 max-h-64 overflow-y-auto">
+        {renderTrackList(trendingTracks, 'No trending music right now.')}
+      </TabsContent>
+
+      <TabsContent value="saved" className="mt-3 max-h-64 overflow-y-auto">
+        {renderTrackList(tracks, 'No saved music yet. Music you pick will appear here.')}
+      </TabsContent>
+
+      <TabsContent value="add" className="mt-3">
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Paste YouTube/SoundCloud URL"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="h-9 text-sm"
+            />
+            <Button size="sm" className="h-9 shrink-0" onClick={handleAddUrl} disabled={searching || !url.trim()}>
+              {searching ? '...' : 'Add'}
+            </Button>
+          </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <p className="text-xs text-muted-foreground">Paste a music URL to add background music</p>
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 }
 
