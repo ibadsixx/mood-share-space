@@ -73,33 +73,64 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
     if (!currentUserId || !profileId) return;
 
     try {
-      // Insert friendship request
-      const { data: friendshipData, error: friendshipError } = await gateway
+      // A declined request keeps its row at status='rejected', occupying the
+      // UNIQUE(requester_id, receiver_id) pair. A plain insert would then
+      // violate that constraint, so reuse the existing row when present.
+      const { data: existing, error: existingError } = await gateway
         .from('friends')
-        .insert({
-          requester_id: currentUserId,
-          receiver_id: profileId,
-          status: 'pending'
-        })
-        .select()
-        .single();
+        .select('id, status')
+        .eq('requester_id', currentUserId)
+        .eq('receiver_id', profileId)
+        .maybeSingle();
 
-      if (friendshipError) throw friendshipError;
+      if (existingError) throw existingError;
 
-      // Insert follow relationship
-      const { error: followError } = await gateway
-        .from('followers')
-        .insert({
-          follower_id: currentUserId,
-          following_id: profileId
-        });
+      let friendshipData: { id: string } | undefined;
+      if (existing && existing.status !== 'accepted') {
+        // Re-send: flip the previously rejected request back to pending.
+        const { data, error } = await gateway
+          .from('friends')
+          .update({ status: 'pending' })
+          .eq('id', existing.id)
+          .select()
+          .single();
 
-      if (followError && followError.code !== '23505') { // Ignore unique constraint violations
-        throw followError;
+        if (error) throw error;
+        friendshipData = data;
+      } else if (!existing) {
+        // Fresh request: insert a new row.
+        const { data, error } = await gateway
+          .from('friends')
+          .insert({
+            requester_id: currentUserId,
+            receiver_id: profileId,
+            status: 'pending'
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        friendshipData = data;
+
+        // Insert follow relationship
+        const { error: followError } = await gateway
+          .from('followers')
+          .insert({
+            follower_id: currentUserId,
+            following_id: profileId
+          });
+
+        if (followError && followError.code !== '23505') { // Ignore unique constraint violations
+          throw followError;
+        }
+      } else {
+        // Already accepted — nothing to do, reflect current state.
+        setFriendship(prev => ({ ...prev, status: 'ACCEPTED', loading: false }));
+        return;
       }
 
       setFriendship({
-        id: friendshipData.id,
+        id: friendshipData?.id ?? null,
         status: 'PENDING',
         isSender: true,
         loading: false,
