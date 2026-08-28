@@ -1308,31 +1308,32 @@ export default function CreateStoryDialog({
                         scaleX={bgTransform.scaleX}
                         scaleY={bgTransform.scaleY}
                         draggable
-                        clipFunc={(ctx: any) => {
-                          if (mediaShape === 'rectangle') return;
-                          const w = STAGE_W;
-                          const h = STAGE_H;
-                          if (mediaShape === 'square') {
-                            ctx.beginPath();
-                            ctx.rect(0, (h - w) / 2, w, w);
-                          } else if (mediaShape === 'circle') {
-                            ctx.beginPath();
-                            ctx.arc(w / 2, h / 2, Math.min(w, h) / 2, 0, Math.PI * 2);
-                          } else {
-                            const r = 72;
-                            ctx.beginPath();
-                            ctx.moveTo(r, 0);
-                            ctx.lineTo(w - r, 0);
-                            ctx.quadraticCurveTo(w, 0, w, r);
-                            ctx.lineTo(w, h - r);
-                            ctx.quadraticCurveTo(w, h, w - r, h);
-                            ctx.lineTo(r, h);
-                            ctx.quadraticCurveTo(0, h, 0, h - r);
-                            ctx.lineTo(0, r);
-                            ctx.quadraticCurveTo(0, 0, r, 0);
-                          }
-                          ctx.closePath();
-                        }}
+                        {...(mediaShape === 'rectangle' ? {} : {
+                          clipFunc: ((ctx: any) => {
+                            const w = STAGE_W;
+                            const h = STAGE_H;
+                            if (mediaShape === 'square') {
+                              ctx.beginPath();
+                              ctx.rect(0, (h - w) / 2, w, w);
+                            } else if (mediaShape === 'circle') {
+                              ctx.beginPath();
+                              ctx.arc(w / 2, h / 2, Math.min(w, h) / 2, 0, Math.PI * 2);
+                            } else {
+                              const r = 72;
+                              ctx.beginPath();
+                              ctx.moveTo(r, 0);
+                              ctx.lineTo(w - r, 0);
+                              ctx.quadraticCurveTo(w, 0, w, r);
+                              ctx.lineTo(w, h - r);
+                              ctx.quadraticCurveTo(w, h, w - r, h);
+                              ctx.lineTo(r, h);
+                              ctx.quadraticCurveTo(0, h, 0, h - r);
+                              ctx.lineTo(0, r);
+                              ctx.quadraticCurveTo(0, 0, r, 0);
+                            }
+                            ctx.closePath();
+                          }) as any,
+                        })}
                         onClick={() => { setSelectedId(null); setSelectedBg(true); }}
                         onTap={() => { setSelectedId(null); setSelectedBg(true); }}
                         onDragEnd={handleBgDragEnd}
