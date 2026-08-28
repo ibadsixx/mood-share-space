@@ -43,6 +43,7 @@ import CreatePost from "@/pages/CreatePost";
 import FeedbackPage from "@/pages/FeedbackPage";
 import FriendRequestsPage from "@/pages/FriendRequestsPage";
 import NotificationsPage from "@/pages/NotificationsPage";
+import StoryEditor from "@/pages/StoryEditor";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,8 @@ const App = () => (
               <Route path="/reels/:id" element={<ReelViewer />} />
               {/* Fullscreen media viewer - media links point at /media/<id> */}
               <Route path="/media/:id" element={<MediaViewer />} />
+              {/* Fullscreen story editor */}
+              <Route path="/story/create" element={<StoryEditor />} />
               <Route path="/" element={<ErrorBoundary><Layout /></ErrorBoundary>}>
                 <Route index element={<Home />} />
                 <Route path="profile" element={<Profile />} />

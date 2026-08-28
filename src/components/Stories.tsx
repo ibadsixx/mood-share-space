@@ -6,10 +6,10 @@ import { useProfile } from '@/hooks/useProfile';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStories } from '@/hooks/useStories';
 import StoryViewer from './StoryViewer';
-import CreateStoryDialog from './CreateStoryDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { gateway } from '@/lib/gateway';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useNavigate } from 'react-router-dom';
 
 const Stories = () => {
   const { user } = useAuth();
@@ -17,11 +17,11 @@ const Stories = () => {
   const [currentUserProfile, setCurrentUserProfile] = useState<{ profile_pic: string | null; display_name: string | null } | null>(null);
   const { stories, loading, markAsViewed, deleteStory } = useStories();
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
   const [selectedUserStories, setSelectedUserStories] = useState<any>(null);
   const [imgError, setImgError] = useState(false);
   const [showStories, setShowStories] = useState(true);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   const handleStoryClick = (userStories: any) => {
     setSelectedUserStories(userStories);
@@ -69,7 +69,7 @@ const Stories = () => {
           className="flex-shrink-0 hidden sm:block"
         >
           <Card
-            onClick={() => setCreateOpen(true)}
+            onClick={() => navigate('/story/create')}
             className="relative w-[80px] sm:w-[110px] h-[140px] sm:h-[190px] cursor-pointer overflow-hidden border-border/50 hover:shadow-lg transition-shadow"
           >
             {!imgError && currentUserProfile?.profile_pic ? (
@@ -178,8 +178,6 @@ const Stories = () => {
           </button>
         </>
       )}
-
-      <CreateStoryDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       {selectedUserStories && (
         <StoryViewer

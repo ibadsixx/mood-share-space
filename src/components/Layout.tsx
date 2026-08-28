@@ -16,7 +16,6 @@ import { useEffect, useState } from 'react';
 import { gateway } from '@/lib/gateway';
 import FriendRequestsDropdown from '@/components/FriendRequestsDropdown';
 import MobileNav from '@/components/MobileNav';
-import CreateStoryDialog from '@/components/CreateStoryDialog';
 import CreateReelDialog from '@/components/CreateReelDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
@@ -287,7 +286,6 @@ const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
-  const [storyDialogOpen, setStoryDialogOpen] = useState(false);
   const [reelDialogOpen, setReelDialogOpen] = useState(false);
 
   if (loading) {
@@ -345,7 +343,7 @@ const Layout = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setStoryDialogOpen(true)}
+                  onClick={() => navigate('/story/create')}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent text-sm text-left"
                 >
                   <Video className="h-4 w-4" /> Story
@@ -478,7 +476,6 @@ const Layout = () => {
         avatarMenu={<HeaderAvatar profile={profile} user={user} onSignOut={handleSignOut} />}
       />
 
-      <CreateStoryDialog open={storyDialogOpen} onOpenChange={setStoryDialogOpen} />
       <CreateReelDialog open={reelDialogOpen} onOpenChange={setReelDialogOpen} />
 
       {/* Chat windows — hidden on mobile, visible on desktop */}

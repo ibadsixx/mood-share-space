@@ -444,7 +444,17 @@ function BlurredVideoBg({ src }: { src: string }) {
   );
 }
 
-export default function CreateStoryDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export default function CreateStoryDialog({
+  open,
+  onOpenChange,
+  variant = 'dialog',
+  initialMedia = null,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  variant?: 'dialog' | 'page';
+  initialMedia?: { url: string; type?: string } | null;
+}) {
   const [step, setStep] = useState<'select' | 'edit'>('select');
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
@@ -657,6 +667,36 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
     setRedoStack([]);
     setStep('edit');
   };
+
+  useEffect(() => {
+    if (variant !== 'page' || !initialMedia || !initialMedia.url || step !== 'select') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(initialMedia.url);
+        if (!res.ok) throw new Error('Could not load media');
+        const blob = await res.blob();
+        if (cancelled) return;
+        const ext = initialMedia.url.split('.').pop()?.split('?')[0] || 'jpg';
+        const detectedType = blob.type || initialMedia.type || (ext === 'mp4' ? 'video/mp4' : 'image/jpeg');
+        const mimeToExt: Record<string, string> = {
+          'video/mp4': 'mp4',
+          'image/jpeg': 'jpg',
+          'image/png': 'png',
+          'image/webp': 'webp',
+          'image/gif': 'gif',
+        };
+        const fext = mimeToExt[detectedType] || ext;
+        const file = new File([blob], `story.${fext}`, { type: detectedType });
+        editQueueRef.current = [];
+        beginEdit({ file, url: initialMedia.url });
+      } catch (error) {
+        if (!cancelled) alert(error instanceof Error ? error.message : 'Failed to load media');
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variant, initialMedia]);
 
   const openItem = (item: LibraryMedia) => {
     if (selectMode) {
@@ -1049,19 +1089,8 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
     const isVideo = file?.type.startsWith('video/');
     const editingOverlay = editingTextId ? overlays.find((o) => o.id === editingTextId) : null;
 
-    return (
-      <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-4xl h-[100dvh] sm:h-[90vh] min-h-0 p-0 gap-0 flex flex-col">
-          <div className="flex shrink-0 items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border">
-            <Button variant="ghost" size="icon" onClick={handleBack}><ChevronLeft className="h-5 w-5" /></Button>
-            <h1 className="text-base sm:text-lg font-semibold truncate flex-1 min-w-0 text-center">Edit Story</h1>
-            <Button onClick={handleCreate} disabled={uploading} size="sm" className="shrink-0">
-              {uploading ? <>{uploadProgress}</> : <><Check className="h-4 w-4 mr-1" /> Share</>}
-            </Button>
-          </div>
-
-            <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
-            <div ref={containerRef} className="shrink-0 md:shrink md:flex-1 bg-background flex items-center justify-center p-3 md:p-4 min-h-[300px] h-[40vh] md:h-auto relative overflow-hidden">
+    const canvasBlock = (
+      <div ref={containerRef} className={`${variant === 'page' ? 'h-full w-full' : 'shrink-0 md:shrink md:flex-1 h-[40vh] md:h-auto min-h-[300px]'} bg-transparent md:bg-background flex items-center justify-center p-3 relative overflow-hidden`}>
               <div style={{ width: STAGE_W * scale, height: STAGE_H * scale, position: 'relative' }}>
                 {editingTextId && editingOverlay && (
                   <EditableTextInput
@@ -1313,33 +1342,36 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
                 )}
               </div>
             </div>
+    );
 
-            <div className="w-full flex-1 md:w-80 md:flex-none min-h-0 border-t md:border-t-0 md:border-l border-border bg-background flex flex-col">
-              <div className="flex shrink-0 border-b border-border">
-                {(['text', 'stickers', 'mentions', 'draw', 'music'] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => {
-                      setActiveTab(tab);
-                      setDrawingMode(tab === 'draw');
-                      setSelectedId(null);
-                      setSelectedBg(false);
-                    }}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-sm font-medium transition-colors capitalize whitespace-nowrap ${
-                      activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {tab === 'text' && <Type className="h-4 w-4 shrink-0" />}
-                    {tab === 'stickers' && <span className="text-base">😀</span>}
-                    {tab === 'mentions' && <AtSign className="h-4 w-4 shrink-0" />}
-                    {tab === 'draw' && <Pen className="h-4 w-4 shrink-0" />}
-                    {tab === 'music' && <Music className="h-4 w-4 shrink-0" />}
-                    <span className="hidden md:inline">{tab}</span>
-                  </button>
-                ))}
-              </div>
+    const tabRail = (
+      <div className="flex shrink-0 border-b border-border">
+        {(['text', 'stickers', 'mentions', 'draw', 'music'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => {
+              setActiveTab(tab);
+              setDrawingMode(tab === 'draw');
+              setSelectedId(null);
+              setSelectedBg(false);
+            }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-sm font-medium transition-colors capitalize whitespace-nowrap ${
+              activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab === 'text' && <Type className="h-4 w-4 shrink-0" />}
+            {tab === 'stickers' && <span className="text-base">😀</span>}
+            {tab === 'mentions' && <AtSign className="h-4 w-4 shrink-0" />}
+            {tab === 'draw' && <Pen className="h-4 w-4 shrink-0" />}
+            {tab === 'music' && <Music className="h-4 w-4 shrink-0" />}
+            <span className="hidden md:inline">{tab}</span>
+          </button>
+        ))}
+      </div>
+    );
 
-              <ScrollArea className="flex-1 min-h-0 p-4">
+    const panelScroll = (
+      <ScrollArea className="flex-1 min-h-0 p-4">
                 {activeTab === 'text' && (
                   <div className="space-y-4">
                     <Button className="w-full" size="sm" onClick={handleAddText}>
@@ -1633,6 +1665,204 @@ export default function CreateStoryDialog({ open, onOpenChange }: { open: boolea
                   </div>
                 )}
               </ScrollArea>
+    );
+
+    const tabIcons: { id: 'text' | 'stickers' | 'mentions' | 'draw' | 'music'; label: string; node: React.ReactNode }[] = [
+      { id: 'text', label: 'Aa', node: <Type className="h-5 w-5" /> },
+      { id: 'stickers', label: '🙂', node: <span className="text-xl leading-none">🙂</span> },
+      { id: 'mentions', label: '@', node: <AtSign className="h-5 w-5" /> },
+      { id: 'draw', label: 'Brush', node: <Pen className="h-5 w-5" /> },
+      { id: 'music', label: 'Music', node: <Music className="h-5 w-5" /> },
+    ];
+
+    const privacyNode = (
+      <Popover open={privacyOpen} onOpenChange={setPrivacyOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" className="text-white">
+            <Globe className="h-4 w-4 mr-2" />
+            {PRIVACY_OPTIONS.find((o) => o.value === privacy)?.label || 'Public'}
+            <ChevronDown className="h-4 w-4 ml-1" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-44 p-1">
+          <RadioGroup value={privacy} onValueChange={(v) => setPrivacy(v as StoryPrivacy)}>
+            {PRIVACY_OPTIONS.map((opt) => (
+              <div key={opt.value} className="flex items-center space-x-3 space-y-0 rounded-md px-2 py-1.5 hover:bg-accent">
+                <opt.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Label htmlFor={`${opt.value}`} className="flex-1 text-sm cursor-pointer">{opt.label}</Label>
+                <RadioGroupItem value={opt.value} id={`${opt.value}`} />
+              </div>
+            ))}
+          </RadioGroup>
+        </PopoverContent>
+      </Popover>
+    );
+
+    if (variant === 'page') {
+      const railTools = (['text', 'stickers', 'draw', 'music'] as const);
+      return (
+        <div className="fixed inset-0 z-[100] bg-black overflow-hidden">
+          {/* Top bar */}
+          <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),16px)] pb-3" style={{ paddingTop: 'max(env(safe-area-inset-top), 16px)' }}>
+            <h1 className="text-base font-semibold text-white drop-shadow">Edit Story</h1>
+            <div className="flex items-center gap-1">
+              {privacyNode}
+              <Button variant="ghost" size="icon" className="text-white h-9 w-9" onClick={handleBack} aria-label="Back">
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Canvas */}
+          <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+            <div className="relative h-full w-full flex items-center justify-center">
+              <div className="relative" style={{ height: '100%', width: STAGE_H / STAGE_W * (window.innerHeight || 640) > window.innerWidth ? 'auto' : 'auto' }}>
+                {canvasBlock}
+              </div>
+            </div>
+          </div>
+
+          {/* Left tool rail */}
+          <div className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex flex-col items-center gap-5" style={{ top: '50%' }}>
+            {railTools.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => { setActiveTab(tab); setDrawingMode(tab === 'draw'); setSelectedId(null); setSelectedBg(false); }}
+                className={`h-11 w-14 rounded-full flex items-center justify-center transition-colors ${
+                  activeTab === tab ? 'bg-white/25 text-white' : 'text-white/90 hover:bg-white/10'
+                }`}
+                title={tab}
+              >
+                {tabIcons.find((i) => i.id === tab)?.node}
+              </button>
+            ))}
+            <button
+              onClick={() => { setActiveTab('music'); setDrawingMode(false); setSelectedId(null); setSelectedBg(false); }}
+              className={`h-11 w-14 rounded-full flex items-center justify-center transition-colors ${activeTab === 'music' ? 'bg-white/25 text-white' : 'text-white/90 hover:bg-white/10'}`}
+              title="More"
+            >
+              <span className="text-white text-lg leading-none">⌄</span>
+            </button>
+          </div>
+
+          {/* Bottom share bar */}
+          <div className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-3 bg-gradient-to-t from-black/70 to-transparent">
+            <div className="flex items-center justify-center gap-3">
+              <Button onClick={handleCreate} disabled={uploading} size="sm" className="rounded-full bg-white text-black hover:bg-white/90">
+                {uploading ? <>{uploadProgress}</> : <><Check className="h-4 w-4 mr-1" /> Share</>}
+              </Button>
+            </div>
+          </div>
+
+          {/* Active tool bottom sheet */}
+          {activeTab !== 'music' && (
+            <div className="absolute bottom-16 left-0 right-0 z-40 flex justify-center">
+              <div className="w-full max-w-sm mx-4 rounded-2xl bg-neutral-900/95 backdrop-blur border border-white/10 overflow-hidden max-h-[42vh]">
+                <div className="flex items-center justify-between px-3 py-1 border-b border-white/10">
+                  <span className="text-sm font-medium text-white">{tabIcons.find((i) => i.id === activeTab)?.label}</span>
+                  <button onClick={() => { setActiveTab('text'); setDrawingMode(false); if (!selectedId) setSelectedId(null); }} className="text-white/70 hover:text-white p-1" aria-label="Close panel">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="max-h-[calc(42vh-40px)] overflow-y-auto p-3">
+                  {activeTab === 'text' && (
+                    <div className="flex flex-wrap gap-2">
+                      <Button className="w-full" size="sm" onClick={handleAddText}>
+                        <Type className="h-4 w-4 mr-1.5" /> Add Text
+                      </Button>
+                      <div className="w-full flex flex-wrap gap-1">
+                        {TEXT_COLORS.map((color) => (
+                          <button key={color} className={`w-7 h-7 rounded border ${selectedOverlay?.fill === color ? 'border-white scale-110' : 'border-white/20'}`}
+                            style={{ backgroundColor: color }} onClick={() => selectedOverlay ? updateOverlay(selectedOverlay.id, { fill: color }) : setActiveTab('text')} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {activeTab === 'stickers' && (
+                    <div>
+                      <div className="flex border-b border-white/10 mb-2">
+                        {(['emoji', 'sticker'] as const).map((subTab) => (
+                          <button key={subTab} onClick={() => setStickerTab(subTab)}
+                            className={`flex-1 py-2 text-sm capitalize ${stickerTab === subTab ? 'text-white border-b-2 border-white' : 'text-white/50'}`}>
+                            {subTab}
+                          </button>
+                        ))}
+                      </div>
+                      {stickerTab === 'emoji' ? (
+                        <div className="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto">
+                          {catalogEmojisLoading ? <p className="text-xs text-white/50 text-center w-full py-4">Loading...</p> :
+                            filteredEmojis.slice(0, 60).map((item) => (
+                              <button key={item.url} className="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center"
+                                onClick={() => handleAddCatalogEmoji(item)}>
+                                <img src={item.url} alt={item.name} className="w-8 h-8 object-contain" loading="lazy" />
+                              </button>
+                            ))}
+                        </div>
+                      ) : (
+                        <Button variant="outline" size="sm" className="w-full text-white" onClick={() => stickerInputRef.current?.click()}>
+                          <Upload className="h-4 w-4 mr-1.5" /> Upload Image
+                        </Button>
+                      )}
+                      <input ref={stickerInputRef} type="file" className="hidden" accept="image/*" onChange={handleAddImageSticker} />
+                    </div>
+                  )}
+                  {activeTab === 'draw' && (
+                    <div className="space-y-3">
+                      <div className="flex gap-1">
+                        {DRAW_TOOLS.map((tool) => (
+                          <Button key={tool.id} variant={activeDrawTool === tool.id ? 'default' : 'outline'} size="sm" className="h-8 flex-1 text-xs text-white"
+                            onClick={() => setActiveDrawTool(tool.id as 'pen' | 'neon' | 'highlighter')}>
+                            {tool.label}
+                          </Button>
+                        ))}
+                        <Button variant={activeDrawTool === 'eraser' ? 'default' : 'outline'} size="sm" className="h-8 px-2 text-xs text-white" onClick={() => setActiveDrawTool('eraser')}>
+                          <Eraser className="h-3.5 w-3.5 mr-1" /> Eraser
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {DRAW_COLORS.map((color) => (
+                          <button key={color} className={`w-7 h-7 rounded-full border ${drawColor === color ? 'border-white scale-110' : 'border-white/20'}`}
+                            style={{ backgroundColor: color }} onClick={() => setDrawColor(color)} />
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-white/60">Size: {brushSize}px</span>
+                        <Slider value={[brushSize]} onValueChange={([v]) => setBrushSize(v)} min={2} max={30} step={1} className="flex-1" />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1 text-white" onClick={handleUndo} disabled={strokes.length === 0}>
+                          <Undo2 className="h-4 w-4 mr-1.5" /> Undo
+                        </Button>
+                        <Button variant="outline" size="sm" className="flex-1 text-white" onClick={handleRedo} disabled={redoStack.length === 0}>
+                          <Redo2 className="h-4 w-4 mr-1.5" /> Redo
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-4xl h-[100dvh] sm:h-[90vh] min-h-0 p-0 gap-0 flex flex-col">
+          <div className="flex shrink-0 items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border">
+            <Button variant="ghost" size="icon" onClick={handleBack}><ChevronLeft className="h-5 w-5" /></Button>
+            <h1 className="text-base sm:text-lg font-semibold truncate flex-1 min-w-0 text-center">Edit Story</h1>
+            <Button onClick={handleCreate} disabled={uploading} size="sm" className="shrink-0">
+              {uploading ? <>{uploadProgress}</> : <><Check className="h-4 w-4 mr-1" /> Share</>}
+            </Button>
+          </div>
+
+            <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
+            {canvasBlock}
+              <div className="w-full flex-1 md:w-80 md:flex-none min-h-0 border-t md:border-t-0 md:border-l border-border bg-background flex flex-col">
+              {tabRail}
+              {panelScroll}
             </div>
           </div>
         </DialogContent>
