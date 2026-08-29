@@ -138,6 +138,7 @@ const FriendRequestsDropdown: React.FC = () => {
         description: 'You are now friends!',
       });
     } catch (error: any) {
+      console.error('[accept_friend_request] failed:', error?.message, error?.code, error?.details);
       toast({
         title: 'Error',
         description: 'Failed to accept friend request.',
@@ -166,6 +167,7 @@ const FriendRequestsDropdown: React.FC = () => {
         title: 'Friend request rejected',
       });
     } catch (error: any) {
+      console.error('[reject_friend_request] failed:', error?.message, error?.code, error?.details);
       toast({
         title: 'Error',
         description: 'Failed to reject friend request.',
