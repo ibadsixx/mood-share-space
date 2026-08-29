@@ -99,40 +99,67 @@ const Stories = () => {
 
       {/* Story Cards */}
       {stories.map((userStories) => (
-        <motion.div
-          key={userStories.user_id}
-          whileHover={{ scale: 1.02, y: -2 }}
-          transition={{ duration: 0.2 }}
-          className="flex-shrink-0"
-        >
-          <Card
-            onClick={() => handleStoryClick(userStories)}
-            className="relative w-[80px] sm:w-[110px] h-[140px] sm:h-[190px] cursor-pointer overflow-hidden border-border/50 hover:shadow-lg transition-shadow group"
-          >
-            {userStories.profile_pic ? (
-              <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{ backgroundImage: `url(${userStories.profile_pic})` }}
-              />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-                <span className="text-4xl sm:text-6xl font-bold text-primary/60">
-                  {userStories.display_name?.[0]?.toUpperCase() || '?'}
-                </span>
-              </div>
-            )}
+        (() => {
+          const latest = userStories.stories[userStories.stories.length - 1];
+          const thumb = latest
+            ? (latest.media_type === 'video' ? (latest.thumbnail_url || latest.media_url) : latest.media_url)
+            : userStories.profile_pic;
 
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+          return (
+            <motion.div
+              key={userStories.user_id}
+              whileHover={{ scale: 1.02, y: -2 }}
+              transition={{ duration: 0.2 }}
+              className="flex-shrink-0"
+            >
+              <Card
+                onClick={() => handleStoryClick(userStories)}
+                className="relative w-[80px] sm:w-[110px] h-[140px] sm:h-[190px] cursor-pointer overflow-hidden border-border/50 hover:shadow-lg transition-shadow group"
+              >
+                {thumb ? (
+                  <img
+                    src={thumb}
+                    alt={userStories.display_name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
+                    <span className="text-4xl sm:text-6xl font-bold text-primary/60">
+                      {userStories.display_name?.[0]?.toUpperCase() || '?'}
+                    </span>
+                  </div>
+                )}
 
-            {/* Username */}
-            <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2">
-              <p className="text-[10px] sm:text-xs font-semibold text-white drop-shadow-lg line-clamp-2 leading-tight">
-                {userStories.display_name}
-              </p>
-            </div>
-          </Card>
-        </motion.div>
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+
+                {/* Avatar overlay */}
+                {userStories.profile_pic ? (
+                  <img
+                    src={userStories.profile_pic}
+                    alt={userStories.username}
+                    className="absolute top-1.5 sm:top-2 left-1.5 sm:left-2 w-7 h-7 sm:w-9 sm:h-9 rounded-full object-cover ring-2 ring-white/80 shadow-lg"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="absolute top-1.5 sm:top-2 left-1.5 sm:left-2 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-primary flex items-center justify-center ring-2 ring-white/80 shadow-lg">
+                    <span className="text-xs sm:text-sm font-bold text-primary-foreground">
+                      {userStories.display_name?.[0]?.toUpperCase() || '?'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Username */}
+                <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2">
+                  <p className="text-[10px] sm:text-xs font-semibold text-white drop-shadow-lg line-clamp-2 leading-tight">
+                    {userStories.display_name}
+                  </p>
+                </div>
+              </Card>
+            </motion.div>
+          );
+        })()
       ))}
     </>
   );

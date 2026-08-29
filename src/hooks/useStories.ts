@@ -8,6 +8,7 @@ export interface Story {
   user_id: string;
   media_url: string;
   media_type: 'image' | 'video';
+  thumbnail_url?: string | null;
   caption: string | null;
   duration: number; // Story display duration in seconds
   music_url: string | null;
