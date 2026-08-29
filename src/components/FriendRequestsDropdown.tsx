@@ -122,12 +122,15 @@ const FriendRequestsDropdown: React.FC = () => {
   const handleAccept = async (requestId: string) => {
     setActionLoading(requestId);
     try {
-      const { error } = await gateway
-        .from('friends')
-        .update({ status: 'accepted' })
-        .eq('id', requestId);
+      const { data, error } = await gateway.rpc('accept_friend_request', {
+        p_friendship_id: requestId,
+      });
 
       if (error) throw error;
+
+      if (!data) {
+        throw new Error('Request could not be accepted');
+      }
 
       setRequests(prev => prev.filter(r => r.id !== requestId));
       toast({
@@ -148,12 +151,15 @@ const FriendRequestsDropdown: React.FC = () => {
   const handleReject = async (requestId: string) => {
     setActionLoading(requestId);
     try {
-      const { error } = await gateway
-        .from('friends')
-        .update({ status: 'rejected' })
-        .eq('id', requestId);
+      const { data, error } = await gateway.rpc('reject_friend_request', {
+        p_friendship_id: requestId,
+      });
 
       if (error) throw error;
+
+      if (!data) {
+        throw new Error('Request could not be rejected');
+      }
 
       setRequests(prev => prev.filter(r => r.id !== requestId));
       toast({

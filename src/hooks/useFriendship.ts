@@ -184,12 +184,12 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
     if (!friendship.id) return;
 
     try {
-      const { error } = await gateway
-        .from('friends')
-        .delete()
-        .eq('id', friendship.id);
+      const { data, error } = await gateway.rpc('cancel_friend_request', {
+        p_friendship_id: friendship.id,
+      });
 
       if (error) throw error;
+      if (!data) throw new Error('Request could not be cancelled');
 
       setFriendship({
         id: null,
@@ -215,12 +215,12 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
     if (!friendship.id) return;
 
     try {
-      const { error } = await gateway
-        .from('friends')
-        .update({ status: 'accepted' })
-        .eq('id', friendship.id);
+      const { data, error } = await gateway.rpc('accept_friend_request', {
+        p_friendship_id: friendship.id,
+      });
 
       if (error) throw error;
+      if (!data) throw new Error('Request could not be accepted');
 
       setFriendship(prev => ({
         ...prev,
@@ -244,12 +244,12 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
     if (!friendship.id) return;
 
     try {
-      const { error } = await gateway
-        .from('friends')
-        .update({ status: 'rejected' })
-        .eq('id', friendship.id);
+      const { data, error } = await gateway.rpc('reject_friend_request', {
+        p_friendship_id: friendship.id,
+      });
 
       if (error) throw error;
+      if (!data) throw new Error('Request could not be rejected');
 
       setFriendship(prev => ({
         ...prev,
@@ -273,12 +273,12 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
     if (!friendship.id) return;
 
     try {
-      const { error } = await gateway
-        .from('friends')
-        .delete()
-        .eq('id', friendship.id);
+      const { data, error } = await gateway.rpc('remove_friendship', {
+        p_friendship_id: friendship.id,
+      });
 
       if (error) throw error;
+      if (!data) throw new Error('Could not remove friendship');
 
       setFriendship({
         id: null,
