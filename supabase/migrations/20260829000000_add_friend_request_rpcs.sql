@@ -82,3 +82,10 @@ BEGIN
   RETURN v_deleted > 0;
 END;
 $$;
+
+-- Ensure the authenticated (and service) roles can execute these functions.
+GRANT EXECUTE ON FUNCTION public.accept_friend_request(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.reject_friend_request(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.cancel_friend_request(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.remove_friendship(uuid) TO authenticated;
+
