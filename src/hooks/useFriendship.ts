@@ -184,12 +184,9 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
     if (!friendship.id) return;
 
     try {
-      const { data, error } = await gateway.rpc('cancel_friend_request', {
-        p_friendship_id: friendship.id,
-      });
+      const { error } = await gateway.from('friends').delete().eq('id', friendship.id);
 
       if (error) throw error;
-      if (!data) throw new Error('Request could not be cancelled');
 
       setFriendship({
         id: null,
@@ -215,9 +212,12 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
     if (!friendship.id) return;
 
     try {
-      const { data, error } = await gateway.rpc('accept_friend_request', {
-        p_friendship_id: friendship.id,
-      });
+      const { data, error } = await gateway
+        .from('friends')
+        .update({ status: 'accepted' })
+        .eq('id', friendship.id)
+        .select()
+        .single();
 
       if (error) throw error;
       if (!data) throw new Error('Request could not be accepted');
@@ -232,7 +232,7 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
         description: 'You are now friends!',
       });
     } catch (error: any) {
-      console.error('[accept_friend_request] failed:', error?.message, error?.code, error?.details);
+      console.error('[accept] failed:', error?.message, error?.code, error?.details);
       toast({
         title: 'Error',
         description: 'Failed to accept friend request.',
@@ -245,9 +245,12 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
     if (!friendship.id) return;
 
     try {
-      const { data, error } = await gateway.rpc('reject_friend_request', {
-        p_friendship_id: friendship.id,
-      });
+      const { data, error } = await gateway
+        .from('friends')
+        .update({ status: 'rejected' })
+        .eq('id', friendship.id)
+        .select()
+        .single();
 
       if (error) throw error;
       if (!data) throw new Error('Request could not be rejected');
@@ -262,7 +265,7 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
         description: 'Friend request has been rejected.',
       });
     } catch (error: any) {
-      console.error('[reject_friend_request] failed:', error?.message, error?.code, error?.details);
+      console.error('[reject] failed:', error?.message, error?.code, error?.details);
       toast({
         title: 'Error',
         description: 'Failed to reject friend request.',
@@ -275,12 +278,9 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
     if (!friendship.id) return;
 
     try {
-      const { data, error } = await gateway.rpc('remove_friendship', {
-        p_friendship_id: friendship.id,
-      });
+      const { error } = await gateway.from('friends').delete().eq('id', friendship.id);
 
       if (error) throw error;
-      if (!data) throw new Error('Could not remove friendship');
 
       setFriendship({
         id: null,

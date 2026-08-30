@@ -114,9 +114,12 @@ const FriendRequestsPage = () => {
   const handleAccept = async (requestId: string) => {
     setActionLoading(requestId);
     try {
-      const { data, error } = await gateway.rpc('accept_friend_request', {
-        p_friendship_id: requestId,
-      });
+      const { data, error } = await gateway
+        .from('friends')
+        .update({ status: 'accepted' })
+        .eq('id', requestId)
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -130,7 +133,7 @@ const FriendRequestsPage = () => {
         description: 'You are now friends!',
       });
     } catch (error: any) {
-      console.error('[accept_friend_request] failed:', error?.message, error?.code, error?.details);
+      console.error('[accept] failed:', error?.message, error?.code, error?.details);
       toast({
         title: 'Error',
         description: 'Failed to accept friend request.',
@@ -144,9 +147,12 @@ const FriendRequestsPage = () => {
   const handleReject = async (requestId: string) => {
     setActionLoading(requestId);
     try {
-      const { data, error } = await gateway.rpc('reject_friend_request', {
-        p_friendship_id: requestId,
-      });
+      const { data, error } = await gateway
+        .from('friends')
+        .update({ status: 'rejected' })
+        .eq('id', requestId)
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -159,7 +165,7 @@ const FriendRequestsPage = () => {
         title: 'Friend request rejected',
       });
     } catch (error: any) {
-      console.error('[reject_friend_request] failed:', error?.message, error?.code, error?.details);
+      console.error('[reject] failed:', error?.message, error?.code, error?.details);
       toast({
         title: 'Error',
         description: 'Failed to reject friend request.',

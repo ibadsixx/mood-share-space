@@ -79,9 +79,42 @@ function parseFilter(filterStr: string): ParsedFilter | null {
   return { col, op, rawVal, negated };
 }
 
-function parseOrCondition(cond: string): ParsedFilter | null {
-  const trimmed = cond.trim();
-  return trimmed.includes('=') ? parseFilter(trimmed) : parseDotFilter(trimmed);
+// Split an expression string on top-level commas (respects nested parens).
+function splitTopLevel(input: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const ch of input) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) {
+      if (current.trim()) parts.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+// Recursively evaluate a PostgREST filter expression against a row.
+// Supports simple (col.op.val / not.col.op.val) and nested and(...)/or(...)
+// groups. Unknown expressions return true so they never hide rows.
+function matchesFilterExpr(expr: string, row: Record<string, unknown>): boolean {
+  const e = expr.trim();
+
+  if (e.startsWith('and(') && e.endsWith(')')) {
+    return splitTopLevel(e.slice(4, -1)).every(cond => matchesFilterExpr(cond, row));
+  }
+  if (e.startsWith('or(') && e.endsWith(')')) {
+    return splitTopLevel(e.slice(3, -1)).some(cond => matchesFilterExpr(cond, row));
+  }
+
+  const pf = parseFilter(e) || parseDotFilter(e);
+  if (!pf) return true;
+  const m = matchFilter(row[pf.col], pf.op, pf.rawVal);
+  return pf.negated ? !m : m;
 }
 
 function applyFilters(data: Record<string, unknown>[], filters: string[]): Record<string, unknown>[] {
@@ -91,37 +124,19 @@ function applyFilters(data: Record<string, unknown>[], filters: string[]): Recor
 
     if (filterStr.startsWith('or=(')) {
       const inner = filterStr.slice(4, -1);
-      const orConditions: string[] = [];
-      let depth = 0;
-      let current = '';
-      for (const ch of inner) {
-        if (ch === '(') depth++;
-        if (ch === ')') depth--;
-        if (ch === ',' && depth === 0) {
-          orConditions.push(current.trim());
-          current = '';
-        } else {
-          current += ch;
-        }
-      }
-      if (current.trim()) orConditions.push(current.trim());
-
-      result = result.filter(row => orConditions.some(cond => {
-        const pf = parseOrCondition(cond);
-        if (!pf) return true;
-        const m = matchFilter(row[pf.col], pf.op, pf.rawVal);
-        return pf.negated ? !m : m;
-      }));
+      const orConditions = splitTopLevel(inner);
+      result = result.filter(row => orConditions.some(cond => matchesFilterExpr(cond, row)));
       continue;
     }
 
-    const pf = parseFilter(filterStr);
-    if (!pf) continue;
-    const matches = (val: Record<string, unknown>) => {
-      const m = matchFilter(val[pf.col], pf.op, pf.rawVal);
-      return pf.negated ? !m : m;
-    };
-    result = result.filter(row => matches(row));
+    if (filterStr.startsWith('and=(')) {
+      const inner = filterStr.slice(5, -1);
+      const andConditions = splitTopLevel(inner);
+      result = result.filter(row => andConditions.every(cond => matchesFilterExpr(cond, row)));
+      continue;
+    }
+
+    result = result.filter(row => matchesFilterExpr(filterStr, row));
   }
   return result;
 }
@@ -1178,3 +1193,6 @@ class GatewayClient {
 }
 
 export const gateway = new GatewayClient();
+
+// Filter-parsing helpers are exported for unit testing only.
+export { applyFilters, matchesFilterExpr, splitTopLevel };
