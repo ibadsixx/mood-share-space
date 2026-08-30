@@ -346,13 +346,27 @@ export const useFriendsList = (profileId: string, isOwnProfile: boolean) => {
     if (!user) return;
 
     try {
-      const { error } = await gateway
+      // Look up the exact friendship row(s) between these two users and delete
+      // by their `id`. We must NOT delete via the .or(...)/.eq('status') filter
+      // alone: the gateway's bulk-delete route drops the `or(...)` operator
+      // (applySupabaseFilters only handles eq/neq/gt/.../in), so a delete that
+      // relies on the server-side filter would match EVERY row with
+      // status='accepted' — unfriending one person wiped the whole friends list.
+      const { data: friendshipRows, error: lookupError } = await gateway
         .from('friends')
-        .delete()
+        .select('id')
         .or(`and(requester_id.eq.${user.id},receiver_id.eq.${userId}),and(requester_id.eq.${userId},receiver_id.eq.${user.id})`)
         .eq('status', 'accepted');
 
-      if (error) throw error;
+      if (lookupError) throw lookupError;
+
+      for (const row of (friendshipRows || []) as Array<{ id: string }>) {
+        const { error: deleteError } = await gateway
+          .from('friends')
+          .delete()
+          .eq('id', row.id);
+        if (deleteError) throw deleteError;
+      }
 
       toast({
         title: 'Success',
