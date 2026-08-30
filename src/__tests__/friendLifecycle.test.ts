@@ -50,6 +50,10 @@ function makeInMemoryDb() {
         return { status: 200, json: [senderProfile, receiverProfile] };
       }
 
+      if (path === '/api/followers') {
+        return { status: 200, json: [] };
+      }
+
       return { status: 404, json: { error: `no mock route for ${method} ${path}` } };
     },
   };
@@ -122,5 +126,47 @@ describe('friend request lifecycle via gateway', () => {
     const friendProfile = isRequester ? row.receiver_profile : row.requester_profile;
     expect(friendProfile?.id).toBe(RECEIVER);
     expect(friendProfile?.username).toBe('receiver');
+  });
+
+  it('receiver viewing sender page sees ACCEPTED, not Add Friend', async () => {
+    await gateway.from('friends').update({ status: 'accepted' }).eq('id', ROW_ID).select().single();
+
+    // Receiver (current user) visits the SENDER's profile page.
+    const { data: friendship, error } = await gateway
+      .from('friends')
+      .select('*')
+      .or(`and(requester_id.eq.${RECEIVER},receiver_id.eq.${SENDER}),and(requester_id.eq.${SENDER},receiver_id.eq.${RECEIVER})`)
+      .maybeSingle();
+
+    expect(error).toBeNull();
+    expect(friendship?.id).toBe(ROW_ID);
+    expect(friendship?.status).toBe('accepted');
+    // isSender=false for the receiver (requester is the sender).
+    expect(friendship?.requester_id).toBe(SENDER);
+  });
+
+  it('receiver friends tab (fetchFriends logic) returns the sender as a friend', async () => {
+    await gateway.from('friends').update({ status: 'accepted' }).eq('id', ROW_ID).select().single();
+
+    const profileId = RECEIVER;
+    const { data: friendsData } = await gateway
+      .from('friends')
+      .select('created_at, requester_id, receiver_id')
+      .or(`requester_id.eq.${profileId},receiver_id.eq.${profileId}`)
+      .eq('status', 'accepted');
+
+    expect(friendsData?.length).toBe(1);
+    const friendship = friendsData![0] as any;
+    // receiver is the receiver, so the friend is the requester (sender).
+    const friendId = friendship.requester_id === profileId ? friendship.receiver_id : friendship.requester_id;
+    expect(friendId).toBe(SENDER);
+
+    const { data: profilesData } = await gateway
+      .from('profiles')
+      .select('id, username, display_name, profile_pic')
+      .in('id', [friendId]);
+
+    const sender = profilesData?.find((p: any) => p.id === SENDER);
+    expect(sender?.username).toBe('sender');
   });
 });

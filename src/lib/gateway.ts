@@ -120,22 +120,21 @@ function matchesFilterExpr(expr: string, row: Record<string, unknown>): boolean 
 function applyFilters(data: Record<string, unknown>[], filters: string[]): Record<string, unknown>[] {
   let result = data;
   for (const raw of filters) {
-    const filterStr = raw.replace(/^\(|\)$/g, '');
-
-    if (filterStr.startsWith('or=(')) {
-      const inner = filterStr.slice(4, -1);
+    if (raw.startsWith('or=(') && raw.endsWith(')')) {
+      const inner = raw.slice(4, -1);
       const orConditions = splitTopLevel(inner);
       result = result.filter(row => orConditions.some(cond => matchesFilterExpr(cond, row)));
       continue;
     }
 
-    if (filterStr.startsWith('and=(')) {
-      const inner = filterStr.slice(5, -1);
+    if (raw.startsWith('and=(') && raw.endsWith(')')) {
+      const inner = raw.slice(5, -1);
       const andConditions = splitTopLevel(inner);
       result = result.filter(row => andConditions.every(cond => matchesFilterExpr(cond, row)));
       continue;
     }
 
+    const filterStr = raw.replace(/^\(|\)$/g, '');
     result = result.filter(row => matchesFilterExpr(filterStr, row));
   }
   return result;
