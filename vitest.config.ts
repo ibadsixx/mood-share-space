@@ -6,6 +6,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: [],
+    env: {
+      VITE_API_GATEWAY_URL: 'http://mock.test',
+    },
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
   },
   resolve: {

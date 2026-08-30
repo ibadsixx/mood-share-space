@@ -22,7 +22,7 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
   });
   const { toast } = useToast();
 
-  const fetchFriendship = async () => {
+  const fetchFriendship = async (silent = false) => {
     if (!currentUserId || !profileId || currentUserId === profileId) {
       setFriendship(prev => ({ ...prev, loading: false }));
       return;
@@ -304,6 +304,24 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
 
   useEffect(() => {
     fetchFriendship();
+  }, [currentUserId, profileId]);
+
+  // Auto-refresh so friendship state reflects changes made elsewhere (e.g. the
+  // receiver accepting/rejecting in another tab) without a manual reload.
+  useEffect(() => {
+    if (!currentUserId || !profileId || currentUserId === profileId) return;
+
+    const refresh = () => {
+      if (document.visibilityState === 'visible') fetchFriendship(true);
+    };
+    refresh();
+    const interval = setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
   }, [currentUserId, profileId]);
 
   return {

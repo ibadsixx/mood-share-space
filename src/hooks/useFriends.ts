@@ -16,14 +16,14 @@ export const useFriends = (userId?: string) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchFriends = async () => {
+  const fetchFriends = async (silent = false) => {
     if (!userId) {
       setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       console.debug('[useFriends] Fetching friends for user:', userId);
       
       const { data, error } = await gateway
@@ -93,6 +93,24 @@ export const useFriends = (userId?: string) => {
 
   useEffect(() => {
     fetchFriends();
+  }, [userId]);
+
+  // Auto-refresh so the friends list reflects accept/remove made elsewhere
+  // (or in another tab) without a manual reload.
+  useEffect(() => {
+    if (!userId) return;
+
+    const refresh = () => {
+      if (document.visibilityState === 'visible') fetchFriends(true);
+    };
+    refresh();
+    const interval = setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
   }, [userId]);
 
   return {
