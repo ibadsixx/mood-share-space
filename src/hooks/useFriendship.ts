@@ -13,6 +13,29 @@ interface FriendshipStatus {
   loading: boolean;
 }
 
+// Ensure the sender follows the target. Best-effort: returns the error (if
+// any) instead of throwing, so a duplicate follow (or any follow problem)
+// can't fail the friend-request action that triggered it.
+const ensureFollowing = async (
+  followerId: string,
+  followingId: string
+): Promise<{ message?: string; code?: string } | null> => {
+  try {
+    const { error } = await gateway.from('followers').insert({
+      follower_id: followerId,
+      following_id: followingId,
+    });
+
+    if (!error || error.code === '409' || error.code === '23505') {
+      return null;
+    }
+    return error;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown follow error';
+    return { message };
+  }
+};
+
 export const useFriendship = (profileId: string, currentUserId?: string) => {
   const [friendship, setFriendship] = useState<FriendshipStatus>({
     id: null,
@@ -101,16 +124,12 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
         if (error) throw error;
         friendshipData = data;
 
-        // Also follow when re-sending a previously declined request
-        const { error: followError } = await gateway
-          .from('followers')
-          .insert({
-            follower_id: currentUserId,
-            following_id: profileId
-          });
-
-        if (followError && followError.code !== '23505') {
-          throw followError;
+        // Also follow when re-sending a previously declined request. Creating
+        // the follow is secondary to sending the request, so a duplicate or
+        // other follow error must not fail the request.
+        const followError = await ensureFollowing(currentUserId, profileId);
+        if (followError) {
+          console.warn('Friend request sent, but follow creation failed:', followError.message);
         }
 
         await createNotification({
@@ -134,16 +153,13 @@ export const useFriendship = (profileId: string, currentUserId?: string) => {
         if (error) throw error;
         friendshipData = data;
 
-        // Insert follow relationship
-        const { error: followError } = await gateway
-          .from('followers')
-          .insert({
-            follower_id: currentUserId,
-            following_id: profileId
-          });
-
-        if (followError && followError.code !== '23505') { // Ignore unique constraint violations
-          throw followError;
+        // Insert follow relationship. This is secondary to sending the
+        // request and must not fail it: the user may already be following, in
+        // which case the DB raises a unique violation (surfaced as an HTTP
+        // status, not the Postgres code, so it can't be matched by code).
+        const followError = await ensureFollowing(currentUserId, profileId);
+        if (followError) {
+          console.warn('Friend request sent, but follow creation failed:', followError.message);
         }
 
         await createNotification({
