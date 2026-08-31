@@ -488,11 +488,18 @@ const Messages = () => {
   // READ-ONLY chat: the message is readable but the recipient can only Accept,
   // Delete (reject) or Block until they accept. The request is a state of the
   // conversation, not a separate window.
+  //
+  // IMPORTANT: these request actions are RECIPIENT-ONLY. pendingRequests already
+  // holds only requests where the current user is the receiver, but we also assert
+  // r.receiver_id === currentUserId and status === 'pending' so the sender of a
+  // request can never see the Accept/Delete/Block bar (they get the normal chat).
   const activeRequest = (() => {
     if (!currentUserId || !resolvedConvInfo?.other_user) return undefined;
-    return pendingRequests.find(
-      r => r.sender_id === resolvedConvInfo.other_user?.id && r.receiver_id === currentUserId
+    const req = pendingRequests.find(
+      r => r.sender_id === resolvedConvInfo.other_user?.id
     );
+    if (req && req.receiver_id === currentUserId && req.status === 'pending') return req;
+    return undefined;
   })();
   const isReadOnly = !!activeRequest;
 
