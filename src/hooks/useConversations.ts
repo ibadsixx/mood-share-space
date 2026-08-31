@@ -37,6 +37,43 @@ async function tryDecryptMessage(msg: Message, convId: string): Promise<Message>
   return msg;
 }
 
+// Returns the ids of users whose incoming message request to `userId` has NOT
+// been accepted (pending / declined / blocked). Their DM conversations are held
+// as "Message Requests" (Accept / Delete / Block) instead of appearing in the
+// normal inbox, mirroring Facebook. Correlated client-side via the
+// message_requests sender_id/receiver_id pair — no schema link to conversations.
+async function fetchNonAcceptedRequestUserIds(userId: string): Promise<Set<string>> {
+  try {
+    const { data } = await gateway
+      .from('message_requests')
+      .select('sender_id, status')
+      .eq('receiver_id', userId);
+
+    const hidden = new Set<string>();
+    (data || []).forEach(req => {
+      if (req.status !== 'accepted') hidden.add(req.sender_id);
+    });
+    return hidden;
+  } catch (error) {
+    console.error('Error fetching message requests for inbox filtering:', error);
+    return new Set();
+  }
+}
+
+// Drops DM conversations whose other participant has an unaccepted incoming
+// message request for `userId` — those live only in the Message Request UI.
+function filterRequestConversations(
+  convs: { id: string; type: string }[],
+  firstOtherPerConv: Map<string, string>,
+  hiddenUserIds: Set<string>
+): { id: string; type: string }[] {
+  return convs.filter(conv => {
+    if (conv.type !== 'dm') return true;
+    const otherId = firstOtherPerConv.get(conv.id);
+    return !(otherId && hiddenUserIds.has(otherId));
+  });
+}
+
 async function fetchConversationsDirectly(userId: string): Promise<Conversation[]> {
   const { data: participants } = await gateway
     .from('conversation_participants')
@@ -67,6 +104,11 @@ async function fetchConversationsDirectly(userId: string): Promise<Conversation[
     }
   });
 
+  const hiddenUserIds = await fetchNonAcceptedRequestUserIds(userId);
+  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, hiddenUserIds);
+  const convIds2 = visibleConvs.map(c => c.id);
+  if (convIds2.length === 0) return [];
+
   const otherUserIds = [...new Set(firstOtherPerConv.values())];
   const { data: profilesData } = await gateway
     .from('profiles')
@@ -78,7 +120,7 @@ async function fetchConversationsDirectly(userId: string): Promise<Conversation[
   const { data: allMessages } = await gateway
     .from('messages')
     .select('conversation_id, content, created_at')
-    .in('conversation_id', convIds)
+    .in('conversation_id', convIds2)
     .order('created_at', { ascending: false })
     .limit(200);
 
@@ -89,7 +131,7 @@ async function fetchConversationsDirectly(userId: string): Promise<Conversation[
     }
   });
 
-  return convs.map(conv => {
+  return visibleConvs.map(conv => {
     const otherUserId = firstOtherPerConv.get(conv.id);
     const otherProfile = otherUserId ? profileMap.get(otherUserId) : null;
     const lastMsg = lastMsgMap.get(conv.id);
@@ -149,10 +191,15 @@ async function fetchPageConversationsDirectly(pageId: string, userId: string): P
 
   const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
+  const hiddenUserIds = await fetchNonAcceptedRequestUserIds(userId);
+  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, hiddenUserIds);
+  const convIds2 = visibleConvs.map(c => c.id);
+  if (convIds2.length === 0) return [];
+
   const { data: allMessages } = await gateway
     .from('messages')
     .select('conversation_id, content, created_at')
-    .in('conversation_id', convIds)
+    .in('conversation_id', convIds2)
     .order('created_at', { ascending: false })
     .limit(200);
 
@@ -163,7 +210,7 @@ async function fetchPageConversationsDirectly(pageId: string, userId: string): P
     }
   });
 
-  return convs.map(conv => {
+  return visibleConvs.map(conv => {
     const otherUserId = firstOtherPerConv.get(conv.id);
     const otherProfile = otherUserId ? profileMap.get(otherUserId) : null;
     const lastMsg = lastMsgMap.get(conv.id);

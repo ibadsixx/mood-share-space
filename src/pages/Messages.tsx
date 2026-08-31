@@ -659,7 +659,10 @@ const Messages = () => {
                           <Button
                             size="sm"
                             className="h-8 px-2"
-                            onClick={() => acceptRequest(req.id, req.sender_id)}
+                            onClick={async () => {
+                              const conversationId = await acceptRequest(req.id, req.sender_id);
+                              if (conversationId) navigate(`/messages/${conversationId}`);
+                            }}
                           >
                             <Check className="h-3.5 w-3.5" />
                           </Button>
@@ -703,7 +706,10 @@ const Messages = () => {
                           <Button
                             size="sm"
                             className="h-8 px-2"
-                            onClick={() => acceptRequest(req.id, req.sender_id)}
+                            onClick={async () => {
+                              const conversationId = await acceptRequest(req.id, req.sender_id);
+                              if (conversationId) navigate(`/messages/${conversationId}`);
+                            }}
                           >
                             <Check className="h-3.5 w-3.5" />
                           </Button>

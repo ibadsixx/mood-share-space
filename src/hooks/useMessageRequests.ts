@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { gateway } from '@/lib/gateway';
 import { useToast } from '@/hooks/use-toast';
 import { createNotification } from '@/hooks/useNotifications';
+import { getOrCreateDM } from '@/api/conversations';
 
 type MessageRequest = {
   id: string;
@@ -67,7 +68,11 @@ export const useMessageRequests = (currentUserId?: string) => {
     }
   };
 
-  // Accept a message request
+  // Accept a message request. The conversation already exists (it was created
+  // when the sender pressed Message), so accepting just flips the request status
+  // and resolves the existing DM via the table-based getOrCreateDM (the old
+  // get_or_create_dm RPC joins tables across projects and 42P01s). Returns the
+  // conversationId so the UI can open the chat immediately.
   const acceptRequest = async (requestId: string, senderId: string) => {
     if (!currentUserId) return false;
 
@@ -80,12 +85,9 @@ export const useMessageRequests = (currentUserId?: string) => {
 
       if (updateError) throw updateError;
 
-      // Create or get DM conversation
-      const conversationId = await gateway.rpc('get_or_create_dm', {
-        p_user_a: currentUserId,
-        p_user_b: senderId
-      });
-
+      // Resolve the existing DM conversation via the table-based API
+      const { data: conversationId, error: dmError } = await getOrCreateDM(currentUserId, senderId);
+      if (dmError) throw dmError;
       if (!conversationId) throw new Error('Failed to create conversation');
 
       // Remove the request from local state
@@ -96,7 +98,7 @@ export const useMessageRequests = (currentUserId?: string) => {
         description: "You can now message each other",
       });
 
-      return true;
+      return conversationId;
     } catch (error: any) {
       console.error('Error accepting request:', error);
       toast({

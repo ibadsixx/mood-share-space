@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,14 +21,18 @@ export const MessageRequests: React.FC<MessageRequestsProps> = ({
 }) => {
   const { requests, loading, acceptRequest, declineRequest, blockUser } = useMessageRequests(currentUserId);
   const [processingRequest, setProcessingRequest] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const youMayKnowRequests = requests.filter(req => req.category === 'you_may_know');
   const spamRequests = requests.filter(req => req.category === 'spam');
 
   const handleAccept = async (requestId: string, senderId: string) => {
     setProcessingRequest(requestId);
-    await acceptRequest(requestId, senderId);
+    const conversationId = await acceptRequest(requestId, senderId);
     setProcessingRequest(null);
+    if (conversationId) {
+      navigate(`/messages/${conversationId}`);
+    }
   };
 
   const handleDecline = async (requestId: string) => {

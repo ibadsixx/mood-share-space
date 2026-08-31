@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -25,7 +26,8 @@ export const MessageRequestsModal: React.FC<MessageRequestsModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState('you_may_know');
   const [mutualCounts, setMutualCounts] = useState<Record<string, number>>({});
-  
+  const navigate = useNavigate();
+
   const {
     youMayKnowRequests,
     spamRequests,
@@ -35,6 +37,16 @@ export const MessageRequestsModal: React.FC<MessageRequestsModalProps> = ({
     blockUser,
     fetchMutualFriendsCount
   } = useMessageRequests(currentUserId);
+
+  const handleAccept = async (requestId: string, senderId: string) => {
+    const conversationId = await acceptRequest(requestId, senderId);
+    if (conversationId) {
+      onOpenChange(false);
+      navigate(`/messages/${conversationId}`);
+      return true;
+    }
+    return false;
+  };
 
   // Lazily fetch mutual friend counts when modal opens
   useEffect(() => {
@@ -115,7 +127,7 @@ export const MessageRequestsModal: React.FC<MessageRequestsModalProps> = ({
                       key={request.id}
                       request={request}
                       mutualFriendsCount={mutualCounts[request.sender_id]}
-                      onAccept={acceptRequest}
+                      onAccept={handleAccept}
                       onDecline={declineRequest}
                       onBlock={blockUser}
                     />
@@ -165,7 +177,7 @@ export const MessageRequestsModal: React.FC<MessageRequestsModalProps> = ({
                       key={request.id}
                       request={request}
                       mutualFriendsCount={mutualCounts[request.sender_id]}
-                      onAccept={acceptRequest}
+                      onAccept={handleAccept}
                       onDecline={declineRequest}
                       onBlock={blockUser}
                     />
