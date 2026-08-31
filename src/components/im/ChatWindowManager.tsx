@@ -139,7 +139,50 @@ export const ChatWindowManager: React.FC = () => {
           .select('id, username, display_name, profile_pic')
           .in('id', allIds);
 
-        setContacts(profiles || []);
+        const profileMap = new Map(
+          (profiles || []).map((p) => [p.id, p])
+        );
+
+        // Some users (especially legacy accounts that predate profile
+        // auto-creation) have no `profiles` row. Reconstruct their identity
+        // from auth.users sign-up metadata so they still appear as contacts,
+        // mirroring the usePeopleYouMayKnow fallback.
+        const missingIds = allIds.filter((id) => !profileMap.has(id));
+        if (missingIds.length) {
+          try {
+            const { data: authUsers } = await gateway
+              .from('users')
+              .select('id, raw_user_meta_data')
+              .in('id', missingIds);
+            const sanitizeUsername = (value: string) =>
+              value
+                .toLowerCase()
+                .replace(/[^a-z0-9_.]/g, '_')
+                .replace(/^[_.]+|[_.]+$/g, '')
+                .slice(0, 30);
+            for (const u of authUsers || []) {
+              const meta = (u?.raw_user_meta_data ?? {}) as Record<string, unknown>;
+              const metaUsername =
+                typeof meta.username === 'string' ? meta.username.trim() : '';
+              const metaDisplayName =
+                typeof meta.display_name === 'string' ? meta.display_name.trim() : '';
+              profileMap.set(u.id, {
+                id: u.id,
+                username: metaUsername || sanitizeUsername(u.id.slice(0, 8)) || `user_${u.id.slice(0, 8)}`,
+                display_name: metaDisplayName || metaUsername || 'Tone User',
+                profile_pic: null,
+              });
+            }
+          } catch (err) {
+            console.warn('[ChatWindowManager] Could not recover missing-profile contacts:', err);
+          }
+        }
+
+        const contacts = allIds
+          .map((id) => profileMap.get(id))
+          .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
+        setContacts(contacts);
       } catch {
         setContacts([]);
       } finally {
