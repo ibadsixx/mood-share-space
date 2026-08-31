@@ -13,6 +13,7 @@ import { initConversationEncryption, decryptContent, isEncryptionReady } from '@
 import { loadEcdhPrivateKey } from '@/hooks/useEncryptionKeys';
 import { playMessageNotification } from '@/lib/notificationSounds';
 import { parseCallLog, callLogLabel, formatCallDuration } from '@/lib/callLog';
+import { subscribeToMessages } from '@/lib/messageRealtime';
 
 // Call-log messages store a JSON envelope in `content`; show a readable label
 // ("Malak missed your voice call") in conversation-list previews, phrased from
@@ -255,12 +256,6 @@ type Message = {
   encryption_iv?: string;
   seen?: boolean;
   delivered?: boolean;
-};
-
-type NewMessagePayload = {
-  id: string;
-  conversation_id: string;
-  sender_id: string;
 };
 
 type MessageRow = {
@@ -607,6 +602,27 @@ export const useConversations = (currentUserId?: string) => {
         setMessages(prev => [...prev, newMessage]);
       }
 
+      // Announce the new message over the gateway's SSE hub so the receiver's
+      // open client shows it live (gateway is the only entry point; the client
+      // postgres_changes listeners never fire). Resolution to the receiver is
+      // best-effort; delivery failure here never fails the send.
+      try {
+        const conv = conversationsDataRef.current.find(
+          c => c.conversation_id === conversationId
+        );
+        const receiverId = conv?.other_user?.id;
+        if (data?.id && receiverId) {
+          const { getMessageRealtime } = await import('@/lib/messageRealtime');
+          getMessageRealtime(currentUserId)?.publish(
+            'message.created',
+            { type: 'message.created', conversationId, messageId: data.id },
+            receiverId
+          );
+        }
+      } catch {
+        // non-fatal: realtime is a best-effort UI hint
+      }
+
       return true;
     } catch (error) {
       console.error('[useConversations] Error sending message:', error);
@@ -625,6 +641,36 @@ export const useConversations = (currentUserId?: string) => {
 
     try {
       await markConversationMessagesRead(conversationId, currentUserId);
+
+      // Ping the other participant live so their client flips seen states
+      // without waiting for a refetch. Best-effort.
+      try {
+        const conv = conversationsDataRef.current.find(
+          c => c.conversation_id === conversationId
+        );
+        const receiverId = conv?.other_user?.id;
+        if (receiverId && receiverId !== currentUserId) {
+          const unreadByThem = messagesRef.current.filter(
+            m =>
+              m.conversation_id === conversationId &&
+              m.sender_id === receiverId &&
+              !m.seen
+          );
+          if (unreadByThem.length > 0) {
+            const { getMessageRealtime } = await import('@/lib/messageRealtime');
+            const channel = getMessageRealtime(currentUserId);
+            for (const msg of unreadByThem) {
+              channel?.publish(
+                'message.read',
+                { type: 'message.read', conversationId, messageId: msg.id, userId: receiverId },
+                receiverId
+              );
+            }
+          }
+        }
+      } catch {
+        // non-fatal
+      }
     } catch (error) {
       console.error('Error marking messages as read:', error);
     }
@@ -686,159 +732,133 @@ export const useConversations = (currentUserId?: string) => {
     }, 500);
   }, [fetchConversations]);
 
-  // Set up real-time subscriptions
+  // Set up real-time subscriptions. The gateway is the only entry point and
+  // its client-side postgres_changes listeners never fire, so we subscribe to
+  // the gateway's SSE hub on our own `user:<currentUserId>` channel instead.
+  // A sender publishes `message.created` (etc.) to the receiver's channel after
+  // a DB insert; this listener turns those events into live UI updates.
+  const activeConversationIdRef = useRef<string | null>(activeConversationId);
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
+
   useEffect(() => {
     if (!currentUserId) return;
 
-    const messagesChannel = gateway
-      .channel('messages-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-        },
-        async (payload) => {
-          const msgConvId = payload.new.conversation_id as string;
-          
-          // Skip if this message isn't in one of our conversations
-          if (!conversationIdsRef.current.has(msgConvId)) {
-            return;
-          }
+    const handleMessageCreated = async (payload: unknown) => {
+      const evt = payload as {
+        conversationId?: string;
+        messageId?: string;
+      };
+      const msgConvId = evt?.conversationId;
+      const messageId = evt?.messageId;
+      if (!msgConvId || !messageId || !conversationIdsRef.current.has(msgConvId)) {
+        return;
+      }
 
-          // Refresh conversations to update last message and unread counts
-          debouncedFetchConversations();
-          
-          // If it's for the active conversation, handle the new message
-          if (activeConversationId && msgConvId === activeConversationId) {
-            const newMsg = payload.new as NewMessagePayload;
-            
-            // Skip if message was sent by current user (already added optimistically)
-            if (newMsg.sender_id === currentUserId) {
-              return;
-            }
-            
-            // For messages from other users, fetch with full profile data
-            const { data: msgData } = await gateway
-              .from('messages')
-              .select(`
-                id, conversation_id, sender_id, content, encrypted_content, encryption_iv,
-                attachment_url, image_url, media_url, is_image,
-                is_gif, gif_url, is_sticker, sticker_url, sticker_id, sticker_set,
-                audio_url, audio_duration, audio_mime, audio_size, audio_path,
-                reply_to_id, created_at, message_type, is_system,
-                sender_profile:profiles!messages_sender_id_fkey(username, display_name, profile_pic)
-              `)
-              .eq('id', newMsg.id)
-              .single();
-            
-            if (msgData) {
-              // Acknowledge delivery to the sender
-              markMessageDelivered(msgData.id)
-                .catch(() => {});
-              
-              let replyData = null;
-              if (msgData.reply_to_id) {
-                const { data: replyResult } = await gateway
-                  .from('messages')
-                  .select('id, content, image_url, media_url, attachment_url, is_image, sender_profile:profiles!messages_sender_id_fkey(display_name)')
-                  .eq('id', msgData.reply_to_id)
-                  .single();
-                replyData = replyResult;
-              }
-              
-              const plainMessage = await tryDecryptMessage(msgData as Message, msgConvId);
-              const fullMessage: Message = {
-                ...plainMessage,
-                reply_to: replyData,
-                seen: false,
-                delivered: !!msgData.delivered_at
-              };
-              
-              setMessages(prev => {
-                if (prev.some(m => m.id === fullMessage.id)) {
-                  return prev;
-                }
-                return [...prev, fullMessage];
-              });
-              playMessageNotification();
-            }
-          }
+      // Refresh conversations to update last message and unread counts.
+      debouncedFetchConversations();
+
+      if (!activeConversationIdRef.current || msgConvId !== activeConversationIdRef.current) {
+        return;
+      }
+
+      const { data: msgData } = await gateway
+        .from('messages')
+        .select(`
+          id, conversation_id, sender_id, content, encrypted_content, encryption_iv,
+          attachment_url, image_url, media_url, is_image,
+          is_gif, gif_url, is_sticker, sticker_url, sticker_id, sticker_set,
+          audio_url, audio_duration, audio_mime, audio_size, audio_path,
+          reply_to_id, created_at, message_type, is_system,
+          sender_profile:profiles!messages_sender_id_fkey(username, display_name, profile_pic)
+        `)
+        .eq('id', messageId)
+        .single();
+
+      if (!msgData) return;
+
+      if (msgData.sender_id === currentUserId) return;
+
+      // Acknowledge delivery to the sender (DB write + live SSE ping).
+      markMessageDelivered(msgData.id).catch(() => {});
+      try {
+        const senderId = msgData.sender_id;
+        if (senderId && senderId !== currentUserId) {
+          const { getMessageRealtime } = await import('@/lib/messageRealtime');
+          getMessageRealtime(currentUserId)?.publish(
+            'message.delivered',
+            { type: 'message.delivered', conversationId: msgConvId, messageId: msgData.id },
+            senderId
+          );
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'conversations',
-        },
-        () => {
-          debouncedFetchConversations();
+      } catch {
+        // non-fatal
+      }
+
+      let replyData = null;
+      if (msgData.reply_to_id) {
+        const { data: replyResult } = await gateway
+          .from('messages')
+          .select('id, content, image_url, media_url, attachment_url, is_image, sender_profile:profiles!messages_sender_id_fkey(display_name)')
+          .eq('id', msgData.reply_to_id)
+          .single();
+        replyData = replyResult;
+      }
+
+      const plainMessage = await tryDecryptMessage(msgData as Message, msgConvId);
+      const fullMessage: Message = {
+        ...plainMessage,
+        reply_to: replyData,
+        seen: false,
+        delivered: !!msgData.delivered_at,
+      };
+
+      setMessages(prev => {
+        if (prev.some(m => m.id === fullMessage.id)) {
+          return prev;
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'messages',
-        },
-        (payload) => {
-          const deletedId = payload.old.id as string;
-          setMessages(prev => prev.filter(m => m.id !== deletedId));
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-        },
-        (payload) => {
-          const updated = payload.new as {
-            id: string;
-            delivered_at?: string;
-            sender_id: string;
-            conversation_id: string;
-          };
-          if (
-            updated.delivered_at &&
-            updated.sender_id === currentUserId &&
-            conversationIdsRef.current.has(updated.conversation_id)
-          ) {
-            setMessages(prev => prev.map(m =>
-              m.id === updated.id ? { ...m, delivered: true } : m
-            ));
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'message_reads',
-        },
-        (payload) => {
-          const { message_id, user_id } = payload.new as { message_id: string; user_id: string };
-          if (user_id === currentUserId) return;
-          if (messagesRef.current.some(m => m.id === message_id)) {
-            setMessages(prev => prev.map(m =>
-              m.id === message_id ? { ...m, seen: true } : m
-            ));
-          }
-        }
-      )
-      .subscribe();
+        return [...prev, fullMessage];
+      });
+      playMessageNotification();
+    };
+
+    const handleMessageRead = (payload: unknown) => {
+      const evt = payload as { messageId?: string; userId?: string };
+      if (!evt?.messageId || !evt?.userId) return;
+      if (evt.userId === currentUserId) return;
+      if (messagesRef.current.some(m => m.id === evt.messageId)) {
+        setMessages(prev =>
+          prev.map(m => (m.id === evt.messageId ? { ...m, seen: true } : m))
+        );
+      }
+    };
+
+    const handleMessageDelivered = (payload: unknown) => {
+      const evt = payload as { messageId?: string; conversationId?: string };
+      if (
+        !evt?.messageId ||
+        !evt?.conversationId ||
+        !conversationIdsRef.current.has(evt.conversationId)
+      ) {
+        return;
+      }
+      setMessages(prev =>
+        prev.map(m => (m.id === evt.messageId ? { ...m, delivered: true } : m))
+      );
+    };
+
+    const unsubCreated = subscribeToMessages(currentUserId, 'message.created', handleMessageCreated);
+    const unsubRead = subscribeToMessages(currentUserId, 'message.read', handleMessageRead);
+    const unsubDelivered = subscribeToMessages(currentUserId, 'message.delivered', handleMessageDelivered);
 
     return () => {
-      gateway.removeChannel(messagesChannel);
+      unsubCreated();
+      unsubRead();
+      unsubDelivered();
       if (debouncedFetchRef.current) clearTimeout(debouncedFetchRef.current);
     };
-  }, [currentUserId, activeConversationId, debouncedFetchConversations]);
+  }, [currentUserId, debouncedFetchConversations]);
 
   // Initial fetch
   useEffect(() => {
@@ -856,11 +876,6 @@ export const useConversations = (currentUserId?: string) => {
   // Call-log events (dispatched by sendCallLogMessage after a successful
   // insert). The gateway client's postgres_changes listeners never fire, so
   // this is what makes an open chat show the new entry without a reload.
-  const activeConversationIdRef = useRef<string | null>(activeConversationId);
-  useEffect(() => {
-    activeConversationIdRef.current = activeConversationId;
-  }, [activeConversationId]);
-
   useEffect(() => {
     if (!currentUserId) return;
     const onCallLog = (e: Event) => {
