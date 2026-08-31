@@ -6,8 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Inbox, Search, X, Users, Hash, Archive } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { MessageRequestsModal } from './MessageRequestsModal';
-import { useMessageRequests } from '@/hooks/useMessageRequests';
 import { cn } from '@/lib/utils';
 import { EmojiText } from '@/components/EmojiText';
 import { isOnline, formatLastSeen } from '@/hooks/usePresence';
@@ -36,7 +34,6 @@ interface ConversationListProps {
   activeConversationId: string | null;
   onSelectConversation: (conversationId: string) => void;
   loading: boolean;
-  currentUserId?: string;
   onArchiveConversation?: (conversationId: string) => void;
 }
 
@@ -179,13 +176,9 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   activeConversationId,
   onSelectConversation,
   loading,
-  currentUserId,
   onArchiveConversation
 }) => {
-  const [requestsModalOpen, setRequestsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { requests } = useMessageRequests(currentUserId);
-  const totalRequests = requests.length;
 
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) return conversations;
@@ -242,26 +235,6 @@ export const ConversationList: React.FC<ConversationListProps> = ({
         </div>
       </div>
 
-      {totalRequests > 0 && (
-        <div className="px-2 py-1">
-          <Button
-            variant="ghost"
-            className="w-full justify-start h-auto py-2 hover:bg-accent rounded-lg"
-            onClick={() => setRequestsModalOpen(true)}
-          >
-            <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center mr-2 shrink-0">
-              <Inbox className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">Message Requests</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {totalRequests} pending
-              </p>
-            </div>
-          </Button>
-        </div>
-      )}
-
       <ScrollArea className="flex-1">
         <div className="px-2 py-1">
           {filteredConversations.length === 0 ? (
@@ -296,12 +269,6 @@ export const ConversationList: React.FC<ConversationListProps> = ({
           )}
         </div>
       </ScrollArea>
-
-      <MessageRequestsModal
-        open={requestsModalOpen}
-        onOpenChange={setRequestsModalOpen}
-        currentUserId={currentUserId}
-      />
     </div>
   );
 };

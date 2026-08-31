@@ -942,7 +942,6 @@ const Messages = () => {
             activeConversationId={activeConversationId}
             onSelectConversation={handleSelectConversation}
             loading={loading}
-            currentUserId={currentUserId}
             onArchiveConversation={archiveConversation}
           />
         )}

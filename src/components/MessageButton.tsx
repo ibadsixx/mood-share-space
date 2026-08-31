@@ -42,22 +42,11 @@ export const MessageButton: React.FC<MessageButtonProps> = ({
     try {
       // Try to send an initial message (this will handle friend/request logic)
       const result = await sendMessage(targetUserId, `Hello! I'd like to connect with you.`);
-      
-      if (result.success) {
-        if (result.conversationId) {
-          // Direct message sent - navigate to conversation
-          toast({
-            title: "Message sent",
-            description: `Your message has been sent to ${targetDisplayName}`,
-          });
-          navigate(`/messages/${result.conversationId}`);
-        } else {
-          // Message request sent
-          toast({
-            title: "Message request sent",
-            description: `Your message request has been sent to ${targetDisplayName}`,
-          });
-        }
+
+      if (result.success && result.conversationId) {
+        // Starting a conversation opens the chat bubble naturally — no
+        // "message request" notice for the sender.
+        navigate(`/messages/${result.conversationId}`);
       } else {
         // Show specific error from the messaging system
         toast({

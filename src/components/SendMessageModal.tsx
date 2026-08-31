@@ -37,25 +37,13 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
     setLoading(true);
     try {
       const result = await sendMessage(targetUser.id, message.trim());
-      
-      if (result.success) {
-        if (result.conversationId) {
-          // Direct message sent - navigate to conversation
-          toast({
-            title: "Message sent",
-            description: `Your message has been sent to ${targetUser.display_name}`,
-          });
-          navigate(`/messages/${result.conversationId}`);
-          setOpen(false);
-        } else {
-          // Message request sent
-          toast({
-            title: "Message request sent",
-            description: `Your message request has been sent to ${targetUser.display_name}`,
-          });
-          setOpen(false);
-        }
+
+      if (result.success && result.conversationId) {
+        // Starting a conversation opens the chat bubble naturally — no
+        // "message request" notice for the sender.
         setMessage('');
+        setOpen(false);
+        navigate(`/messages/${result.conversationId}`);
       } else {
         // Show specific error from the messaging system
         toast({
