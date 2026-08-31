@@ -77,6 +77,7 @@ export class UserRealtimeChannel {
   async publish(event: string, payload: UserChannelEvent, targetUserId: string): Promise<PublishResult> {
     if (!GATEWAY_URL) return { ok: false, delivered: 0 };
     const channel = `user:${targetUserId}`;
+    console.log(`[MessageRealtime] Publishing ${event} → ${channel}`);
     const post = async (token: string) =>
       fetch(`${GATEWAY_URL}/api/realtime/publish`, {
         method: 'POST',
@@ -104,10 +105,9 @@ export class UserRealtimeChannel {
       }
       if (!res.ok) return { ok: false, delivered: 0 };
       const json = await res.json().catch(() => null);
-      return {
-        ok: true,
-        delivered: typeof json?.delivered === 'number' ? json.delivered : 0,
-      };
+      const delivered = typeof json?.delivered === 'number' ? json.delivered : 0;
+      console.log(`[MessageRealtime] Publish ${event} → ${channel}: delivered=${delivered}`);
+      return { ok: true, delivered };
     } catch {
       return { ok: false, delivered: 0 };
     }
@@ -154,11 +154,13 @@ export class UserRealtimeChannel {
     }
 
     if (!res.ok || !res.body) {
+      console.warn(`[MessageRealtime] SSE subscribe failed: status=${res.status}`);
       this.scheduleReconnect();
       return;
     }
 
     this.retryDelay = 1000;
+    console.log(`[MessageRealtime] SSE connected to user:${this.userId}`);
     await this.readStream(res, controller);
   }
 
@@ -237,7 +239,7 @@ export class UserRealtimeChannel {
 // user. This does NOT increment the ref count; use this for one-shot publishes.
 // Long-lived listeners should use subscribeToMessages so the count is balanced.
 export function getMessageRealtime(userId: string): UserRealtimeChannel | null {
-  if (!userId || !getToken()) return null;
+  if (!userId) return null;
   if (shared && shared.userId !== userId) {
     shared.stop();
     shared = null;
@@ -245,6 +247,7 @@ export function getMessageRealtime(userId: string): UserRealtimeChannel | null {
   }
   if (!shared) {
     shared = new UserRealtimeChannel(userId);
+    console.log(`[MessageRealtime] Starting SSE subscription to user:${userId}`);
     shared.start();
   }
   return shared;

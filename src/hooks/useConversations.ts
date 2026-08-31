@@ -13,7 +13,7 @@ import { initConversationEncryption, decryptContent, isEncryptionReady } from '@
 import { loadEcdhPrivateKey } from '@/hooks/useEncryptionKeys';
 import { playMessageNotification } from '@/lib/notificationSounds';
 import { parseCallLog, callLogLabel, formatCallDuration } from '@/lib/callLog';
-import { subscribeToMessages } from '@/lib/messageRealtime';
+import { subscribeToMessages, getMessageRealtime } from '@/lib/messageRealtime';
 
 // Call-log messages store a JSON envelope in `content`; show a readable label
 // ("Malak missed your voice call") in conversation-list previews, phrased from
@@ -604,15 +604,25 @@ export const useConversations = (currentUserId?: string) => {
 
       // Announce the new message over the gateway's SSE hub so the receiver's
       // open client shows it live (gateway is the only entry point; the client
-      // postgres_changes listeners never fire). Resolution to the receiver is
-      // best-effort; delivery failure here never fails the send.
+      // postgres_changes listeners never fire). Resolve the receiver from the
+      // conversation participants so this works even when the partner's profile
+      // row (and therefore other_user) isn't present in the in-memory list.
+      // All of this is best-effort; delivery failure never fails the send.
       try {
-        const conv = conversationsDataRef.current.find(
+        let receiverId = conversationsDataRef.current.find(
           c => c.conversation_id === conversationId
-        );
-        const receiverId = conv?.other_user?.id;
+        )?.other_user?.id;
+
+        if (data?.id && !receiverId) {
+          const { data: participants } = await gateway
+            .from('conversation_participants')
+            .select('user_id')
+            .eq('conversation_id', conversationId)
+            .neq('user_id', currentUserId);
+          receiverId = participants?.[0]?.user_id as string | undefined;
+        }
+
         if (data?.id && receiverId) {
-          const { getMessageRealtime } = await import('@/lib/messageRealtime');
           getMessageRealtime(currentUserId)?.publish(
             'message.created',
             { type: 'message.created', conversationId, messageId: data.id },
@@ -645,10 +655,17 @@ export const useConversations = (currentUserId?: string) => {
       // Ping the other participant live so their client flips seen states
       // without waiting for a refetch. Best-effort.
       try {
-        const conv = conversationsDataRef.current.find(
+        let receiverId = conversationsDataRef.current.find(
           c => c.conversation_id === conversationId
-        );
-        const receiverId = conv?.other_user?.id;
+        )?.other_user?.id;
+        if (!receiverId) {
+          const { data: participants } = await gateway
+            .from('conversation_participants')
+            .select('user_id')
+            .eq('conversation_id', conversationId)
+            .neq('user_id', currentUserId);
+          receiverId = participants?.[0]?.user_id as string | undefined;
+        }
         if (receiverId && receiverId !== currentUserId) {
           const unreadByThem = messagesRef.current.filter(
             m =>
@@ -657,7 +674,6 @@ export const useConversations = (currentUserId?: string) => {
               !m.seen
           );
           if (unreadByThem.length > 0) {
-            const { getMessageRealtime } = await import('@/lib/messageRealtime');
             const channel = getMessageRealtime(currentUserId);
             for (const msg of unreadByThem) {
               channel?.publish(
@@ -752,13 +768,13 @@ export const useConversations = (currentUserId?: string) => {
       };
       const msgConvId = evt?.conversationId;
       const messageId = evt?.messageId;
-      if (!msgConvId || !messageId || !conversationIdsRef.current.has(msgConvId)) {
-        return;
-      }
+      if (!msgConvId || !messageId) return;
 
-      // Refresh conversations to update last message and unread counts.
+      // Always refresh the conversation list (last-message preview + unread
+      // counts), whether or not this chat is currently open on screen.
       debouncedFetchConversations();
 
+      // Only append inline if this is the chat currently open on screen.
       if (!activeConversationIdRef.current || msgConvId !== activeConversationIdRef.current) {
         return;
       }
@@ -785,7 +801,6 @@ export const useConversations = (currentUserId?: string) => {
       try {
         const senderId = msgData.sender_id;
         if (senderId && senderId !== currentUserId) {
-          const { getMessageRealtime } = await import('@/lib/messageRealtime');
           getMessageRealtime(currentUserId)?.publish(
             'message.delivered',
             { type: 'message.delivered', conversationId: msgConvId, messageId: msgData.id },
@@ -866,6 +881,54 @@ export const useConversations = (currentUserId?: string) => {
       fetchConversations();
     }
   }, [currentUserId, fetchConversations]);
+
+  // Fallback polling so messages still arrive live even if the gateway SSE
+  // subscription is unavailable (e.g. Vercel serverless keeps the stream
+  // short-lived or the cross-instance bus is unconfigured). SSE is the fast
+  // path and stays primary; this just guarantees no-refresh delivery as a
+  // safety net. Polls are intentionally gentle and silent (no toasts/loading).
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const refreshInbox = async () => {
+      try {
+        const convs = actingPageId
+          ? await fetchPageConversationsDirectly(actingPageId, currentUserId)
+          : await fetchConversationsDirectly(currentUserId);
+        if (convs) setConversations(convs);
+      } catch {
+        // silent: covers only the fallback path
+      }
+    };
+
+    const refreshActive = async () => {
+      const id = activeConversationIdRef.current;
+      if (!id) return;
+      try {
+        const { data: newest } = await gateway
+          .from('messages')
+          .select('id')
+          .eq('conversation_id', id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        const newestId = newest?.[0]?.id as string | undefined;
+        if (newestId && !messagesRef.current.some(m => m.id === newestId)) {
+          // A new message arrived that SSE didn't deliver — fetch it in.
+          fetchMessagesRef.current(id, 0);
+        }
+      } catch {
+        // silent
+      }
+    };
+
+    const inboxTimer = setInterval(refreshInbox, 8000);
+    const activeTimer = setInterval(refreshActive, 5000);
+    return () => {
+      clearInterval(inboxTimer);
+      clearInterval(activeTimer);
+    };
+  }, [currentUserId, actingPageId]);
+
 
   // Keep latest fetchMessages for the call-log event listener below
   const fetchMessagesRef = useRef(fetchMessages);

@@ -6,6 +6,7 @@ import { useConversations } from '@/hooks/useConversations';
 import { MessageInput } from '@/components/messages/MessageInput';
 import type { GifItem } from '@/hooks/useGifSearch';
 import { gateway } from '@/lib/gateway';
+import { getMessageRealtime } from '@/lib/messageRealtime';
 import { useCall } from '@/contexts/CallContext';
 import { parseCallLog, callLogLabel, formatCallDuration } from '@/lib/callLog';
 
@@ -79,7 +80,7 @@ export const MiniChatWindow: React.FC<MiniChatWindowProps> = ({
 
   const handleSendGif = async (gif: GifItem) => {
     if (!conversationId) return;
-    const { error } = await gateway
+    const { data: inserted, error } = await gateway
       .from('messages')
       .insert({
         conversation_id: conversationId,
@@ -87,10 +88,25 @@ export const MiniChatWindow: React.FC<MiniChatWindowProps> = ({
         gif_id: gif.id,
         gif_url: gif.url,
         is_gif: true,
-      });
+      })
+      .select('id')
+      .single();
     if (error) {
       console.error('Error sending GIF:', error);
       return;
+    }
+    // Announce over the gateway SSE hub so the receiver's open client shows it
+    // live (best-effort; the polling fallback covers this too).
+    if (inserted?.id) {
+      try {
+        getMessageRealtime(currentUserId)?.publish(
+          'message.created',
+          { type: 'message.created', conversationId, messageId: inserted.id },
+          user.id
+        );
+      } catch {
+        // non-fatal
+      }
     }
     await fetchMessages(conversationId, 0);
   };
