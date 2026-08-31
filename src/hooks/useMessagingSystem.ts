@@ -81,90 +81,77 @@ export const useMessagingSystem = (currentUserId?: string) => {
         };
       }
 
-      // Check if friends
+      // Check if friends (no longer blocks messaging — only decides whether the
+      // recipient sees this as a plain DM or as a "message request" they can
+      // Accept / Delete / Block)
       const areFriends = await checkFriendship(currentUserId, receiverId);
 
-      if (areFriends) {
-        // Send direct message - get or create conversation
-        const conversationId = await getOrCreateConversation(currentUserId, receiverId);
-        if (!conversationId) {
-          return {
-            success: false,
-            error: { code: 'CONVERSATION_FAILED', message: 'Failed to create conversation' }
-          };
-        }
-
-        const { data, error } = await gateway
-          .from('messages')
-          .insert({
-            conversation_id: conversationId,
-            sender_id: currentUserId,
-            receiver_id: receiverId,
-            content: content?.trim() || null,
-            attachment_url: mediaUrl || null
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Supabase message error:', error);
-          return {
-            success: false,
-            error: {
-              code: error.code || 'SEND_FAILED',
-              message: error.message || 'Failed to send message',
-              details: error.details
-            }
-          };
-        }
-
-        return { success: true, conversationId };
-      } else {
-        // Send message request
-        const { data, error } = await gateway
-          .from('message_requests')
-          .insert({
-            sender_id: currentUserId,
-            receiver_id: receiverId,
-            status: 'pending'
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Supabase message request error:', error);
-          
-          // Handle duplicate request
-          if (error.code === '23505') {
-            return {
-              success: false,
-              error: {
-                code: 'DUPLICATE_REQUEST',
-                message: 'You have already sent a message request to this user',
-                details: 'Wait for them to respond to your previous request'
-              }
-            };
-          }
-
-          return {
-            success: false,
-            error: {
-              code: error.code || 'REQUEST_FAILED',
-              message: error.message || 'Failed to send message request',
-              details: error.details
-            }
-          };
-        }
-
-        createNotification({
-          userId: receiverId,
-          actorId: currentUserId,
-          type: 'message_request',
-          message: 'sent you a message request'
-        });
-
-        return { success: true };
+      // Always open/create a conversation and send the first message, for friends
+      // and non-friends alike. For non-friends a pending message_requests row is
+      // also retained so the recipient still gets the Message Request/New Message
+      // UX (Accept / Delete / Block) — the request is a state of the first message,
+      // not a replacement for creating the conversation.
+      const conversationId = await getOrCreateConversation(currentUserId, receiverId);
+      if (!conversationId) {
+        return {
+          success: false,
+          error: { code: 'CONVERSATION_FAILED', message: 'Failed to create conversation' }
+        };
       }
+
+      const { data, error } = await gateway
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: currentUserId,
+          receiver_id: receiverId,
+          content: content?.trim() || null,
+          attachment_url: mediaUrl || null
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase message error:', error);
+        return {
+          success: false,
+          error: {
+            code: error.code || 'SEND_FAILED',
+            message: error.message || 'Failed to send message',
+            details: error.details
+          }
+        };
+      }
+
+      if (!areFriends) {
+        // Retain the message request so the recipient can Accept / Delete / Block.
+        // A duplicate (existing pending/declined) request is tolerated — the
+        // conversation + message are the primary outcome now.
+        try {
+          const { error: reqError } = await gateway
+            .from('message_requests')
+            .insert({
+              sender_id: currentUserId,
+              receiver_id: receiverId,
+              status: 'pending'
+            });
+
+          if (reqError && reqError.code !== '23505') {
+            console.error('Supabase message request error:', reqError);
+          } else {
+            createNotification({
+              userId: receiverId,
+              actorId: currentUserId,
+              type: 'message_request',
+              message: 'sent you a message'
+            });
+          }
+        } catch (reqError) {
+          console.error('Error recording message request:', reqError);
+        }
+      }
+
+      return { success: true, conversationId };
     } catch (error: any) {
       console.error('Unexpected messaging error:', error);
       return {
@@ -331,56 +318,69 @@ export const useMessagingSystem = (currentUserId?: string) => {
         };
       }
 
-      // Check if friends
+      // Check if friends (does not block — only whether recipient sees it as a request)
       const areFriends = await checkFriendship(currentUserId, receiverId);
 
-      if (areFriends) {
-        // Send GIF message - get or create conversation
-        const conversationId = await getOrCreateConversation(currentUserId, receiverId);
-        if (!conversationId) {
-          return {
-            success: false,
-            error: { code: 'CONVERSATION_FAILED', message: 'Failed to create conversation' }
-          };
-        }
+      // Always open/create a conversation and send the GIF, friends or not.
+      const conversationId = await getOrCreateConversation(currentUserId, receiverId);
+      if (!conversationId) {
+        return {
+          success: false,
+          error: { code: 'CONVERSATION_FAILED', message: 'Failed to create conversation' }
+        };
+      }
 
-        const { data, error } = await gateway
-          .from('messages')
-          .insert({
-            conversation_id: conversationId,
-            sender_id: currentUserId,
-            receiver_id: receiverId,
-            gif_id: gifId,
-            gif_url: gifUrl,
-            is_gif: true
-          })
-          .select()
-          .single();
+      const { data, error } = await gateway
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: currentUserId,
+          receiver_id: receiverId,
+          gif_id: gifId,
+          gif_url: gifUrl,
+          is_gif: true
+        })
+        .select()
+        .single();
 
-        if (error) {
-          console.error('Supabase GIF message error:', error);
-          return {
-            success: false,
-            error: {
-              code: error.code || 'SEND_FAILED',
-              message: error.message || 'Failed to send GIF',
-              details: error.details
-            }
-          };
-        }
-
-        return { success: true, conversationId };
-      } else {
-        // For now, don't allow GIF requests to non-friends
+      if (error) {
+        console.error('Supabase GIF message error:', error);
         return {
           success: false,
           error: {
-            code: 'NOT_FRIENDS',
-            message: 'You can only send GIFs to friends',
-            details: 'Send a text message request first'
+            code: error.code || 'SEND_FAILED',
+            message: error.message || 'Failed to send GIF',
+            details: error.details
           }
         };
       }
+
+      if (!areFriends) {
+        try {
+          const { error: reqError } = await gateway
+            .from('message_requests')
+            .insert({
+              sender_id: currentUserId,
+              receiver_id: receiverId,
+              status: 'pending'
+            });
+
+          if (reqError && reqError.code !== '23505') {
+            console.error('Supabase message request error:', reqError);
+          } else {
+            createNotification({
+              userId: receiverId,
+              actorId: currentUserId,
+              type: 'message_request',
+              message: 'sent you a GIF'
+            });
+          }
+        } catch (reqError) {
+          console.error('Error recording message request:', reqError);
+        }
+      }
+
+      return { success: true, conversationId };
     } catch (error: any) {
       console.error('Unexpected GIF messaging error:', error);
       return {
