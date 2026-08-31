@@ -258,6 +258,10 @@ const Messages = () => {
       setActiveConversationId(urlConversationId);
       setActivePage(0);
       fetchMessages(urlConversationId, 0);
+      // A fresh DM (reached right after "Message" on a profile or after
+      // accepting a request) may not be in the inbox yet; refresh the sidebar
+      // list so the conversation shows up there too.
+      refetchConversations();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, urlConversationId, activeConversationId, loading]);
@@ -408,6 +412,76 @@ const Messages = () => {
   const activeConversation = conversations.find(
     conv => conv.conversation_id === activeConversationId
   );
+
+  // A fresh DM (opened right after pressing "Message" on a profile, or after
+  // accepting a message request) may not yet be present in the inbox
+  // `conversations` list — it was created through a different hook/session.
+  // In that case resolve the partner + metadata directly so the chat window still
+  // attaches instead of falling into the "Select a conversation" placeholder.
+  const [fallbackConvInfo, setFallbackConvInfo] = useState<{
+    type: string;
+    name?: string;
+    description?: string | null;
+    other_user?: {
+      id: string;
+      username: string;
+      display_name: string;
+      profile_pic?: string;
+      last_seen_at?: string;
+    };
+  } | null>(null);
+
+  useEffect(() => {
+    if (!currentUserId || !activeConversationId) {
+      setFallbackConvInfo(null);
+      return;
+    }
+    const inboxConv = conversations.find(c => c.conversation_id === activeConversationId);
+    if (inboxConv) {
+      setFallbackConvInfo(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: parts } = await gateway
+          .from('conversation_participants')
+          .select('user_id')
+          .eq('conversation_id', activeConversationId)
+          .neq('user_id', currentUserId);
+        const otherId = (parts as any)?.[0]?.user_id as string | undefined;
+        if (!otherId) return;
+        const [{ data: convData }, { data: profileData }] = await Promise.all([
+          gateway.from('conversations')
+            .select('type, name, description')
+            .eq('id', activeConversationId)
+            .maybeSingle(),
+          gateway.from('profiles')
+            .select('id, username, display_name, profile_pic, last_seen_at')
+            .eq('id', otherId)
+            .maybeSingle(),
+        ]);
+        if (cancelled) return;
+        setFallbackConvInfo({
+          type: (convData as any)?.type || 'dm',
+          name: (convData as any)?.name,
+          description: (convData as any)?.description,
+          other_user: profileData ? {
+            id: profileData.id,
+            username: profileData.username,
+            display_name: profileData.display_name,
+            profile_pic: profileData.profile_pic,
+            last_seen_at: profileData.last_seen_at,
+          } : undefined,
+        });
+      } catch {
+        // best-effort: the inbox refetch below populates it normally
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeConversationId, currentUserId, conversations]);
+
+  const resolvedConvInfo = activeConversation ?? fallbackConvInfo;
 
   if (authLoading) {
     return (
@@ -880,10 +954,10 @@ const Messages = () => {
       }`}>
         <ChatWindow
           key={activeConversationId || 'no-conversation'}
-          otherUser={activeConversation?.other_user || null}
-          conversationType={activeConversation?.type}
-          conversationName={activeConversation?.name}
-          conversationDescription={activeConversation?.description}
+          otherUser={resolvedConvInfo?.other_user || null}
+          conversationType={resolvedConvInfo?.type}
+          conversationName={resolvedConvInfo?.name}
+          conversationDescription={resolvedConvInfo?.description}
           messages={messages}
           firstUnreadIndex={firstUnreadIndex}
           currentUserId={currentUserId}
