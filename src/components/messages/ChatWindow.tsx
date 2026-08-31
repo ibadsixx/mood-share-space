@@ -4,7 +4,7 @@ import { CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Video, Info, Users, Flame, X, Camera, Hash, UserPlus, UserCheck, Megaphone, ShieldCheck, BarChart3, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Phone, Video, Info, Users, Flame, X, Check, Ban, Camera, Hash, UserPlus, UserCheck, Megaphone, ShieldCheck, BarChart3, MessageSquare, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { MessageBubble, Message } from './MessageBubble';
@@ -52,6 +52,10 @@ interface ChatWindowProps {
   loading?: boolean;
   previewMode?: boolean;
   onBack?: () => void;
+  readOnly?: boolean;
+  onAcceptRequest?: () => void;
+  onDeclineRequest?: () => void;
+  onBlockRequest?: () => void;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -71,7 +75,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   hasMoreMessages,
   loading = false,
   previewMode = false,
-  onBack
+  onBack,
+  readOnly = false,
+  onAcceptRequest,
+  onDeclineRequest,
+  onBlockRequest
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -615,6 +623,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               ) : (
                 <>
                   {/* Call Buttons */}
+                  {!readOnly && (<>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -643,6 +652,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   >
                     <Video className="h-5 w-5" />
                   </Button>
+                  </>)}
                 </>
               )}
 
@@ -763,7 +773,41 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         />
 
         {/* Message Input */}
-        {isChannel ? (
+        {readOnly ? (
+          <div className={cn(
+            "px-4 py-3 border-t",
+            vanishingMessagesEnabled ? "border-zinc-700/50" : "border-border"
+          )}>
+            <p className="text-xs text-muted-foreground text-center mb-2">
+              You received a message request — accept it to start replying
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                className="flex-1"
+                onClick={onAcceptRequest}
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Accept
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={onDeclineRequest}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={onBlockRequest}
+              >
+                <Ban className="h-4 w-4 mr-2" />
+                Block
+              </Button>
+            </div>
+          </div>
+        ) : isChannel ? (
           channelRoleLoading ? (
             <div className={cn(
               "px-4 py-3 border-t",

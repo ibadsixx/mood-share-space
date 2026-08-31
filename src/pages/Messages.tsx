@@ -111,6 +111,7 @@ const Messages = () => {
     loading: pendingLoading,
     acceptRequest,
     declineRequest,
+    blockUser,
   } = useMessageRequests(currentUserId || undefined);
 
   const isOnline = manualStatus === null || manualStatus === 'online';
@@ -483,6 +484,57 @@ const Messages = () => {
 
   const resolvedConvInfo = activeConversation ?? fallbackConvInfo;
 
+  // A pending (unaccepted) message request from a non-friend is opened as a
+  // READ-ONLY chat: the message is readable but the recipient can only Accept,
+  // Delete (reject) or Block until they accept. The request is a state of the
+  // conversation, not a separate window.
+  const activeRequest = (() => {
+    if (!currentUserId || !resolvedConvInfo?.other_user) return undefined;
+    return pendingRequests.find(
+      r => r.sender_id === resolvedConvInfo.other_user?.id && r.receiver_id === currentUserId
+    );
+  })();
+  const isReadOnly = !!activeRequest;
+
+  const handleAcceptActiveRequest = async () => {
+    if (!activeRequest) return;
+    const conversationId = await acceptRequest(activeRequest.id, activeRequest.sender_id);
+    if (conversationId) {
+      refetchConversations();
+      setViewMode('chats');
+      setActiveConversationId(conversationId);
+      setActivePage(0);
+      fetchMessages(conversationId, 0);
+    }
+  };
+
+  const handleDeclineActiveRequest = async () => {
+    if (!activeRequest) return;
+    await declineRequest(activeRequest.id);
+    setViewMode('chats');
+    setActiveConversationId(null);
+    navigate('/messages');
+  };
+
+  const handleBlockActiveRequest = async () => {
+    if (!activeRequest) return;
+    await blockUser(activeRequest.id, activeRequest.sender_id);
+    setViewMode('chats');
+    setActiveConversationId(null);
+    navigate('/messages');
+  };
+
+  // Clicking a pending request row opens it in the chat (read-only).
+  const handleOpenPendingRequest = async (senderId: string) => {
+    const conversationId = await getOrCreateDM(senderId);
+    if (conversationId) {
+      setActiveConversationId(conversationId);
+      setActivePage(0);
+      fetchMessages(conversationId, 0);
+      navigate(`/messages/${conversationId}`);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-background">
@@ -715,20 +767,25 @@ const Messages = () => {
                         key={req.id}
                         className="flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors"
                       >
-                        <Avatar className="h-10 w-10 shrink-0">
-                          <AvatarImage src={req.sender_profile?.profile_pic || ''} className="object-cover" />
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                            {req.sender_profile?.display_name?.charAt(0)?.toUpperCase() || '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {req.sender_profile?.display_name || 'Unknown'}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            @{req.sender_profile?.username || 'unknown'}
-                          </p>
-                        </div>
+                        <button
+                          className="flex flex-1 items-center gap-3 min-w-0 text-left"
+                          onClick={() => handleOpenPendingRequest(req.sender_id)}
+                        >
+                          <Avatar className="h-10 w-10 shrink-0">
+                            <AvatarImage src={req.sender_profile?.profile_pic || ''} className="object-cover" />
+                            <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                              {req.sender_profile?.display_name?.charAt(0)?.toUpperCase() || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {req.sender_profile?.display_name || 'Unknown'}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              @{req.sender_profile?.username || 'unknown'}
+                            </p>
+                          </div>
+                        </button>
                         <div className="flex items-center gap-1 shrink-0">
                           <Button
                             size="sm"
@@ -762,20 +819,25 @@ const Messages = () => {
                         key={req.id}
                         className="flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors"
                       >
-                        <Avatar className="h-10 w-10 shrink-0">
-                          <AvatarImage src={req.sender_profile?.profile_pic || ''} className="object-cover" />
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                            {req.sender_profile?.display_name?.charAt(0)?.toUpperCase() || '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {req.sender_profile?.display_name || 'Unknown'}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            @{req.sender_profile?.username || 'unknown'}
-                          </p>
-                        </div>
+                        <button
+                          className="flex flex-1 items-center gap-3 min-w-0 text-left"
+                          onClick={() => handleOpenPendingRequest(req.sender_id)}
+                        >
+                          <Avatar className="h-10 w-10 shrink-0">
+                            <AvatarImage src={req.sender_profile?.profile_pic || ''} className="object-cover" />
+                            <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                              {req.sender_profile?.display_name?.charAt(0)?.toUpperCase() || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {req.sender_profile?.display_name || 'Unknown'}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              @{req.sender_profile?.username || 'unknown'}
+                            </p>
+                          </div>
+                        </button>
                         <div className="flex items-center gap-1 shrink-0">
                           <Button
                             size="sm"
@@ -978,6 +1040,10 @@ const Messages = () => {
           hasMoreMessages={hasMoreMessages}
           loading={loading}
           previewMode={previewMode}
+          readOnly={isReadOnly}
+          onAcceptRequest={handleAcceptActiveRequest}
+          onDeclineRequest={handleDeclineActiveRequest}
+          onBlockRequest={handleBlockActiveRequest}
         />
       </div>
 
