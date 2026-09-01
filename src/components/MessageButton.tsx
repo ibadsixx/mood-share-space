@@ -22,7 +22,7 @@ export const MessageButton: React.FC<MessageButtonProps> = ({
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { sendMessage, getOrCreateConversation } = useMessagingSystem(user?.id);
+  const { getOrCreateConversation, checkIfBlocked } = useMessagingSystem(user?.id);
   const { toast } = useToast();
 
   const handleMessageClick = async () => {
@@ -40,21 +40,30 @@ export const MessageButton: React.FC<MessageButtonProps> = ({
 
     setLoading(true);
     try {
-      // Try to send an initial message (this will handle friend/request logic)
-      const result = await sendMessage(targetUserId, `Hello! I'd like to connect with you.`);
-
-      if (result.success && result.conversationId) {
-        // Starting a conversation opens the chat bubble naturally — no
-        // "message request" notice for the sender.
-        navigate(`/messages/${result.conversationId}`);
-      } else {
-        // Show specific error from the messaging system
+      // Guard against messaging a blocked/blocking user before opening the chat.
+      const isBlocked = await checkIfBlocked(user.id, targetUserId);
+      if (isBlocked) {
         toast({
-          title: result.error?.code === 'USER_BLOCKED' ? "Cannot send message" : "Error",
-          description: result.error?.message || "Failed to send message",
+          title: "Cannot send message",
+          description: "You cannot send messages to this user",
           variant: "destructive"
         });
+        return;
       }
+
+      // Open/create the conversation WITHOUT sending any message — the user
+      // types their own first message in the chat bubble.
+      const conversationId = await getOrCreateConversation(user.id, targetUserId);
+      if (!conversationId) {
+        toast({
+          title: "Error",
+          description: "Failed to open conversation",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      navigate(`/messages/${conversationId}`);
     } catch (error: any) {
       console.error('Error creating conversation:', error);
       toast({
