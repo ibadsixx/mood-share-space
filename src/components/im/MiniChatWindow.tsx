@@ -125,7 +125,8 @@ export const MiniChatWindow: React.FC<MiniChatWindowProps> = ({
       if (!friend) {
         await ensureMessageRequest({
           senderId: currentUserId,
-          receiverId: user.id
+          receiverId: user.id,
+          conversationId
         });
       }
     } catch {

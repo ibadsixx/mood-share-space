@@ -131,7 +131,8 @@ export const useMessagingSystem = (currentUserId?: string) => {
         // conversation + message are the primary outcome now.
         await ensureMessageRequest({
           senderId: currentUserId,
-          receiverId
+          receiverId,
+          conversationId
         });
       }
 
@@ -342,7 +343,8 @@ export const useMessagingSystem = (currentUserId?: string) => {
       if (!areFriends) {
         await ensureMessageRequest({
           senderId: currentUserId,
-          receiverId
+          receiverId,
+          conversationId
         });
       }
 

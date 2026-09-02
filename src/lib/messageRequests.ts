@@ -53,42 +53,101 @@ export const determineMessageRequestCategory = async (
   }
 };
 
-// Best-effort registration of a pending message request tied to a Send event.
-// Tolerates duplicate (UNIQUE sender_id/receiver_id) inserts so subsequent
-// messages to the same non-friend do not re-create the request, and an
-// already-accepted request is left untouched. Never throws.
+// Best-effort registration of a single pending message request tied to a Send
+// event and to the existing conversation it was launched from.
+//
+// Exactly one pending request exists per conversation:
+//   ONE conversation -> ONE pending request -> MANY messages
+//
+// ensureMessageRequest (NOT createMessageRequest): every send fuses through
+// this single well-known function, which checks-before-creates and so reuses
+// the existing pending request rather than minting one per message.
+//
+//   1. Check BEFORE creating — query for an existing pending request for this
+//      sender/receiver (and, when known, the conversation) and reuse it. The
+//      sender/receiver pair is schema-stable (it is the original UNIQUE key),
+//      so this check works whether or not the conversation_id migration has
+//      been applied to the live host yet.
+//   2. Only if none exists, insert a single pending request carrying the
+//      conversation_id it arose from (conversation_id is never a uniqueness
+//      check on its own here; message_id is never used as a key at all).
+//   3. The DB enforces this authoritatively for concurrency: a partial UNIQUE
+//      index on conversation_id WHERE status = 'pending' rejects any concurrent
+//      second pending insert, and the pre-existing UNIQUE(sender_id,
+//      receiver_id) still stops a second request for the same pair — so two
+//      near-simultaneous sends can never create two requests.
+//
+// An already-accepted/declined/blocked request is left untouched. Never throws.
 export const ensureMessageRequest = async (params: {
   senderId: string;
   receiverId: string;
+  conversationId?: string;
   category?: MessageRequestCategory;
 }): Promise<void> => {
-  const { senderId, receiverId, category } = params;
+  const { senderId, receiverId, conversationId, category } = params;
   const resolvedCategory =
     category ?? (await determineMessageRequestCategory(senderId, receiverId));
 
-  const { error: reqError } = await gateway
+  // (1) Check-before-create. Look for an existing pending request for this
+  // sender/receiver pair (the schema-stable UNIQUE key). When the
+  // conversation_id column is available we narrow by conversation too; the
+  // pair filter alone is enough to dedup on hosts where the column is not yet
+  // present.
+  const { data: existing } = await gateway
     .from('message_requests')
-    .insert({
-      sender_id: senderId,
-      receiver_id: receiverId,
-      status: 'pending',
-      category: resolvedCategory
-    });
+    .select('id')
+    .eq('sender_id', senderId)
+    .eq('receiver_id', receiverId)
+    .eq('status', 'pending')
+    .maybeSingle();
 
-  if (reqError) {
-    // The gateway client reports error.code as an HTTP status, so a duplicate
-    // (Postgres 23505 unique violation) surfaces as 409, not 23505.
-    const isDuplicate = reqError.code === '23505' || reqError.code === '409';
-    if (!isDuplicate) {
-      console.error('[messageRequests] Message request insert error:', reqError);
-    }
-    return;
+  // Narrow to the same conversation when the column exists — but never widen
+  // into matching a different sender's or a non-pending request.
+  if (!existing && conversationId) {
+    const { data: byConversation } = await gateway
+      .from('message_requests')
+      .select('id')
+      .eq('conversation_id', conversationId)
+      .eq('sender_id', senderId)
+      .eq('receiver_id', receiverId)
+      .eq('status', 'pending')
+      .maybeSingle();
+    if (byConversation) return;
   }
 
-  createNotification({
-    userId: receiverId,
-    actorId: senderId,
-    type: 'message_request',
-    message: 'sent you a message'
-  });
+  // (2) Insert one pending request. conversation_id is omitted (null) when the
+  // column is unavailable on the live host, or when no conversation is known —
+  // the sender/receiver UNIQUE still dedups. When present, the check above
+  // plus the partial UNIQUE index make this safe under concurrency.
+  if (!existing) {
+    const { error: reqError } = await gateway
+      .from('message_requests')
+      .insert({
+        sender_id: senderId,
+        receiver_id: receiverId,
+        conversation_id: conversationId || null,
+        status: 'pending',
+        category: resolvedCategory
+      });
+
+    if (reqError) {
+      // The gateway client reports error.code as an HTTP status, so a duplicate
+      // (Postgres 23505 unique violation from the pending-conversation index or
+      // the sender/receiver constraint) surfaces as 409, not 23505. A duplicate
+      // means another request already exists — exactly what we want — so it is
+      // not an error.
+      const isDuplicate = reqError.code === '23505' || reqError.code === '409';
+      if (!isDuplicate) {
+        console.error('[messageRequests] Message request insert error:', reqError);
+      }
+      return;
+    }
+
+    createNotification({
+      userId: receiverId,
+      actorId: senderId,
+      type: 'message_request',
+      message: 'sent you a message'
+    });
+  }
 };

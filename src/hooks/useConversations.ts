@@ -770,7 +770,8 @@ export const useConversations = (currentUserId?: string) => {
             if (!areFriends) {
               await ensureMessageRequest({
                 senderId: currentUserId,
-                receiverId
+                receiverId,
+                conversationId
               });
             }
           }

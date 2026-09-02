@@ -9,6 +9,7 @@ type MessageRequest = {
   id: string;
   sender_id: string;
   receiver_id: string;
+  conversation_id?: string | null;
   status: 'pending' | 'accepted' | 'declined' | 'blocked';
   category: 'you_may_know' | 'spam';
   created_at: string;
