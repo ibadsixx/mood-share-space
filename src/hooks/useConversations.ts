@@ -38,40 +38,57 @@ async function tryDecryptMessage(msg: Message, convId: string): Promise<Message>
   return msg;
 }
 
-// Returns the ids of users whose incoming message request to `userId` has NOT
-// been accepted (pending / declined / blocked). Their DM conversations are held
-// as "Message Requests" (Accept / Delete / Block) instead of appearing in the
-// normal inbox, mirroring Facebook. Correlated client-side via the
-// message_requests sender_id/receiver_id pair — no schema link to conversations.
-async function fetchNonAcceptedRequestUserIds(userId: string): Promise<Set<string>> {
+// Returns the set of user IDs whose DM is a normal Chats conversation for
+// `userId` — i.e. the other participant is an accepted friend OR has an
+// accepted message request with `userId`. Everyone else (a first DM from a
+// non-friend) is treated as a pending Message Request and held out of Chats,
+// mirroring Facebook.
+//
+// Computed client-side from the `friends` and `message_requests` tables so it
+// stays correct even when a `message_requests` row is missing (the server
+// trigger that creates it can abort on the conversations host because it
+// references `friends`/`restricted_users` in the users host). This is what
+// keeps a non-friend's conversation from leaking into the normal Chats tab.
+async function fetchVisibleDmUserIds(userId: string): Promise<Set<string>> {
+  const visible = new Set<string>();
   try {
-    const { data } = await gateway
+    // Accepted friends (both directions).
+    const { data: friends } = await gateway
+      .from('friends')
+      .select('requester_id, receiver_id')
+      .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+      .eq('status', 'accepted');
+    (friends || []).forEach(f => {
+      if (f.requester_id === userId) visible.add(f.receiver_id);
+      if (f.receiver_id === userId) visible.add(f.requester_id);
+    });
+
+    // Accepted message requests also surface in Chats.
+    const { data: requests } = await gateway
       .from('message_requests')
       .select('sender_id, status')
       .eq('receiver_id', userId);
-
-    const hidden = new Set<string>();
-    (data || []).forEach(req => {
-      if (req.status !== 'accepted') hidden.add(req.sender_id);
+    (requests || []).forEach(req => {
+      if (req.status === 'accepted') visible.add(req.sender_id);
     });
-    return hidden;
   } catch (error) {
-    console.error('Error fetching message requests for inbox filtering:', error);
-    return new Set();
+    console.error('Error fetching friendship for inbox filtering:', error);
   }
+  return visible;
 }
 
-// Drops DM conversations whose other participant has an unaccepted incoming
-// message request for `userId` — those live only in the Message Request UI.
+// Drops DM conversations whose other participant is NOT an accepted friend and
+// does NOT have an accepted message request for `userId` — those live only in
+// the Message Request UI, not the normal Chats inbox.
 function filterRequestConversations(
   convs: { id: string; type: string }[],
   firstOtherPerConv: Map<string, string>,
-  hiddenUserIds: Set<string>
+  visibleUserIds: Set<string>
 ): { id: string; type: string }[] {
   return convs.filter(conv => {
     if (conv.type !== 'dm') return true;
     const otherId = firstOtherPerConv.get(conv.id);
-    return !(otherId && hiddenUserIds.has(otherId));
+    return !(otherId && !visibleUserIds.has(otherId));
   });
 }
 
@@ -131,8 +148,8 @@ async function fetchConversationsDirectly(userId: string): Promise<Conversation[
     }
   });
 
-  const hiddenUserIds = await fetchNonAcceptedRequestUserIds(userId);
-  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, hiddenUserIds);
+  const visibleUserIds = await fetchVisibleDmUserIds(userId);
+  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, visibleUserIds);
   const convIds2 = visibleConvs.map(c => c.id);
   if (convIds2.length === 0) return [];
 
@@ -218,8 +235,8 @@ async function fetchPageConversationsDirectly(pageId: string, userId: string): P
 
   const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
-  const hiddenUserIds = await fetchNonAcceptedRequestUserIds(userId);
-  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, hiddenUserIds);
+  const visibleUserIds = await fetchVisibleDmUserIds(userId);
+  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, visibleUserIds);
   const convIds2 = visibleConvs.map(c => c.id);
   if (convIds2.length === 0) return [];
 
