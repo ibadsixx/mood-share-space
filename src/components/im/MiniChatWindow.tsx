@@ -9,6 +9,7 @@ import { gateway } from '@/lib/gateway';
 import { getMessageRealtime } from '@/lib/messageRealtime';
 import { useCall } from '@/contexts/CallContext';
 import { parseCallLog, callLogLabel, formatCallDuration } from '@/lib/callLog';
+import { ensureMessageRequest } from '@/lib/messageRequests';
 
 interface MiniChatUser {
   id: string;
@@ -107,6 +108,28 @@ export const MiniChatWindow: React.FC<MiniChatWindowProps> = ({
       } catch {
         // non-fatal
       }
+    }
+    // Non-friends: register a pending message request tied to the Send event,
+    // mirroring the text-send path in useConversations, so a GIF sent as a
+    // stranger's first message still surfaces Accept / Delete / Block for the
+    // recipient. The Maybe-you-know / Spam category is computed client-side
+    // from the existing classification semantics (see src/lib/messageRequests).
+    try {
+      const { data: friend } = await gateway
+        .from('friends')
+        .select('id')
+        .or(`and(requester_id.eq.${currentUserId},receiver_id.eq.${user.id}),and(requester_id.eq.${user.id},receiver_id.eq.${currentUserId})`)
+        .eq('status', 'accepted')
+        .maybeSingle();
+
+      if (!friend) {
+        await ensureMessageRequest({
+          senderId: currentUserId,
+          receiverId: user.id
+        });
+      }
+    } catch {
+      // non-fatal
     }
     await fetchMessages(conversationId, 0);
   };

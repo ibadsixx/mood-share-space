@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { gateway } from '@/lib/gateway';
 import { useToast } from '@/hooks/use-toast';
 import { getOrCreateDM } from '@/api/conversations';
-import { createNotification } from '@/hooks/useNotifications';
+import { ensureMessageRequest } from '@/lib/messageRequests';
 
 export type MessageSystemError = {
   code: string;
@@ -125,30 +125,14 @@ export const useMessagingSystem = (currentUserId?: string) => {
 
       if (!areFriends) {
         // Retain the message request so the recipient can Accept / Delete / Block.
-        // A duplicate (existing pending/declined) request is tolerated — the
+        // The Maybe-you-know / Spam category is computed client-side via
+        // ensureMessageRequest (same semantics as the existing classifier), and
+        // duplicates (existing pending/declined) are tolerated — the
         // conversation + message are the primary outcome now.
-        try {
-          const { error: reqError } = await gateway
-            .from('message_requests')
-            .insert({
-              sender_id: currentUserId,
-              receiver_id: receiverId,
-              status: 'pending'
-            });
-
-          if (reqError && reqError.code !== '23505') {
-            console.error('Supabase message request error:', reqError);
-          } else {
-            createNotification({
-              userId: receiverId,
-              actorId: currentUserId,
-              type: 'message_request',
-              message: 'sent you a message'
-            });
-          }
-        } catch (reqError) {
-          console.error('Error recording message request:', reqError);
-        }
+        await ensureMessageRequest({
+          senderId: currentUserId,
+          receiverId
+        });
       }
 
       return { success: true, conversationId };
@@ -356,28 +340,10 @@ export const useMessagingSystem = (currentUserId?: string) => {
       }
 
       if (!areFriends) {
-        try {
-          const { error: reqError } = await gateway
-            .from('message_requests')
-            .insert({
-              sender_id: currentUserId,
-              receiver_id: receiverId,
-              status: 'pending'
-            });
-
-          if (reqError && reqError.code !== '23505') {
-            console.error('Supabase message request error:', reqError);
-          } else {
-            createNotification({
-              userId: receiverId,
-              actorId: currentUserId,
-              type: 'message_request',
-              message: 'sent you a GIF'
-            });
-          }
-        } catch (reqError) {
-          console.error('Error recording message request:', reqError);
-        }
+        await ensureMessageRequest({
+          senderId: currentUserId,
+          receiverId
+        });
       }
 
       return { success: true, conversationId };

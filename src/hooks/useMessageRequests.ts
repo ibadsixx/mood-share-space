@@ -3,6 +3,7 @@ import { gateway } from '@/lib/gateway';
 import { useToast } from '@/hooks/use-toast';
 import { createNotification } from '@/hooks/useNotifications';
 import { getOrCreateDM } from '@/api/conversations';
+import { determineMessageRequestCategory } from '@/lib/messageRequests';
 
 type MessageRequest = {
   id: string;
@@ -26,7 +27,7 @@ export const useMessageRequests = (currentUserId?: string) => {
   const { toast } = useToast();
 
   // Fetch incoming message requests
-  const fetchRequests = async () => {
+  const fetchRequests = async (silent = false) => {
     if (!currentUserId) return;
 
     try {
@@ -45,11 +46,13 @@ export const useMessageRequests = (currentUserId?: string) => {
       setRequests(data || []);
     } catch (error: any) {
       console.error('Error fetching message requests:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch message requests",
-        variant: "destructive"
-      });
+      if (!silent) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch message requests",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -192,12 +195,15 @@ export const useMessageRequests = (currentUserId?: string) => {
     if (!currentUserId) return false;
 
     try {
+      const category = await determineMessageRequestCategory(currentUserId, receiverId);
+
       const { error } = await gateway
         .from('message_requests')
         .insert({
           sender_id: currentUserId,
           receiver_id: receiverId,
-          status: 'pending'
+          status: 'pending',
+          category
         });
 
       if (error) {
@@ -287,6 +293,26 @@ export const useMessageRequests = (currentUserId?: string) => {
     if (currentUserId) {
       fetchRequests();
     }
+  }, [currentUserId]);
+
+  // Poll fallback: realtime postgres_changes events are unreliable in this
+  // stack (see docs findings), so silently refresh so an incoming first
+  // message from a non-friend surfaces its Accept / Delete / Block request
+  // without a manual reload.
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const refresh = () => {
+      if (document.visibilityState === 'visible') fetchRequests(true);
+    };
+    refresh();
+    const interval = setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
   }, [currentUserId]);
 
   // Filter requests by category

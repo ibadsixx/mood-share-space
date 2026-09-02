@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type RefObject } from 'react';
 import { gateway } from '@/lib/gateway';
 import { useToast } from '@/hooks/use-toast';
 import { usePageSwitch } from '@/contexts/PageSwitchContext';
@@ -14,6 +14,7 @@ import { loadEcdhPrivateKey } from '@/hooks/useEncryptionKeys';
 import { playMessageNotification } from '@/lib/notificationSounds';
 import { parseCallLog, callLogLabel, formatCallDuration } from '@/lib/callLog';
 import { subscribeToMessages, getMessageRealtime } from '@/lib/messageRealtime';
+import { ensureMessageRequest } from '@/lib/messageRequests';
 
 // Call-log messages store a JSON envelope in `content`; show a readable label
 // ("Malak missed your voice call") in conversation-list previews, phrased from
@@ -72,6 +73,32 @@ function filterRequestConversations(
     const otherId = firstOtherPerConv.get(conv.id);
     return !(otherId && hiddenUserIds.has(otherId));
   });
+}
+
+// Resolves the single "other" participant of a DM conversation — the inbox
+// entry's `other_user.id`, falling back to querying `conversation_participants`
+// (a DM always has exactly one other participant, so this is reliable even for
+// a brand-new conversation that hasn't been refetched into the sidebar yet).
+// Used by sendMessage for both the live SSE announce and the non-friend
+// message-request registration.
+export async function resolveDmReceiver(params: {
+  conversationId: string;
+  currentUserId: string;
+  conversationsDataRef?: RefObject<Conversation[] | null>;
+}): Promise<string | undefined> {
+  const { conversationId, currentUserId, conversationsDataRef } = params;
+
+  const fromInbox = conversationsDataRef?.current?.find(
+    c => c.conversation_id === conversationId
+  )?.other_user?.id;
+  if (fromInbox) return fromInbox;
+
+  const { data: participants } = await gateway
+    .from('conversation_participants')
+    .select('user_id')
+    .eq('conversation_id', conversationId)
+    .neq('user_id', currentUserId);
+  return participants?.[0]?.user_id as string | undefined;
 }
 
 async function fetchConversationsDirectly(userId: string): Promise<Conversation[]> {
@@ -548,6 +575,26 @@ export const useConversations = (currentUserId?: string) => {
     }
   };
 
+  // Whether the current user and `receiverId` are accepted friends. Decides
+  // whether a message lands as a plain DM or as a pending message request.
+  const checkFriendship = async (receiverId: string): Promise<boolean> => {
+    if (!currentUserId) return false;
+    try {
+      const { data, error } = await gateway
+        .from('friends')
+        .select('id')
+        .or(`and(requester_id.eq.${currentUserId},receiver_id.eq.${receiverId}),and(requester_id.eq.${receiverId},receiver_id.eq.${currentUserId})`)
+        .eq('status', 'accepted')
+        .maybeSingle();
+
+      if (error) throw error;
+      return !!data;
+    } catch (error) {
+      console.error('[useConversations] Error checking friendship:', error);
+      return false;
+    }
+  };
+
   // Send a new message
   const sendMessage = async (conversationId: string, content?: string, attachmentUrl?: string, replyToId?: string) => {
     if (!currentUserId || (!content && !attachmentUrl)) return false;
@@ -654,30 +701,65 @@ export const useConversations = (currentUserId?: string) => {
       // postgres_changes listeners never fire). Resolve the receiver from the
       // conversation participants so this works even when the partner's profile
       // row (and therefore other_user) isn't present in the in-memory list.
-      // All of this is best-effort; delivery failure never fails the send.
-      try {
-        let receiverId = conversationsDataRef.current.find(
-          c => c.conversation_id === conversationId
-        )?.other_user?.id;
+      // Best-effort: a publish failure never fails the send.
+      if (data?.id) {
+        try {
+          const receiverId = await resolveDmReceiver({
+            conversationId,
+            currentUserId,
+            conversationsDataRef
+          });
 
-        if (data?.id && !receiverId) {
-          const { data: participants } = await gateway
-            .from('conversation_participants')
-            .select('user_id')
-            .eq('conversation_id', conversationId)
-            .neq('user_id', currentUserId);
-          receiverId = participants?.[0]?.user_id as string | undefined;
+          if (receiverId && receiverId !== currentUserId) {
+            getMessageRealtime(currentUserId)?.publish(
+              'message.created',
+              { type: 'message.created', conversationId, messageId: data.id },
+              receiverId
+            );
+          }
+        } catch (error) {
+          console.warn('[useConversations] Realtime announce failed:', error);
         }
 
-        if (data?.id && receiverId) {
-          getMessageRealtime(currentUserId)?.publish(
-            'message.created',
-            { type: 'message.created', conversationId, messageId: data.id },
-            receiverId
-          );
+        // Non-friends: register a pending message request tied to the Send
+        // event itself. This is what makes the recipient see the
+        // Accept / Reject / Block UX ("Message Requests" / Pending). The
+        // Maybe-you-know / Spam category is computed client-side from the
+        // existing classification semantics (the server trigger cannot run on
+        // the host that owns message_requests — it references friends /
+        // restricted_users which live in another project), duplicates
+        // (UNIQUE sender_id/receiver_id) are tolerated — so subsequent
+        // messages to the same non-friend do not re-create the request, and
+        // an already-accepted request is left untouched.
+        //
+        // Deliberately decoupled from the realtime announce above: a message
+        // request must still be registered even if the receiver cannot be
+        // resolved for live delivery (e.g. the partner isn't in the inbox and
+        // the participants lookup fails) or the publish throws. It is its own
+        // guarded step that resolves the receiver afresh from the DM's
+        // participants (a DM always has exactly one other participant) so the
+        // recipient reliably gets the pending-request UX. Best-effort: a
+        // failure here still never fails the send, but it is logged rather than
+        // swallowed so a regression stays visible.
+        try {
+          const receiverId = await resolveDmReceiver({
+            conversationId,
+            currentUserId,
+            conversationsDataRef
+          });
+
+          if (receiverId && receiverId !== currentUserId) {
+            const areFriends = await checkFriendship(receiverId);
+            if (!areFriends) {
+              await ensureMessageRequest({
+                senderId: currentUserId,
+                receiverId
+              });
+            }
+          }
+        } catch (error) {
+          console.warn('[useConversations] Message request registration failed:', error);
         }
-      } catch {
-        // non-fatal: realtime is a best-effort UI hint
       }
 
       return true;
