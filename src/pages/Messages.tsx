@@ -375,7 +375,13 @@ const Messages = () => {
   const handleSendMessage = async (content?: string, mediaUrl?: string, replyToId?: string) => {
     if (!activeConversationId || !currentUserId) return;
 
-    const success = await sendMessage(activeConversationId, content, mediaUrl, replyToId);
+    const success = await sendMessage(
+      activeConversationId,
+      content,
+      mediaUrl,
+      replyToId,
+      resolvedConvInfo?.other_user?.id
+    );
     if (success) {
       // Message will be added via real-time subscription
     }

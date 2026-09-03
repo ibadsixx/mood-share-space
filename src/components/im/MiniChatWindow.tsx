@@ -86,6 +86,7 @@ export const MiniChatWindow: React.FC<MiniChatWindowProps> = ({
       .insert({
         conversation_id: conversationId,
         sender_id: currentUserId,
+        receiver_id: user.id,
         gif_id: gif.id,
         gif_url: gif.url,
         is_gif: true,
@@ -263,7 +264,7 @@ export const MiniChatWindow: React.FC<MiniChatWindowProps> = ({
       <div className="px-2 py-2 border-t border-border">
         <MessageInput
           onSendMessage={(content, mediaUrl, replyToId) => {
-            if (conversationId) sendMessage(conversationId, content, mediaUrl, replyToId);
+            if (conversationId) sendMessage(conversationId, content, mediaUrl, replyToId, user.id);
           }}
           onSendGif={handleSendGif}
           conversationId={conversationId || undefined}

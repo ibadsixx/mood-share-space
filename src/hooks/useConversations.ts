@@ -613,7 +613,7 @@ export const useConversations = (currentUserId?: string) => {
   };
 
   // Send a new message
-  const sendMessage = async (conversationId: string, content?: string, attachmentUrl?: string, replyToId?: string) => {
+  const sendMessage = async (conversationId: string, content?: string, attachmentUrl?: string, replyToId?: string, receiverId?: string) => {
     if (!currentUserId || (!content && !attachmentUrl)) return false;
 
     // Determine if the attachment is an image or video by file extension only
@@ -635,12 +635,21 @@ export const useConversations = (currentUserId?: string) => {
       }
     }
 
+    // Resolve the real recipient up front. An explicit receiverId (passed by
+    // the caller, e.g. the profile you pressed "Message" on) always wins so a
+    // freshly opened conversation preserves the intended recipient even when
+    // the inbox hasn't refetched it yet. Otherwise fall back to the DM's other
+    // participant. Never a placeholder like "unknown".
+    const resolvedReceiverId: string | undefined =
+      receiverId || (await resolveDmReceiver({ conversationId, currentUserId, conversationsDataRef }));
+
     try {
       const { data, error } = await gateway
         .from('messages')
         .insert({
           conversation_id: conversationId,
           sender_id: currentUserId,
+          receiver_id: resolvedReceiverId || null,
           content: encryptedContent ? null : (isImage || isVideo ? (content || null) : content),
           encrypted_content: encryptedContent || null,
           encryption_iv: encryptionIv || null,
@@ -721,11 +730,7 @@ export const useConversations = (currentUserId?: string) => {
       // Best-effort: a publish failure never fails the send.
       if (data?.id) {
         try {
-          const receiverId = await resolveDmReceiver({
-            conversationId,
-            currentUserId,
-            conversationsDataRef
-          });
+          const receiverId = resolvedReceiverId;
 
           if (receiverId && receiverId !== currentUserId) {
             getMessageRealtime(currentUserId)?.publish(
@@ -759,11 +764,7 @@ export const useConversations = (currentUserId?: string) => {
         // failure here still never fails the send, but it is logged rather than
         // swallowed so a regression stays visible.
         try {
-          const receiverId = await resolveDmReceiver({
-            conversationId,
-            currentUserId,
-            conversationsDataRef
-          });
+          const receiverId = resolvedReceiverId;
 
           if (receiverId && receiverId !== currentUserId) {
             const areFriends = await checkFriendship(receiverId);
