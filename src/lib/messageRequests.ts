@@ -151,3 +151,31 @@ export const ensureMessageRequest = async (params: {
     });
   }
 };
+
+// Resolves the conversation_id backing a message_request notification so a
+// click can open the SAME conversation the sender is in (Chats) and the
+// recipient has in Pending — never a different one. The notification row itself
+// carries no conversation reference, so we derive it from the authoritative
+// message_requests row for this sender/receiver pair (whose conversation_id was
+// set when the request was created from the send's conversation). Best-effort:
+// returns undefined when there is no request row (so the caller can fall back
+// to the generic Messages page) rather than creating anything.
+export const resolveMessageRequestConversation = async (
+  senderId: string,
+  receiverId: string
+): Promise<string | undefined> => {
+  if (!senderId || !receiverId || senderId === receiverId) return undefined;
+
+  try {
+    const { data } = await gateway
+      .from('message_requests')
+      .select('conversation_id')
+      .eq('sender_id', senderId)
+      .eq('receiver_id', receiverId)
+      .maybeSingle();
+    return (data?.conversation_id as string | undefined) || undefined;
+  } catch (error) {
+    console.warn('[messageRequests] Resolve request conversation failed:', error);
+    return undefined;
+  }
+};

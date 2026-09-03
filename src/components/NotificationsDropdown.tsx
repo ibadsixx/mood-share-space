@@ -14,12 +14,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { resolveMessageRequestConversation } from '@/lib/messageRequests';
 
 export const NotificationsDropdown = () => {
   const { notifications, unreadCount, loading, error, markAsRead, markAllAsRead, refresh } = useNotifications();
   const navigate = useNavigate();
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = async (notification: any) => {
     markAsRead(notification.id);
 
     if (notification.post_id) {
@@ -31,7 +32,14 @@ export const NotificationsDropdown = () => {
     } else if (notification.type === 'friend_request') {
       navigate(`/profile`);
     } else if (notification.type === 'message_request') {
-      navigate('/messages');
+      // Open the SAME conversation the request belongs to (Chats / Pending
+      // reference the same conversation_id); never create a new one. Fall back
+      // to the Messages page if the request/conversation can't be resolved.
+      const conversationId = await resolveMessageRequestConversation(
+        notification.actor_id,
+        notification.user_id
+      );
+      navigate(conversationId ? `/messages/${conversationId}` : '/messages');
     } else if (notification.type === 'group_post' && notification.group_id) {
       navigate(`/groups/${notification.group_id}`);
     } else if (notification.type === 'invitation' && notification.group_id) {

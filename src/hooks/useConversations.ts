@@ -63,13 +63,27 @@ async function fetchVisibleDmUserIds(userId: string): Promise<Set<string>> {
       if (f.receiver_id === userId) visible.add(f.requester_id);
     });
 
-    // Accepted message requests also surface in Chats.
-    const { data: requests } = await gateway
+    // Accepted message requests also surface in Chats: a request I accepted
+    // makes its sender a normal inbox peer.
+    const { data: inRequests } = await gateway
       .from('message_requests')
       .select('sender_id, status')
       .eq('receiver_id', userId);
-    (requests || []).forEach(req => {
+    (inRequests || []).forEach(req => {
       if (req.status === 'accepted') visible.add(req.sender_id);
+    });
+
+    // Requests where I am the SENDER: I initiated the DM, so its other
+    // participant shows in MY Chats regardless of acceptance status — the
+    // recipient sees it in Pending (Maybe-you-know / Spam) until they accept.
+    // This is what keeps my own first message to a non-friend visible in my
+    // inbox after I hit "Message".
+    const { data: outRequests } = await gateway
+      .from('message_requests')
+      .select('receiver_id')
+      .eq('sender_id', userId);
+    (outRequests || []).forEach(req => {
+      if (req.receiver_id) visible.add(req.receiver_id);
     });
   } catch (error) {
     console.error('Error fetching friendship for inbox filtering:', error);
