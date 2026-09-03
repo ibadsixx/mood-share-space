@@ -85,6 +85,13 @@ export async function fetchVisibleDmUserIds(userId: string): Promise<Set<string>
     (outRequests || []).forEach(req => {
       if (req.receiver_id) visible.add(req.receiver_id);
     });
+
+    // TRACE: sender Chats visibility read (point 5)
+    console.debug('[trace:sender-chats]', {
+      viewer_user_id: userId,
+      outbound_request_rows: outRequests ?? [],
+      visible_ids_after_outbound: [...visible],
+    });
   } catch (error) {
     console.error('Error fetching friendship for inbox filtering:', error);
   }
@@ -708,6 +715,16 @@ export const useConversations = (currentUserId?: string) => {
         });
         return false;
       }
+
+      // TRACE: message insertion (point 1-2)
+      console.debug('[trace:send]', {
+        step: 'message.insert',
+        conversation_id: conversationId,
+        sender_id: currentUserId,
+        recipient_id_resolved: resolvedReceiverId,
+        returned_message_id: data?.id ?? null,
+        returned_conversation_id: data?.conversation_id ?? null,
+      });
 
       // If reply_to_id exists, fetch the reply_to message data and add to messages state immediately
       if (data && replyToId) {

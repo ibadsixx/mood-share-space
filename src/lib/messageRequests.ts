@@ -101,6 +101,15 @@ export const ensureMessageRequest = async (params: {
     .eq('status', 'pending')
     .maybeSingle();
 
+  // TRACE: existing-pending lookup (point 3)
+  console.debug('[trace:request]', {
+    step: 'existing_check',
+    sender_id: senderId,
+    receiver_id: receiverId,
+    conversation_id: conversationId ?? null,
+    existing_request_id: (existing as { id?: string } | null)?.id ?? null,
+  });
+
   // Narrow to the same conversation when the column exists — but never widen
   // into matching a different sender's or a non-pending request.
   if (!existing && conversationId) {
@@ -120,7 +129,7 @@ export const ensureMessageRequest = async (params: {
   // the sender/receiver UNIQUE still dedups. When present, the check above
   // plus the partial UNIQUE index make this safe under concurrency.
   if (!existing) {
-    const { error: reqError } = await gateway
+    const { error: reqError, data: insertedReq } = await gateway
       .from('message_requests')
       .insert({
         sender_id: senderId,
@@ -128,7 +137,20 @@ export const ensureMessageRequest = async (params: {
         conversation_id: conversationId || null,
         status: 'pending',
         category: resolvedCategory
-      });
+      })
+      .select('id, conversation_id, sender_id, receiver_id, status');
+
+    // TRACE: request create result (point 3)
+    console.debug('[trace:request]', {
+      step: 'insert_result',
+      error_code: reqError?.code ?? null,
+      error_message: reqError?.message ?? null,
+      returned_request_id: (insertedReq as Array<{ id?: string }> | null)?.[0]?.id ?? null,
+      returned_conversation_id: (insertedReq as Array<{ conversation_id?: string | null }> | null)?.[0]?.conversation_id ?? null,
+      returned_sender_id: (insertedReq as Array<{ sender_id?: string }> | null)?.[0]?.sender_id ?? null,
+      returned_receiver_id: (insertedReq as Array<{ receiver_id?: string }> | null)?.[0]?.receiver_id ?? null,
+      returned_status: (insertedReq as Array<{ status?: string }> | null)?.[0]?.status ?? null,
+    });
 
     if (reqError) {
       // The gateway client reports error.code as an HTTP status, so a duplicate
@@ -169,10 +191,19 @@ export const resolveMessageRequestConversation = async (
   try {
     const { data } = await gateway
       .from('message_requests')
-      .select('conversation_id')
+      .select('id, conversation_id')
       .eq('sender_id', senderId)
       .eq('receiver_id', receiverId)
       .maybeSingle();
+
+    // TRACE: notification -> conversation resolution read (point 7)
+    console.debug('[trace:notification-conversation]', {
+      sender_id: senderId,
+      receiver_id: receiverId,
+      matched_request_id: (data as { id?: string } | null)?.id ?? null,
+      matched_conversation_id: (data as { conversation_id?: string | null } | null)?.conversation_id ?? null,
+    });
+
     return (data?.conversation_id as string | undefined) || undefined;
   } catch (error) {
     console.warn('[messageRequests] Resolve request conversation failed:', error);

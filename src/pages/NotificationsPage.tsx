@@ -51,6 +51,14 @@ const NotificationsPage = () => {
         notification.actor_id,
         notification.user_id
       );
+      // TRACE: notification click resolution (point 7)
+      console.debug('[trace:notification-click]', {
+        notification_actor_id: notification.actor_id,
+        notification_user_id: notification.user_id,
+        notification_type: notification.type,
+        resolved_conversation_id: conversationId ?? null,
+        navigated_to: conversationId ? `/messages/${conversationId}` : '/messages',
+      });
       navigate(conversationId ? `/messages/${conversationId}` : '/messages');
     } else if (notification.type === 'group_post' && notification.group_id) {
       navigate(`/groups/${notification.group_id}`);

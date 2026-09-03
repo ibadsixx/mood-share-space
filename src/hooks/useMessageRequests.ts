@@ -44,6 +44,16 @@ export const useMessageRequests = (currentUserId?: string) => {
 
       if (error) throw error;
 
+      // TRACE: recipient Pending read (point 6)
+      console.debug('[trace:recipient-pending]', {
+        viewer_user_id: currentUserId,
+        returned_request_count: (data || []).length,
+        returned_request_ids: (data || []).map(r => r.id),
+        returned_senders: (data || []).map(r => r.sender_id),
+        returned_conversation_ids: (data || []).map(r => r.conversation_id ?? null),
+        returned_statuses: (data || []).map(r => r.status),
+      });
+
       setRequests(data || []);
     } catch (error: any) {
       console.error('Error fetching message requests:', error);

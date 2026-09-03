@@ -220,13 +220,22 @@ export const createNotification = async (params: {
   if (userId === actorId) return;
 
   try {
-    const { error } = await notificationsApi.createNotification({
+    const { data, error } = await notificationsApi.createNotification({
       user_id: userId,
       actor_id: actorId,
       type,
       message,
       post_id: postId,
       comment_id: commentId
+    });
+
+    // TRACE: notification creation (point 4)
+    console.debug('[trace:notification]', {
+      step: 'create',
+      returned_notification_id: (data as { id?: string } | null)?.id ?? null,
+      recipient_id: userId,
+      sender_id: actorId,
+      type,
     });
 
     if (error) throw error;
