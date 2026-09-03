@@ -164,8 +164,10 @@ describe('sender Chats visibility after messaging a non-friend', () => {
     await ensureMessageRequest({ senderId: A, receiverId: B, conversationId: C, category: 'spam' });
 
     const { visibleUserIds, visitedConversationIds } = await fetchVisibleDmUserIds(A);
-    expect(visibleUserIds.has(B)).toBe(true); // B is the request receiver -> visible to sender A
-    expect(visitedConversationIds.has(C)).toBe(true); // message_requests.conversation_id drives the sender Chats
+    // B is the request receiver, so the peer guard surfaces B to A's Chats even
+    // when `message_requests` has no conversation_id column (the live schema).
+    expect(visibleUserIds.has(B)).toBe(true);
+    expect(visitedConversationIds.has(C)).toBe(false); // no conversation_id column on the request
 
     const firstOtherPerConv = new Map<string, string>([[C, B]]);
     const filtered = filterRequestConversations(

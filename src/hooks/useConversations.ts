@@ -87,15 +87,16 @@ export async function fetchVisibleDmUserIds(userId: string): Promise<{
 
     // Requests where I am the SENDER: I initiated the DM, so that conversation
     // shows in MY Chats regardless of acceptance status — the recipient sees it
-    // in Pending (Maybe-you-know / Spam) until they accept. Matching on the
-    // stored conversation_id keeps my own first message to a non-friend visible
-    // in my inbox after I hit "Message".
+    // in Pending (Maybe-you-know / Spam) until they accept. Visibility is driven
+    // by the peer (receiver_id) here; the definitive author-visible guard is
+    // the `messages` the user sent (fetchSentConversationIds). Selecting only
+    // columns that exist on `message_requests` keeps this working on schemas
+    // that don't carry a conversation_id column.
     const { data: outRequests } = await gateway
       .from('message_requests')
-      .select('conversation_id, receiver_id')
+      .select('receiver_id')
       .eq('sender_id', userId);
     (outRequests || []).forEach(req => {
-      if (req.conversation_id) visitedConversationIds.add(req.conversation_id);
       if (req.receiver_id) visibleUserIds.add(req.receiver_id);
     });
 
