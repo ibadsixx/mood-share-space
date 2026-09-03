@@ -30,14 +30,34 @@ const CONVERSATION = 'conversation-uuid-0001';
 
 let notificationRows: unknown[] = [];
 
+function applyServerFilter(rows: any[], filter: string | undefined): any[] {
+  if (!filter) return rows;
+  const eq = /^([^=]+)=eq\.(.+)$/.exec(filter);
+  if (eq) return rows.filter(r => String(r[eq[1]]) === eq[2]);
+  const inM = /^([^=]+)=in\.\(([^)]*)\)$/.exec(filter);
+  if (inM) {
+    const vals = new Set(inM[2] ? inM[2].split(',') : []);
+    return rows.filter(r => vals.has(String(r[inM[1]])));
+  }
+  return rows;
+}
+
 function makeInMemoryDb() {
   const messageRequests: any[] = [];
+  // resolveMessageRequestConversation now derives the DM from the shared
+  // participants (message_requests has no conversation_id column live).
+  const participants: any[] = [
+    { conversation_id: CONVERSATION, user_id: SENDER },
+    { conversation_id: CONVERSATION, user_id: RECEIVER },
+  ];
+  const conversations: any[] = [{ id: CONVERSATION, type: 'dm' }];
 
   return {
     handle(req: { url: string; method?: string; body?: unknown }) {
       const url = new URL(req.url, 'http://mock.test');
       const method = req.method || 'GET';
       const path = url.pathname;
+      const params = Object.fromEntries(url.searchParams.entries());
 
       if (path === '/api/message_requests') {
         if (method === 'GET') {
@@ -53,6 +73,18 @@ function makeInMemoryDb() {
           messageRequests.push(row);
           return { status: 201, json: row };
         }
+      }
+
+      if (path === '/api/conversation_participants') {
+        let rows = participants.slice();
+        if (params['filter']) rows = applyServerFilter(rows, params['filter']);
+        return { status: 200, json: rows };
+      }
+
+      if (path === '/api/conversations') {
+        let rows = conversations.slice();
+        if (params['filter']) rows = applyServerFilter(rows, params['filter']);
+        return { status: 200, json: rows };
       }
 
       return { status: 404, json: { error: `no mock route for ${method} ${path}` } };
@@ -101,9 +133,34 @@ describe('message_request -> conversation resolution', () => {
     expect(__notifications).toHaveLength(1);
   });
 
-  it('returns undefined (no new conversation created) when no request exists', async () => {
+  it('returns undefined when there is no shared DM (no participants link)', async () => {
+    // SENDER and RECEIVER have NO shared conversation (no participants row for
+    // the pair), so resolution cannot find a DM to open.
+    const onlySender = makeInMemoryDb();
+    onlySender.handle = (req: any) => {
+      const url = new URL(req.url, 'http://mock.test');
+      const path = url.pathname;
+      if (path === '/api/conversation_participants') {
+        // Only SENDER participates, not RECEIVER -> no shared conversation.
+        return { status: 200, json: [{ conversation_id: CONVERSATION, user_id: SENDER }] };
+      }
+      if (path === '/api/conversations') {
+        return { status: 200, json: [{ id: CONVERSATION, type: 'dm' }] };
+      }
+      return { status: 404, json: {} };
+    };
+    (globalThis as any).fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const method = init?.method || 'GET';
+      const resp = onlySender.handle({ url, method });
+      return {
+        ok: resp.status < 400,
+        status: resp.status,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => resp.json,
+      } as Response;
+    });
     const conversationId = await resolveMessageRequestConversation(SENDER, RECEIVER);
-
     expect(conversationId).toBeUndefined();
   });
 

@@ -26,17 +26,16 @@ const CONVERSATION = 'conversation-uuid-0001';
 let notifications: unknown[] = [];
 
 function makeInMemoryDb() {
-  // Models public.message_requests with:
-  //   UNIQUE(sender_id, receiver_id)
-  //   partial UNIQUE index (conversation_id) WHERE status='pending'
+  // Models public.message_requests with the columns that exist on the live
+  // host:  UNIQUE(sender_id, receiver_id), status, category. There is NO
+  // conversation_id column (the migration was never applied to production), so
+  // the sender/receiver pair is the authoritative dedup key.
   const messageRequests: any[] = [];
   const friends: any[] = []; // no friendship => non-friend path
 
   const uniquePending = (row: any) =>
     messageRequests.some(
-      (r) =>
-        r.conversation_id === row.conversation_id &&
-        r.status === 'pending'
+      (r) => r.sender_id === row.sender_id && r.receiver_id === row.receiver_id
     );
 
   return {
@@ -136,7 +135,6 @@ describe('ensureMessageRequest dedup for the same conversation/recipient', () =>
     expect(pending).toHaveLength(1);
     expect(pending[0].sender_id).toBe(SENDER);
     expect(pending[0].receiver_id).toBe(RECEIVER);
-    expect(pending[0].conversation_id).toBe(CONVERSATION);
 
     // Only the first send should have registered a notification.
     expect(notifications).toHaveLength(1);

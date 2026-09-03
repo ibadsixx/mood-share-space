@@ -89,10 +89,9 @@ export const ensureMessageRequest = async (params: {
     category ?? (await determineMessageRequestCategory(senderId, receiverId));
 
   // (1) Check-before-create. Look for an existing pending request for this
-  // sender/receiver pair (the schema-stable UNIQUE key). When the
-  // conversation_id column is available we narrow by conversation too; the
-  // pair filter alone is enough to dedup on hosts where the column is not yet
-  // present.
+  // sender/receiver pair (the schema-stable UNIQUE key). The pair filter alone
+  // is enough to dedup and works whether or not a conversation_id column exists
+  // on the live host.
   const { data: existing } = await gateway
     .from('message_requests')
     .select('id')
@@ -110,35 +109,22 @@ export const ensureMessageRequest = async (params: {
     existing_request_id: (existing as { id?: string } | null)?.id ?? null,
   });
 
-  // Narrow to the same conversation when the column exists — but never widen
-  // into matching a different sender's or a non-pending request.
-  if (!existing && conversationId) {
-    const { data: byConversation } = await gateway
-      .from('message_requests')
-      .select('id')
-      .eq('conversation_id', conversationId)
-      .eq('sender_id', senderId)
-      .eq('receiver_id', receiverId)
-      .eq('status', 'pending')
-      .maybeSingle();
-    if (byConversation) return;
-  }
-
-  // (2) Insert one pending request. conversation_id is omitted (null) when the
-  // column is unavailable on the live host, or when no conversation is known —
-  // the sender/receiver UNIQUE still dedups. When present, the check above
-  // plus the partial UNIQUE index make this safe under concurrency.
+  // (2) Insert one pending request. `conversation_id` is intentionally NOT
+  // written: the live message_requests table has no such column, and selecting
+  // or inserting it 400s (42703), which previously prevented the request from
+  // ever reaching the recipient's Pending list. The sender/receiver UNIQUE
+  // constraint still dedups, so the "many messages -> one request" invariant is
+  // preserved.
   if (!existing) {
     const { error: reqError, data: insertedReq } = await gateway
       .from('message_requests')
       .insert({
         sender_id: senderId,
         receiver_id: receiverId,
-        conversation_id: conversationId || null,
         status: 'pending',
         category: resolvedCategory
       })
-      .select('id, conversation_id, sender_id, receiver_id, status');
+      .select('id, sender_id, receiver_id, status');
 
     // TRACE: request create result (point 3)
     console.debug('[trace:request]', {
@@ -146,7 +132,6 @@ export const ensureMessageRequest = async (params: {
       error_code: reqError?.code ?? null,
       error_message: reqError?.message ?? null,
       returned_request_id: (insertedReq as Array<{ id?: string }> | null)?.[0]?.id ?? null,
-      returned_conversation_id: (insertedReq as Array<{ conversation_id?: string | null }> | null)?.[0]?.conversation_id ?? null,
       returned_sender_id: (insertedReq as Array<{ sender_id?: string }> | null)?.[0]?.sender_id ?? null,
       returned_receiver_id: (insertedReq as Array<{ receiver_id?: string }> | null)?.[0]?.receiver_id ?? null,
       returned_status: (insertedReq as Array<{ status?: string }> | null)?.[0]?.status ?? null,
@@ -154,10 +139,9 @@ export const ensureMessageRequest = async (params: {
 
     if (reqError) {
       // The gateway client reports error.code as an HTTP status, so a duplicate
-      // (Postgres 23505 unique violation from the pending-conversation index or
-      // the sender/receiver constraint) surfaces as 409, not 23505. A duplicate
-      // means another request already exists — exactly what we want — so it is
-      // not an error.
+      // (Postgres 23505 unique violation on sender_id/receiver_id) surfaces as
+      // 409. A duplicate means another request already exists — exactly what we
+      // want — so it is not an error.
       const isDuplicate = reqError.code === '23505' || reqError.code === '409';
       if (!isDuplicate) {
         console.error('[messageRequests] Message request insert error:', reqError);
@@ -188,23 +172,43 @@ export const resolveMessageRequestConversation = async (
 ): Promise<string | undefined> => {
   if (!senderId || !receiverId || senderId === receiverId) return undefined;
 
+  // The live `message_requests` table has no `conversation_id` column, so the
+  // notification -> conversation link is derived from the SAME conversation the
+  // request arose from: the shared DM between the sender and receiver, found via
+  // conversation_participants. This preserves "open the same conversation" on
+  // the schema that actually exists.
   try {
-    const { data } = await gateway
-      .from('message_requests')
-      .select('id, conversation_id')
-      .eq('sender_id', senderId)
-      .eq('receiver_id', receiverId)
-      .maybeSingle();
+    const { data: myParts } = await gateway
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', senderId);
+
+    const myIds = (myParts || []).map(p => p.conversation_id);
+    if (myIds.length === 0) return undefined;
+
+    const { data: shared } = await gateway
+      .from('conversation_participants')
+      .select('conversation_id')
+      .in('conversation_id', myIds)
+      .eq('user_id', receiverId);
+
+    const sharedIds = [...new Set((shared || []).map(p => p.conversation_id))];
+    if (sharedIds.length === 0) return undefined;
+
+    const { data: convs } = await gateway
+      .from('conversations')
+      .select('id, type')
+      .in('id', sharedIds);
+    const dm = (convs || []).find(c => c.type === 'dm');
 
     // TRACE: notification -> conversation resolution read (point 7)
     console.debug('[trace:notification-conversation]', {
       sender_id: senderId,
       receiver_id: receiverId,
-      matched_request_id: (data as { id?: string } | null)?.id ?? null,
-      matched_conversation_id: (data as { conversation_id?: string | null } | null)?.conversation_id ?? null,
+      resolved_conversation_id: dm?.id ?? null,
     });
 
-    return (data?.conversation_id as string | undefined) || undefined;
+    return dm?.id as string | undefined;
   } catch (error) {
     console.warn('[messageRequests] Resolve request conversation failed:', error);
     return undefined;
