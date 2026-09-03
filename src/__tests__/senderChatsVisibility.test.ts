@@ -163,14 +163,16 @@ describe('sender Chats visibility after messaging a non-friend', () => {
   it('keeps the initiated conversation in the sender inbox filter', async () => {
     await ensureMessageRequest({ senderId: A, receiverId: B, conversationId: C, category: 'spam' });
 
-    const visible = await fetchVisibleDmUserIds(A);
-    expect(visible.has(B)).toBe(true); // B is the request receiver -> visible to sender A
+    const { visibleUserIds, visitedConversationIds } = await fetchVisibleDmUserIds(A);
+    expect(visibleUserIds.has(B)).toBe(true); // B is the request receiver -> visible to sender A
+    expect(visitedConversationIds.has(C)).toBe(true); // message_requests.conversation_id drives the sender Chats
 
     const firstOtherPerConv = new Map<string, string>([[C, B]]);
     const filtered = filterRequestConversations(
       [{ id: C, type: 'dm' }],
       firstOtherPerConv,
-      visible
+      visibleUserIds,
+      visitedConversationIds
     );
 
     // The conversation A initiated is NOT filtered out of A's Chats.
@@ -179,19 +181,25 @@ describe('sender Chats visibility after messaging a non-friend', () => {
 
   it('still hides the conversation from a stranger (no request, no friendship)', async () => {
     // No message_request row exists between A and B here.
-    const visible = await fetchVisibleDmUserIds(A);
+    const { visibleUserIds, visitedConversationIds } = await fetchVisibleDmUserIds(A);
     const firstOtherPerConv = new Map<string, string>([[C, B]]);
-    const filtered = filterRequestConversations([{ id: C, type: 'dm' }], firstOtherPerConv, visible);
+    const filtered = filterRequestConversations(
+      [{ id: C, type: 'dm' }],
+      firstOtherPerConv,
+      visibleUserIds,
+      visitedConversationIds
+    );
     expect(filtered.map(c => c.id)).not.toContain(C);
-    expect(visible.has(B)).toBe(false);
+    expect(visibleUserIds.has(B)).toBe(false);
+    expect(visitedConversationIds.has(C)).toBe(false);
   });
 
   it('does not leak a sender-initiated request into the RECIPIENT inbox (stays Pending)', async () => {
     await ensureMessageRequest({ senderId: A, receiverId: B, conversationId: C, category: 'spam' });
 
     // Recipient B sees A only if B has an ACCEPTED *incoming* request.
-    const visibleForB = await fetchVisibleDmUserIds(B);
-    expect(visibleForB.has(A)).toBe(false);
+    const { visibleUserIds: vfB } = await fetchVisibleDmUserIds(B);
+    expect(vfB.has(A)).toBe(false);
   });
 
   it('returns the initiated conversation from the exact sender Chats query', async () => {

@@ -49,8 +49,20 @@ async function tryDecryptMessage(msg: Message, convId: string): Promise<Message>
 // trigger that creates it can abort on the conversations host because it
 // references `friends`/`restricted_users` in the users host). This is what
 // keeps a non-friend's conversation from leaking into the normal Chats tab.
-export async function fetchVisibleDmUserIds(userId: string): Promise<Set<string>> {
-  const visible = new Set<string>();
+//
+// `message_requests` is the source of truth for sender-initiated DMs: the
+// conversation_id written on each request I *sent* is surfaced directly in MY
+// Chats regardless of acceptance status. The recipient sees the same request in
+// Pending until they accept.
+export async function fetchVisibleDmUserIds(userId: string): Promise<{
+  visibleUserIds: Set<string>;
+  visitedConversationIds: Set<string>;
+}> {
+  const visibleUserIds = new Set<string>();
+  // Conversations the current user initiated a message request on. Because the
+  // row carries conversation_id, the sender Chats filter can match C directly
+  // instead of re-deriving the peer, so `message_requests` drives the inbox.
+  const visitedConversationIds = new Set<string>();
   try {
     // Accepted friends (both directions).
     const { data: friends } = await gateway
@@ -59,8 +71,8 @@ export async function fetchVisibleDmUserIds(userId: string): Promise<Set<string>
       .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
       .eq('status', 'accepted');
     (friends || []).forEach(f => {
-      if (f.requester_id === userId) visible.add(f.receiver_id);
-      if (f.receiver_id === userId) visible.add(f.requester_id);
+      if (f.requester_id === userId) visibleUserIds.add(f.receiver_id);
+      if (f.receiver_id === userId) visibleUserIds.add(f.requester_id);
     });
 
     // Accepted message requests also surface in Chats: a request I accepted
@@ -70,44 +82,57 @@ export async function fetchVisibleDmUserIds(userId: string): Promise<Set<string>
       .select('sender_id, status')
       .eq('receiver_id', userId);
     (inRequests || []).forEach(req => {
-      if (req.status === 'accepted') visible.add(req.sender_id);
+      if (req.status === 'accepted') visibleUserIds.add(req.sender_id);
     });
 
-    // Requests where I am the SENDER: I initiated the DM, so its other
-    // participant shows in MY Chats regardless of acceptance status — the
-    // recipient sees it in Pending (Maybe-you-know / Spam) until they accept.
-    // This is what keeps my own first message to a non-friend visible in my
-    // inbox after I hit "Message".
+    // Requests where I am the SENDER: I initiated the DM, so that conversation
+    // shows in MY Chats regardless of acceptance status — the recipient sees it
+    // in Pending (Maybe-you-know / Spam) until they accept. Matching on the
+    // stored conversation_id keeps my own first message to a non-friend visible
+    // in my inbox after I hit "Message".
     const { data: outRequests } = await gateway
       .from('message_requests')
-      .select('receiver_id')
+      .select('conversation_id, receiver_id')
       .eq('sender_id', userId);
     (outRequests || []).forEach(req => {
-      if (req.receiver_id) visible.add(req.receiver_id);
+      if (req.conversation_id) visitedConversationIds.add(req.conversation_id);
+      if (req.receiver_id) visibleUserIds.add(req.receiver_id);
     });
 
     // TRACE: sender Chats visibility read (point 5)
     console.debug('[trace:sender-chats]', {
       viewer_user_id: userId,
       outbound_request_rows: outRequests ?? [],
-      visible_ids_after_outbound: [...visible],
+      visited_conversation_ids: [...visitedConversationIds],
+      visible_ids_after_outbound: [...visibleUserIds],
     });
   } catch (error) {
     console.error('Error fetching friendship for inbox filtering:', error);
   }
-  return visible;
+  return { visibleUserIds, visitedConversationIds };
 }
 
 // Drops DM conversations whose other participant is NOT an accepted friend and
 // does NOT have an accepted message request for `userId` — those live only in
 // the Message Request UI, not the normal Chats inbox.
+//
+// A conversation is kept if EITHER:
+//   - its other participant is a visible peer (accepted friend, or accepted
+//     request sender), OR
+//   - `userId` is the SENDER of a message_request referencing this conversation
+//     (`visitedConversationIds`). That is the case where the sender initiated
+//     the DM to a non-friend: the same conversation_id read off
+//     `message_requests` drives visibility in the sender's Chats while it stays
+//     pending in the recipient's Inbox.
 export function filterRequestConversations(
   convs: { id: string; type: string }[],
   firstOtherPerConv: Map<string, string>,
-  visibleUserIds: Set<string>
+  visibleUserIds: Set<string>,
+  visitedConversationIds: Set<string> = new Set()
 ): { id: string; type: string }[] {
   return convs.filter(conv => {
     if (conv.type !== 'dm') return true;
+    if (visitedConversationIds.has(conv.id)) return true;
     const otherId = firstOtherPerConv.get(conv.id);
     return !(otherId && !visibleUserIds.has(otherId));
   });
@@ -169,8 +194,8 @@ export async function fetchConversationsDirectly(userId: string): Promise<Conver
     }
   });
 
-  const visibleUserIds = await fetchVisibleDmUserIds(userId);
-  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, visibleUserIds);
+  const { visibleUserIds, visitedConversationIds } = await fetchVisibleDmUserIds(userId);
+  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, visibleUserIds, visitedConversationIds);
   const convIds2 = visibleConvs.map(c => c.id);
   if (convIds2.length === 0) return [];
 
@@ -256,8 +281,8 @@ async function fetchPageConversationsDirectly(pageId: string, userId: string): P
 
   const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
-  const visibleUserIds = await fetchVisibleDmUserIds(userId);
-  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, visibleUserIds);
+  const { visibleUserIds, visitedConversationIds } = await fetchVisibleDmUserIds(userId);
+  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, visibleUserIds, visitedConversationIds);
   const convIds2 = visibleConvs.map(c => c.id);
   if (convIds2.length === 0) return [];
 
