@@ -190,6 +190,31 @@ export async function resolveDmReceiver(params: {
   return participants?.[0]?.user_id as string | undefined;
 }
 
+// True when `viewerId` is the RECIPIENT of a still-pending message request from
+// this conversation's other participant. Such a conversation is opened READ-ONLY
+// (previewable, not accepted), and until the recipient presses Accept the sender
+// must not learn the messages were read — so read receipts are suppressed.
+export async function isReadOnlyPendingConversation(
+  conversationId: string,
+  currentUserId: string
+): Promise<boolean> {
+  if (!conversationId || !currentUserId) return false;
+  try {
+    const otherId = await resolveDmReceiver({ conversationId, currentUserId });
+    if (!otherId || otherId === currentUserId) return false;
+    const { data: request } = await gateway
+      .from('message_requests')
+      .select('id')
+      .eq('sender_id', otherId)
+      .eq('receiver_id', currentUserId)
+      .eq('status', 'pending')
+      .maybeSingle();
+    return !!request?.id;
+  } catch (error) {
+    return false;
+  }
+}
+
 export async function fetchConversationsDirectly(userId: string): Promise<Conversation[]> {
   const { data: participants } = await gateway
     .from('conversation_participants')
@@ -538,6 +563,16 @@ export const useConversations = (currentUserId?: string) => {
       return;
     }
 
+    // Auto-detect read-only even when the caller didn't pass it. The read-only
+    // state is a property of "current user is the recipient of a still-pending
+    // request from this conversation's other participant", so every internal
+    // refetch (URL sync, 5s active poll, call-log listener) respects it too —
+    // otherwise refreshing or returning to a pending chat leaks read receipts
+    // to the sender. Cheap single query only when the caller already decided.
+    const autoReadOnly =
+      !readOnly && (await isReadOnlyPendingConversation(conversationId, currentUserId));
+    const effectiveReadOnly = readOnly || autoReadOnly;
+
     try {
       // Fetch messages with sender profile using explicit foreign key hint
       const { data, error } = await gateway
@@ -669,7 +704,7 @@ export const useConversations = (currentUserId?: string) => {
       // READ-ONLY pending message request: the sender must not learn the
       // recipient has read the message (via message_reads or the realtime
       // message.read ping) until the recipient presses Accept.
-      if (!readOnly) {
+      if (!effectiveReadOnly) {
         await markMessagesAsRead(conversationId);
       }
     } catch (error) {
