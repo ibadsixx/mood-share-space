@@ -49,7 +49,7 @@ async function tryDecryptMessage(msg: Message, convId: string): Promise<Message>
 // trigger that creates it can abort on the conversations host because it
 // references `friends`/`restricted_users` in the users host). This is what
 // keeps a non-friend's conversation from leaking into the normal Chats tab.
-async function fetchVisibleDmUserIds(userId: string): Promise<Set<string>> {
+export async function fetchVisibleDmUserIds(userId: string): Promise<Set<string>> {
   const visible = new Set<string>();
   try {
     // Accepted friends (both directions).
@@ -94,7 +94,7 @@ async function fetchVisibleDmUserIds(userId: string): Promise<Set<string>> {
 // Drops DM conversations whose other participant is NOT an accepted friend and
 // does NOT have an accepted message request for `userId` — those live only in
 // the Message Request UI, not the normal Chats inbox.
-function filterRequestConversations(
+export function filterRequestConversations(
   convs: { id: string; type: string }[],
   firstOtherPerConv: Map<string, string>,
   visibleUserIds: Set<string>
