@@ -179,19 +179,23 @@ describe('sender Chats visibility after messaging a non-friend', () => {
     expect(filtered.map(c => c.id)).toContain(C);
   });
 
-  it('still hides the conversation from a stranger (no request, no friendship)', async () => {
-    // No message_request row exists between A and B here.
+  it('keeps a conversation the user sent a message in even with no request row', async () => {
+    // A has sent a message in C (mock `messages` has sender_id=A). Even without
+    // any `message_requests` row or friendship, A's Chats must show C — this is
+    // the exact "I created a conversation but it hasn't appeared" case.
     const { visibleUserIds, visitedConversationIds } = await fetchVisibleDmUserIds(A);
     const firstOtherPerConv = new Map<string, string>([[C, B]]);
+    const sentIn = new Set<string>([C]);
     const filtered = filterRequestConversations(
       [{ id: C, type: 'dm' }],
       firstOtherPerConv,
       visibleUserIds,
-      visitedConversationIds
+      visitedConversationIds,
+      sentIn
     );
-    expect(filtered.map(c => c.id)).not.toContain(C);
-    expect(visibleUserIds.has(B)).toBe(false);
-    expect(visitedConversationIds.has(C)).toBe(false);
+    expect(filtered.map(c => c.id)).toContain(C);
+    expect(visitedConversationIds.has(C)).toBe(false); // no request row
+    expect(visibleUserIds.has(B)).toBe(false); // not a friend, no accepted request
   });
 
   it('does not leak a sender-initiated request into the RECIPIENT inbox (stays Pending)', async () => {
@@ -200,6 +204,22 @@ describe('sender Chats visibility after messaging a non-friend', () => {
     // Recipient B sees A only if B has an ACCEPTED *incoming* request.
     const { visibleUserIds: vfB } = await fetchVisibleDmUserIds(B);
     expect(vfB.has(A)).toBe(false);
+  });
+
+  it('still hides a DM the viewer neither authored nor is allowed to see', async () => {
+    // A stranger who has NOT sent a message in C, has no friendship with B, and
+    // has no request must NOT see C.
+    const { visibleUserIds, visitedConversationIds } = await fetchVisibleDmUserIds(A);
+    const firstOtherPerConv = new Map<string, string>([[C, B]]);
+    const sentIn = new Set<string>(); // A's sent-conversation set left empty here
+    const filtered = filterRequestConversations(
+      [{ id: C, type: 'dm' }],
+      firstOtherPerConv,
+      visibleUserIds,
+      visitedConversationIds,
+      sentIn
+    );
+    expect(filtered.map(c => c.id)).not.toContain(C);
   });
 
   it('returns the initiated conversation from the exact sender Chats query', async () => {

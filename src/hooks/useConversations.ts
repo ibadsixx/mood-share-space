@@ -112,27 +112,52 @@ export async function fetchVisibleDmUserIds(userId: string): Promise<{
   return { visibleUserIds, visitedConversationIds };
 }
 
+// Returns the set of conversation_ids in which `userId` has sent at least one
+// message. A DM the user authored is always visible in their own Chats —
+// regardless of friendship or whether the `message_requests` row was written
+// (that row can be absent when its cross-host trigger aborts). This mirrors the
+// DB's `get_conversations_with_info` fallback (`EXISTS messages WHERE
+// sender_id = p_user_id`) and is what guarantees the conversation shows once the
+// message insert succeeds, on the same tables the creation path already wrote.
+async function fetchSentConversationIds(userId: string): Promise<Set<string>> {
+  const ids = new Set<string>();
+  try {
+    const { data } = await gateway
+      .from('messages')
+      .select('conversation_id')
+      .eq('sender_id', userId);
+    (data || []).forEach(m => {
+      if (m.conversation_id) ids.add(m.conversation_id);
+    });
+  } catch (error) {
+    console.error('Error fetching sent conversations for inbox filtering:', error);
+  }
+  return ids;
+}
+
 // Drops DM conversations whose other participant is NOT an accepted friend and
 // does NOT have an accepted message request for `userId` — those live only in
 // the Message Request UI, not the normal Chats inbox.
 //
-// A conversation is kept if EITHER:
+// A conversation is kept if ANY of:
 //   - its other participant is a visible peer (accepted friend, or accepted
 //     request sender), OR
 //   - `userId` is the SENDER of a message_request referencing this conversation
-//     (`visitedConversationIds`). That is the case where the sender initiated
-//     the DM to a non-friend: the same conversation_id read off
-//     `message_requests` drives visibility in the sender's Chats while it stays
-//     pending in the recipient's Inbox.
+//     (`visitedConversationIds`; the sender-initiated non-friend DM case), OR
+//   - the user has SENT a message in it (`sentInConversationIds`; a robust
+//     fallback that survives a missing `message_requests` row, mirroring the
+//     DB's `get_conversations_with_info` fallback).
 export function filterRequestConversations(
   convs: { id: string; type: string }[],
   firstOtherPerConv: Map<string, string>,
   visibleUserIds: Set<string>,
-  visitedConversationIds: Set<string> = new Set()
+  visitedConversationIds: Set<string> = new Set(),
+  sentInConversationIds: Set<string> = new Set()
 ): { id: string; type: string }[] {
   return convs.filter(conv => {
     if (conv.type !== 'dm') return true;
     if (visitedConversationIds.has(conv.id)) return true;
+    if (sentInConversationIds.has(conv.id)) return true;
     const otherId = firstOtherPerConv.get(conv.id);
     return !(otherId && !visibleUserIds.has(otherId));
   });
@@ -200,7 +225,14 @@ export async function fetchConversationsDirectly(userId: string): Promise<Conver
   });
 
   const { visibleUserIds, visitedConversationIds } = await fetchVisibleDmUserIds(userId);
-  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, visibleUserIds, visitedConversationIds);
+  const sentInConversationIds = await fetchSentConversationIds(userId);
+  const visibleConvs = filterRequestConversations(
+    convs,
+    firstOtherPerConv,
+    visibleUserIds,
+    visitedConversationIds,
+    sentInConversationIds
+  );
   const convIds2 = visibleConvs.map(c => c.id);
   if (convIds2.length === 0) return [];
 
@@ -287,7 +319,8 @@ async function fetchPageConversationsDirectly(pageId: string, userId: string): P
   const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
   const { visibleUserIds, visitedConversationIds } = await fetchVisibleDmUserIds(userId);
-  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, visibleUserIds, visitedConversationIds);
+  const pageSentIds = await fetchSentConversationIds(userId);
+  const visibleConvs = filterRequestConversations(convs, firstOtherPerConv, visibleUserIds, visitedConversationIds, pageSentIds);
   const convIds2 = visibleConvs.map(c => c.id);
   if (convIds2.length === 0) return [];
 
