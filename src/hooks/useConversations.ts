@@ -533,7 +533,7 @@ export const useConversations = (currentUserId?: string) => {
   }, [activeConversationId, currentUserId, initEncryption]);
 
   // Fetch messages for a specific conversation
-  const fetchMessages = async (conversationId: string, page = 0, limit = 50) => {
+  const fetchMessages = async (conversationId: string, page = 0, limit = 50, readOnly = false) => {
     if (!currentUserId) {
       return;
     }
@@ -665,8 +665,13 @@ export const useConversations = (currentUserId?: string) => {
         setMessages(prev => [...formattedMessages, ...prev]);
       }
 
-      // Mark messages as read
-      await markMessagesAsRead(conversationId);
+      // Mark messages as read. Skipped when the conversation is open as a
+      // READ-ONLY pending message request: the sender must not learn the
+      // recipient has read the message (via message_reads or the realtime
+      // message.read ping) until the recipient presses Accept.
+      if (!readOnly) {
+        await markMessagesAsRead(conversationId);
+      }
     } catch (error) {
       console.error('[useConversations] Error fetching messages:', error);
       toast({

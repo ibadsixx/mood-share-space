@@ -258,7 +258,7 @@ const Messages = () => {
     if (urlConversationId && currentUserId && !loading && urlConversationId !== activeConversationId) {
       setActiveConversationId(urlConversationId);
       setActivePage(0);
-      fetchMessages(urlConversationId, 0);
+      fetchMessages(urlConversationId, 0, 50, isReadOnlyConversation(urlConversationId));
       // A fresh DM (reached right after "Message" on a profile or after
       // accepting a request) may not be in the inbox yet; refresh the sidebar
       // list so the conversation shows up there too.
@@ -363,7 +363,7 @@ const Messages = () => {
   const handleSelectConversation = (conversationId: string) => {
     setActiveConversationId(conversationId);
     setActivePage(0);
-    fetchMessages(conversationId, 0);
+    fetchMessages(conversationId, 0, 50, isReadOnlyConversation(conversationId));
     navigate(`/messages/${conversationId}`);
   };
 
@@ -490,6 +490,19 @@ const Messages = () => {
 
   const resolvedConvInfo = activeConversation ?? fallbackConvInfo;
 
+  // True when this conversation is open as a READ-ONLY pending message request
+  // from a non-friend — i.e. the current user is the RECIPIENT of a request from
+  // the conversation's other participant whose status is still pending. While
+  // read-only, no read receipts may be sent for the previewed messages.
+  const isReadOnlyConversation = (conversationId: string): boolean => {
+    if (!currentUserId) return false;
+    const conv = conversations.find(c => c.conversation_id === conversationId);
+    const otherId = conv?.other_user?.id;
+    if (!otherId) return false;
+    const req = pendingRequests.find(r => r.sender_id === otherId);
+    return !!req && req.receiver_id === currentUserId && req.status === 'pending';
+  };
+
   // A pending (unaccepted) message request from a non-friend is opened as a
   // READ-ONLY chat: the message is readable but the recipient can only Accept,
   // Delete (reject) or Block until they accept. The request is a state of the
@@ -543,7 +556,7 @@ const Messages = () => {
     if (conversationId) {
       setActiveConversationId(conversationId);
       setActivePage(0);
-      fetchMessages(conversationId, 0);
+      fetchMessages(conversationId, 0, 50, true);
       navigate(`/messages/${conversationId}`);
     }
   };
