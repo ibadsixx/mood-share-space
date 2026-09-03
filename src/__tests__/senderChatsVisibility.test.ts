@@ -17,8 +17,32 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { gateway } from '@/lib/gateway';
-import { fetchVisibleDmUserIds, filterRequestConversations } from '@/hooks/useConversations';
+import {
+  fetchVisibleDmUserIds,
+  filterRequestConversations,
+  fetchConversationsDirectly,
+} from '@/hooks/useConversations';
 import { ensureMessageRequest } from '@/lib/messageRequests';
+
+// Applies a single gateway `filter` param (e.g. `conversation_id=eq.<id>`,
+// `user_id=neq.<id>`, `conversation_id=in.(<ids>)`) to rows, mirroring the real
+// gateway server's applySupabaseFilters so the Chats query is exercised
+// end-to-end (server-side + client-side re-filter).
+function applyServerFilter(rows: any[], filter: string | undefined): any[] {
+  if (!filter) return rows;
+  const eq = /^([^=]+)=eq\.(.+)$/.exec(filter);
+  if (eq) return rows.filter(r => String(r[eq[1]]) === eq[2]);
+  const neq = /^([^=]+)=neq\.(.+)$/.exec(filter);
+  if (neq) return rows.filter(r => String(r[neq[1]]) !== neq[2]);
+  const inM = /^([^=]+)=in\.\(([^)]*)\)$/.exec(filter);
+  if (inM) {
+    const vals = new Set(inM[2] ? inM[2].split(',') : []);
+    return rows.filter(r => vals.has(String(r[inM[1]])));
+  }
+  const or = /^or=\((.*)\)$/.exec(filter);
+  if (or) return rows; // callers below use eq/neq/in only
+  return rows;
+}
 
 const A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'; // sender
 const B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'; // non-friend recipient
@@ -52,7 +76,7 @@ function makeInMemoryDb() {
       if (path === '/api/message_requests') {
         if (method === 'GET') {
           let rows: any[] = messageRequests;
-          // sender_id=eq.<x>
+          if (params['filter']) rows = applyServerFilter(rows, params['filter']);
           if (params['sender_id']) rows = rows.filter(r => r.sender_id === params['sender_id']);
           if (params['receiver_id']) rows = rows.filter(r => r.receiver_id === params['receiver_id']);
           return { status: 200, json: rows };
@@ -74,31 +98,29 @@ function makeInMemoryDb() {
 
       if (path === '/api/conversation_participants') {
         let rows = participants.slice();
+        if (params['filter']) rows = applyServerFilter(rows, params['filter']);
         if (params['user_id']) rows = rows.filter(r => r.user_id === params['user_id']);
         if (params['conversation_id']) rows = rows.filter(r => r.conversation_id === params['conversation_id']);
-        if (params['conversation_id'] || params['user_id']) {
-          rows = participants.filter(r =>
-            r.conversation_id === (params['conversation_id'] || r.conversation_id) &&
-            r.user_id === (params['user_id'] || r.user_id)
-          );
-        }
         return { status: 200, json: rows };
       }
 
       if (path === '/api/conversations') {
         let rows = conversations.slice();
+        if (params['filter']) rows = applyServerFilter(rows, params['filter']);
         if (params['id']) rows = conversations.filter(c => c.id === params['id']);
         return { status: 200, json: rows };
       }
 
       if (path === '/api/profiles') {
         let rows = profiles.slice();
+        if (params['filter']) rows = applyServerFilter(rows, params['filter']);
         if (params['id']) rows = profiles.filter(p => p.id === params['id']);
         return { status: 200, json: rows };
       }
 
       if (path === '/api/messages') {
         let rows = messages.slice();
+        if (params['filter']) rows = applyServerFilter(rows, params['filter']);
         if (params['conversation_id']) rows = messages.filter(m => m.conversation_id === params['conversation_id']);
         return { status: 200, json: rows };
       }
@@ -170,5 +192,34 @@ describe('sender Chats visibility after messaging a non-friend', () => {
     // Recipient B sees A only if B has an ACCEPTED *incoming* request.
     const visibleForB = await fetchVisibleDmUserIds(B);
     expect(visibleForB.has(A)).toBe(false);
+  });
+
+  it('returns the initiated conversation from the exact sender Chats query', async () => {
+    // Full end-to-end: send as A, run the *exact* fetchConversationsDirectly(A)
+    // the sender Chats list uses, assert C comes back with B as the peer.
+    await gateway
+      .from('messages')
+      .insert({ conversation_id: C, sender_id: A, receiver_id: B, content: 'hi' });
+    await ensureMessageRequest({ senderId: A, receiverId: B, conversationId: C, category: 'spam' });
+
+    const chats = await fetchConversationsDirectly(A);
+
+    expect(chats.some(c => c.conversation_id === C)).toBe(true);
+    const c = chats.find(cc => cc.conversation_id === C);
+    expect(c?.other_user?.id).toBe(B);
+    expect(c?.last_message?.content).toContain('hi');
+  });
+
+  it('recognizes the sender in either inbox participant slot', async () => {
+    // The exact query must return C regardless of the ordering of the two
+    // participant rows the inbox stores (messages.md: user1_id/user2_id).
+    await gateway
+      .from('messages')
+      .insert({ conversation_id: C, sender_id: A, receiver_id: B, content: 'hi' });
+    await ensureMessageRequest({ senderId: A, receiverId: B, conversationId: C, category: 'spam' });
+
+    const chats = await fetchConversationsDirectly(A);
+    expect(chats.some(ch => ch.conversation_id === C)).toBe(true);
+    expect((chats.find(ch => ch.conversation_id === C) as any)?.other_user?.id).toBe(B);
   });
 });

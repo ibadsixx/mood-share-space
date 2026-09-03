@@ -139,7 +139,7 @@ export async function resolveDmReceiver(params: {
   return participants?.[0]?.user_id as string | undefined;
 }
 
-async function fetchConversationsDirectly(userId: string): Promise<Conversation[]> {
+export async function fetchConversationsDirectly(userId: string): Promise<Conversation[]> {
   const { data: participants } = await gateway
     .from('conversation_participants')
     .select('conversation_id')
