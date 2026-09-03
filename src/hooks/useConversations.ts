@@ -170,6 +170,11 @@ export async function fetchConversationsDirectly(userId: string): Promise<Conver
     .select('conversation_id')
     .eq('user_id', userId);
 
+  console.debug('[trace:fetch-convs]', {
+    viewer_user_id: userId,
+    participant_conversation_ids: (participants || []).map(p => p.conversation_id),
+  });
+
   if (!participants || participants.length === 0) return [];
 
   const convIds = participants.map(p => p.conversation_id);
