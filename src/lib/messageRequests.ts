@@ -63,15 +63,20 @@ export const determineMessageRequestCategory = async (
 // this single well-known function, which checks-before-creates and so reuses
 // the existing pending request rather than minting one per message.
 //
-//   1. Check BEFORE creating — query for an existing pending request for this
-//      sender/receiver (and, when known, the conversation) and reuse it. The
+//   1. Check BEFORE creating — query for an existing request row for this
+//      sender/receiver pair in ANY state and reuse/respect it. The
 //      sender/receiver pair is schema-stable (it is the original UNIQUE key),
 //      so this check works whether or not the conversation_id migration has
 //      been applied to the live host yet.
-//   2. Only if none exists, insert a single pending request carrying the
-//      conversation_id it arose from (conversation_id is never a uniqueness
+//   2. A row that already exists is left untouched regardless of its state:
+//      still-pending requests are reused (no duplicate insert), and an
+//      ACCEPTED request is never turned back into a pending one — so once the
+//      recipient accepts, continuing to chat can never mint a second Message
+//      Request (the acceptance invariant in messages.md).
+//   3. Only if no row exists at all, insert a single pending request carrying
+//      the conversation_id it arose from (conversation_id is never a uniqueness
 //      check on its own here; message_id is never used as a key at all).
-//   3. The DB enforces this authoritatively for concurrency: a partial UNIQUE
+//   4. The DB enforces this authoritatively for concurrency: a partial UNIQUE
 //      index on conversation_id WHERE status = 'pending' rejects any concurrent
 //      second pending insert, and the pre-existing UNIQUE(sender_id,
 //      receiver_id) still stops a second request for the same pair — so two
@@ -88,35 +93,46 @@ export const ensureMessageRequest = async (params: {
   const resolvedCategory =
     category ?? (await determineMessageRequestCategory(senderId, receiverId));
 
-  // (1) Check-before-create. Look for an existing pending request for this
-  // sender/receiver pair (the schema-stable UNIQUE key). The pair filter alone
-  // is enough to dedup and works whether or not a conversation_id column exists
-  // on the live host.
+  // (1) Check-before-create. Look for an existing request row for this
+  // sender/receiver pair in ANY state (the schema-stable UNIQUE key). The pair
+  // filter alone is enough to dedup and works whether or not a conversation_id
+  // column exists on the live host. The check deliberately does NOT filter by
+  // status: an ACCEPTED request must short-circuit here so the pair is never
+  // re-inserted (a second Message Request) after the recipient accepts.
   const { data: existing } = await gateway
     .from('message_requests')
-    .select('id')
+    .select('id, status')
     .eq('sender_id', senderId)
     .eq('receiver_id', receiverId)
-    .eq('status', 'pending')
     .maybeSingle();
 
-  // TRACE: existing-pending lookup (point 3)
+  // TRACE: existing-request lookup (point 3)
   console.debug('[trace:request]', {
     step: 'existing_check',
     sender_id: senderId,
     receiver_id: receiverId,
     conversation_id: conversationId ?? null,
     existing_request_id: (existing as { id?: string } | null)?.id ?? null,
+    existing_status: (existing as { status?: string } | null)?.status ?? null,
   });
 
-  // (2) Insert one pending request. `conversation_id` is intentionally NOT
+  // (2) A row already exists for this pair — reuse it while pending, and never
+  // resurrect an accepted/declined/blocked request. This is what keeps
+  // "1 Message Request" true across the acceptance transition: after Accept
+  // (status -> accepted), subsequent messages find `existing` and stop here
+  // instead of attempting a second insert.
+  if (existing) {
+    return;
+  }
+
+  // (3) Insert one pending request. `conversation_id` is intentionally NOT
   // written: the live message_requests table has no such column, and selecting
   // or inserting it 400s (42703), which previously prevented the request from
   // ever reaching the recipient's Pending list. The sender/receiver UNIQUE
   // constraint still dedups, so the "many messages -> one request" invariant is
   // preserved.
-  if (!existing) {
-    const { error: reqError, data: insertedReq } = await gateway
+  {
+    const { error: reqError } = await gateway
       .from('message_requests')
       .insert({
         sender_id: senderId,
@@ -125,17 +141,6 @@ export const ensureMessageRequest = async (params: {
         category: resolvedCategory
       })
       .select('id, sender_id, receiver_id, status');
-
-    // TRACE: request create result (point 3)
-    console.debug('[trace:request]', {
-      step: 'insert_result',
-      error_code: reqError?.code ?? null,
-      error_message: reqError?.message ?? null,
-      returned_request_id: (insertedReq as Array<{ id?: string }> | null)?.[0]?.id ?? null,
-      returned_sender_id: (insertedReq as Array<{ sender_id?: string }> | null)?.[0]?.sender_id ?? null,
-      returned_receiver_id: (insertedReq as Array<{ receiver_id?: string }> | null)?.[0]?.receiver_id ?? null,
-      returned_status: (insertedReq as Array<{ status?: string }> | null)?.[0]?.status ?? null,
-    });
 
     if (reqError) {
       // The gateway client reports error.code as an HTTP status, so a duplicate

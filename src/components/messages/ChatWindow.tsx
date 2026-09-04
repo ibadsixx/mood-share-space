@@ -24,6 +24,7 @@ import { gateway } from '@/lib/gateway';
 import type { ReactionKey } from '@/lib/reactions';
 import { GifItem } from '@/hooks/useGifSearch';
 import { isOnline, formatLastSeen } from '@/hooks/usePresence';
+import { usePresencePrivacy } from '@/hooks/usePresencePrivacy';
 import { CreatePollModal } from './CreatePollModal';
 
 type OtherUser = {
@@ -108,6 +109,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [channelRole, setChannelRole] = useState<string | null>(null);
   const [channelRoleLoading, setChannelRoleLoading] = useState(false);
   const [channelStats, setChannelStats] = useState<{ follower_count: number; owner_name: string; moderator_count: number } | null>(null);
+
+  // Hide the other user's presence while a non-friend PENDING message request
+  // is in effect (see usePresencePrivacy): the sender must not see online/
+  // last-seen/typing for the recipient until the request is accepted.
+  const { isPresenceHidden } = usePresencePrivacy(currentUserId || undefined);
+  const presenceHidden = isPresenceHidden(otherUser?.id);
 
   // Fetch channel role and stats on mount
   useEffect(() => {
@@ -556,16 +563,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                     "text-sm transition-colors",
                     vanishingMessagesEnabled ? "text-zinc-400" : "text-muted-foreground"
                   )}>@{otherUser.username}</p>
-                  <span className={cn(
-                    "inline-flex items-center gap-1 text-xs",
-                    isOnline(otherUser.last_seen_at) ? "text-green-500" : "text-muted-foreground"
-                  )}>
+                  {!presenceHidden && (
                     <span className={cn(
-                      "inline-block w-2 h-2 rounded-full",
-                      isOnline(otherUser.last_seen_at) ? "bg-green-500" : "bg-gray-400"
-                    )} />
-                    {isOnline(otherUser.last_seen_at) ? 'Online' : formatLastSeen(otherUser.last_seen_at)}
-                  </span>
+                      "inline-flex items-center gap-1 text-xs",
+                      isOnline(otherUser.last_seen_at) ? "text-green-500" : "text-muted-foreground"
+                    )}>
+                      <span className={cn(
+                        "inline-block w-2 h-2 rounded-full",
+                        isOnline(otherUser.last_seen_at) ? "bg-green-500" : "bg-gray-400"
+                      )} />
+                      {isOnline(otherUser.last_seen_at) ? 'Online' : formatLastSeen(otherUser.last_seen_at)}
+                    </span>
+                  )}
                 </div>
                   {readReceiptsEnabled && !otherUserReadReceiptsEnabled && (
                     <p className="text-xs text-muted-foreground/50 mt-0.5">Read receipts are off</p>

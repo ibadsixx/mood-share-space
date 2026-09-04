@@ -932,6 +932,18 @@ export const useConversations = (currentUserId?: string) => {
   const markMessagesAsRead = async (conversationId: string) => {
     if (!currentUserId) return;
 
+    // Defense-in-depth: never emit a read receipt for a conversation that is a
+    // still-pending Message Request for the current user. This is the single
+    // funnel for BOTH the message_reads write and the realtime message.read
+    // ping, so gating it here guarantees the sender never sees ✓✓ for pending
+    // requests — even if an earlier detection (e.g. during a race where
+    // conversation_participants / the request row aren't queryable yet) would
+    // have failed open. Suppression stays in effect until the recipient
+    // presses Accept (request status -> accepted).
+    if (await isReadOnlyPendingConversation(conversationId, currentUserId)) {
+      return;
+    }
+
     try {
       await markConversationMessagesRead(conversationId, currentUserId);
 

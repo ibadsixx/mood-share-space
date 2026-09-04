@@ -134,6 +134,46 @@ export async function getOrCreateDM(currentUserId: string, otherUserId: string):
   }
 
   try {
+    const { data: conversationId, error: resolveError } = await resolveSharedDmConversation(currentUserId, otherUserId);
+    if (resolveError) return { data: null, error: resolveError };
+    if (conversationId) return { data: conversationId, error: null };
+
+    const { data: created, error: createError } = await gateway
+      .from('conversations')
+      .insert({ type: 'dm', created_by: currentUserId })
+      .select('id')
+      .single();
+    if (createError || !created) {
+      return { data: null, error: createError || { message: 'Failed to create conversation' } };
+    }
+    const newConversationId = created.id;
+
+    for (const userId of [currentUserId, otherUserId]) {
+      const { error: participantError } = await gateway
+        .from('conversation_participants')
+        .insert({ conversation_id: newConversationId, user_id: userId });
+      if (participantError) {
+        return { data: null, error: participantError };
+      }
+    }
+
+    return { data: newConversationId, error: null };
+  } catch (err) {
+    return { data: null, error: { message: String(err) } };
+  }
+}
+
+// Resolves the EXISTING 1:1 DM between two users WITHOUT creating anything
+// (find-only). Returns the shared `conversation_id` of type `dm`, or null when
+// no shared DM exists. Used by the Message Request Accept flow so accepting a
+// request can NEVER mint a new conversation — the sender already created the
+// conversation when they first messaged, so Accept must keep the SAME id.
+export async function resolveSharedDmConversation(currentUserId: string, otherUserId: string): Promise<ApiResult<string | null>> {
+  if (!currentUserId || !otherUserId) {
+    return { data: null, error: { message: 'Missing user id' } };
+  }
+
+  try {
     const { data: myParts } = await gateway
       .from('conversation_participants')
       .select('conversation_id')
@@ -157,27 +197,6 @@ export async function getOrCreateDM(currentUserId: string, otherUserId: string):
           .in('id', sharedIds);
         const dm = (convs || []).find(c => c.type === 'dm');
         if (dm) conversationId = dm.id;
-      }
-    }
-
-    if (!conversationId) {
-      const { data: created, error: createError } = await gateway
-        .from('conversations')
-        .insert({ type: 'dm', created_by: currentUserId })
-        .select('id')
-        .single();
-      if (createError || !created) {
-        return { data: null, error: createError || { message: 'Failed to create conversation' } };
-      }
-      conversationId = created.id;
-
-      for (const userId of [currentUserId, otherUserId]) {
-        const { error: participantError } = await gateway
-          .from('conversation_participants')
-          .insert({ conversation_id: conversationId, user_id: userId });
-        if (participantError) {
-          return { data: null, error: participantError };
-        }
       }
     }
 

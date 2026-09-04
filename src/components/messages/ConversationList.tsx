@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EmojiText } from '@/components/EmojiText';
 import { isOnline, formatLastSeen } from '@/hooks/usePresence';
+import { usePresencePrivacy } from '@/hooks/usePresencePrivacy';
 
 type Conversation = {
   conversation_id: string;
@@ -35,6 +36,7 @@ interface ConversationListProps {
   onSelectConversation: (conversationId: string) => void;
   loading: boolean;
   onArchiveConversation?: (conversationId: string) => void;
+  currentUserId?: string | null;
 }
 
 const formatLastMessage = (message?: Conversation['last_message']) => {
@@ -48,16 +50,20 @@ const ConversationItem = memo(({
   isActive,
   onSelect,
   onArchive,
+  currentUserId,
 }: {
   conversation: Conversation;
   isActive: boolean;
   onSelect: (id: string) => void;
   onArchive?: (id: string) => void;
+  currentUserId?: string | null;
 }) => {
   const isGroup = conversation.type === 'group';
   const isChannel = conversation.type === 'channel';
   const isMulti = isGroup || isChannel;
   const hasUnread = conversation.unread_count > 0;
+  const { isPresenceHidden } = usePresencePrivacy(currentUserId || undefined);
+  const presenceHidden = isPresenceHidden(conversation.other_user?.id);
   const timeAgo = conversation.last_message
     ? formatDistanceToNow(new Date(conversation.last_message.created_at), { addSuffix: false })
     : null;
@@ -66,7 +72,7 @@ const ConversationItem = memo(({
     : (conversation.other_user?.display_name || 'Unknown');
   const initial = displayName.charAt(0).toUpperCase();
   const previewText = formatLastMessage(conversation.last_message);
-  const online = !isMulti && isOnline(conversation.other_user?.last_seen_at);
+  const online = !isMulti && !presenceHidden && isOnline(conversation.other_user?.last_seen_at);
 
   return (
     <button
@@ -101,7 +107,7 @@ const ConversationItem = memo(({
             </AvatarFallback>
           </Avatar>
         )}
-        {!isMulti && (
+        {!isMulti && !presenceHidden && (
           <div className={cn(
             "absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card",
             online ? "bg-green-500" : "bg-gray-400"
@@ -146,7 +152,7 @@ const ConversationItem = memo(({
           )}
         </div>
 
-        {!isMulti && (
+        {!isMulti && !presenceHidden && (
           <p className="text-xs text-muted-foreground truncate mt-0.5">
             {online ? 'Online' : formatLastSeen(conversation.other_user?.last_seen_at)}
           </p>
@@ -176,7 +182,8 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   activeConversationId,
   onSelectConversation,
   loading,
-  onArchiveConversation
+  onArchiveConversation,
+  currentUserId
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -264,6 +271,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                 isActive={activeConversationId === conversation.conversation_id}
                 onSelect={onSelectConversation}
                 onArchive={onArchiveConversation}
+                currentUserId={currentUserId}
               />
             ))
           )}

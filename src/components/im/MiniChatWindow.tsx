@@ -10,6 +10,7 @@ import { getMessageRealtime } from '@/lib/messageRealtime';
 import { useCall } from '@/contexts/CallContext';
 import { parseCallLog, callLogLabel, formatCallDuration } from '@/lib/callLog';
 import { ensureMessageRequest } from '@/lib/messageRequests';
+import { usePresencePrivacy } from '@/hooks/usePresencePrivacy';
 
 interface MiniChatUser {
   id: string;
@@ -39,6 +40,8 @@ export const MiniChatWindow: React.FC<MiniChatWindowProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { initiateCall, status } = useCall();
   const isInCall = status !== 'idle';
+  const { isPresenceHidden } = usePresencePrivacy(currentUserId);
+  const presenceHidden = isPresenceHidden(user.id);
 
   const handleStartCall = (type: 'voice' | 'video') => {
     initiateCall(user.id, {
@@ -149,7 +152,9 @@ export const MiniChatWindow: React.FC<MiniChatWindowProps> = ({
             {user.display_name.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full" />
+        {!presenceHidden && (
+          <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full" />
+        )}
         <button
           onClick={(e) => { e.stopPropagation(); onClose(); }}
           className="absolute -top-1 -right-1 w-5 h-5 bg-muted rounded-full items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity hidden group-hover:flex"
@@ -175,11 +180,13 @@ export const MiniChatWindow: React.FC<MiniChatWindowProps> = ({
                 {user.display_name.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" />
+            {!presenceHidden && (
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" />
+            )}
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground truncate">{user.display_name}</p>
-            <p className="text-[10px] text-muted-foreground">Active now</p>
+            {!presenceHidden && <p className="text-[10px] text-muted-foreground">Active now</p>}
           </div>
         </div>
         <div className="flex items-center gap-0.5">

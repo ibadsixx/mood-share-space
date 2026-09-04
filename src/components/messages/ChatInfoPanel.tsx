@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isOnline, formatLastSeen } from '@/hooks/usePresence';
+import { usePresencePrivacy } from '@/hooks/usePresencePrivacy';
 import { useConversationSettings } from '@/hooks/useConversationSettings';
 import { ChatThemeModal } from './ChatThemeModal';
 import { THEME_OPTIONS } from './chatThemeOptions';
@@ -172,6 +173,8 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
   const [savingControls, setSavingControls] = useState(false);
   const { toast } = useToast();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { isPresenceHidden } = usePresencePrivacy(currentUserId || undefined);
+  const presenceHidden = isPresenceHidden(otherUser?.id);
   
   useEffect(() => {
     gateway.auth.getUser().then(({ data }) => {
@@ -458,17 +461,19 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                 </AvatarFallback>
               </Avatar>
               <h3 className="font-semibold text-lg text-foreground">{otherUser.display_name}</h3>
-              <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-                <span className={cn(
-                  "inline-block w-2 h-2 rounded-full",
-                  isOnline(otherUser.last_seen_at) ? "bg-green-500" : "bg-gray-400"
-                )} />
-                {isOnline(otherUser.last_seen_at) ? (
-                  <span className="text-green-500 font-medium">Online</span>
-                ) : (
-                  <>Last seen {formatLastSeen(otherUser.last_seen_at)}</>
-                )}
-              </p>
+              {!presenceHidden && (
+                <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                  <span className={cn(
+                    "inline-block w-2 h-2 rounded-full",
+                    isOnline(otherUser.last_seen_at) ? "bg-green-500" : "bg-gray-400"
+                  )} />
+                  {isOnline(otherUser.last_seen_at) ? (
+                    <span className="text-green-500 font-medium">Online</span>
+                  ) : (
+                    <>Last seen {formatLastSeen(otherUser.last_seen_at)}</>
+                  )}
+                </p>
+              )}
               
               {/* Encryption Badge — only shown when real keys exist */}
               {encryptionStatus === 'encrypted' && (

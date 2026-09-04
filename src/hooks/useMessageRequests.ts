@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { gateway } from '@/lib/gateway';
 import { useToast } from '@/hooks/use-toast';
 import { createNotification } from '@/hooks/useNotifications';
-import { getOrCreateDM } from '@/api/conversations';
+import { resolveSharedDmConversation } from '@/api/conversations';
 import { determineMessageRequestCategory } from '@/lib/messageRequests';
 
 type MessageRequest = {
@@ -82,11 +82,13 @@ export const useMessageRequests = (currentUserId?: string) => {
     }
   };
 
-  // Accept a message request. The conversation already exists (it was created
-  // when the sender pressed Message), so accepting just flips the request status
-  // and resolves the existing DM via the table-based getOrCreateDM (the old
-  // get_or_create_dm RPC joins tables across projects and 42P01s). Returns the
-  // conversationId so the UI can open the chat immediately.
+  // Accept a message request. The conversation ALREADY exists (it was created
+  // when the sender pressed Message), so accepting MUST NOT create a new one —
+  // it only flips the request status to accepted and resolves the EXISTING DM
+  // via the table-based find-only resolver (never a create). Stay on the SAME
+  // conversation_id so history/participants/messages are all preserved and the
+  // sender's side is never duplicated. Returns the conversationId so the UI can
+  // open the chat immediately.
   const acceptRequest = async (requestId: string, senderId: string) => {
     if (!currentUserId) return false;
 
@@ -99,10 +101,15 @@ export const useMessageRequests = (currentUserId?: string) => {
 
       if (updateError) throw updateError;
 
-      // Resolve the existing DM conversation via the table-based API
-      const { data: conversationId, error: dmError } = await getOrCreateDM(currentUserId, senderId);
+      // Resolve the existing DM conversation — find-only, NO create. If the
+      // shared DM can't be found something is inconsistent; do not fabricate a
+      // new conversation (the sender always created it before the request).
+      const { data: conversationId, error: dmError } = await resolveSharedDmConversation(currentUserId, senderId);
       if (dmError) throw dmError;
-      if (!conversationId) throw new Error('Failed to create conversation');
+      if (!conversationId) {
+        console.error('[acceptRequest] No shared DM found when accepting request', { requestId, senderId });
+        throw new Error('Conversation not found while accepting request');
+      }
 
       // Remove the request from local state
       setRequests(prev => prev.filter(req => req.id !== requestId));

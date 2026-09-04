@@ -818,7 +818,11 @@ const Messages = () => {
                             className="h-8 px-2"
                             onClick={async () => {
                               const conversationId = await acceptRequest(req.id, req.sender_id);
-                              if (conversationId) navigate(`/messages/${conversationId}`);
+                              if (conversationId) {
+                                setViewMode('chats');
+                                refetchConversations();
+                                navigate(`/messages/${conversationId}`);
+                              }
                             }}
                           >
                             <Check className="h-3.5 w-3.5" />
@@ -870,7 +874,11 @@ const Messages = () => {
                             className="h-8 px-2"
                             onClick={async () => {
                               const conversationId = await acceptRequest(req.id, req.sender_id);
-                              if (conversationId) navigate(`/messages/${conversationId}`);
+                              if (conversationId) {
+                                setViewMode('chats');
+                                refetchConversations();
+                                navigate(`/messages/${conversationId}`);
+                              }
                             }}
                           >
                             <Check className="h-3.5 w-3.5" />
@@ -1031,6 +1039,7 @@ const Messages = () => {
             onSelectConversation={handleSelectConversation}
             loading={loading}
             onArchiveConversation={archiveConversation}
+            currentUserId={currentUserId}
           />
         )}
       </div>
