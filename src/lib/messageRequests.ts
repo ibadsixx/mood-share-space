@@ -198,12 +198,23 @@ export const ensureMessageRequest = async (params: {
   // column (the migration has not been applied there), fall back to the
   // schema-stable insert so messaging is never broken during a migration window.
   let insertResult = await insertRequest(Boolean(conversationId));
-  if (
-    insertResult.error &&
-    conversationId &&
-    /conversation_id|42P01|42703/i.test(insertResult.error.message || '')
-  ) {
-    console.warn('[messageRequests] conversation_id column missing on host — retrying without it');
+
+  // The gateway historically masks insert failures with a generic `500
+  // {"error":"Internal server error"}` and never surfaces the underlying
+  // Postgres 42703, so parsing the error text to detect the missing
+  // `conversation_id` column is unreliable. Instead, whenever the first insert
+  // failed for any NON-duplicate reason and a conversation_id was supplied,
+  // retry ONCE with the schema-stable payload (no conversation_id). A
+  // duplicate (409/23505) already means the request exists — desired. Any other
+  // real failure (RLS, network) fails again on the retry and is surfaced below.
+  const isDuplicateRequest = (err: { code?: string }) =>
+    err.code === '23505' || err.code === '409';
+
+  if (insertResult.error && conversationId && !isDuplicateRequest(insertResult.error)) {
+    console.warn(
+      '[messageRequests] insert with conversation_id failed — retrying schema-stable:',
+      insertResult.error.message || insertResult.error.code
+    );
     insertResult = await insertRequest(false);
   }
   const reqError = insertResult.error;
@@ -213,8 +224,7 @@ export const ensureMessageRequest = async (params: {
     // (Postgres 23505 unique violation on sender_id/receiver_id or the pending
     // conversation_id index) surfaces as 409. A duplicate means another request
     // already exists — exactly what we want — so it is not an error.
-    const isDuplicate = reqError.code === '23505' || reqError.code === '409';
-    if (!isDuplicate) {
+    if (!isDuplicateRequest(reqError)) {
       console.error('[messageRequests] Message request insert error:', reqError);
     }
     return;
