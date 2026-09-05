@@ -3,14 +3,45 @@ import { createNotification } from '@/hooks/useNotifications';
 
 export type MessageRequestCategory = 'you_may_know' | 'spam';
 
-// Re-uses the existing Maybe-you-know / Spam classification semantics from the
-// server's determine_request_category, computed client-side because the server
-// trigger (defined in the users host against `friends` / `restricted_users`)
-// cannot run on the conversations host that owns message_requests (cross-project
-// join -> insert fails). Mirrors the documented pattern of re-implementing
-// cross-project logic with per-domain gateway queries:
-//   'you_may_know' — mutual friends OR pending friend request from the sender
-//   'spam'         — restricted/blocked user, or no connection at all
+// True when `userId` and `otherUserId` are ACCEPTED friends (either direction
+// of the friendship row). This is the single data-layer friendship check used
+// by the send paths so "existing friends -> normal chat, NO message request"
+// (messages.md Test 5) is decided identically everywhere. Never throws.
+export const hasAcceptedFriendship = async (
+  userId?: string,
+  otherUserId?: string
+): Promise<boolean> => {
+  if (!userId || !otherUserId || userId === otherUserId) return false;
+  try {
+    const { data, error } = await gateway
+      .from('friends')
+      .select('id')
+      .or(`and(requester_id.eq.${userId},receiver_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},receiver_id.eq.${userId})`)
+      .eq('status', 'accepted')
+      .maybeSingle();
+    if (error) throw error;
+    return !!data;
+  } catch (error) {
+    console.error('[messageRequests] Error checking friendship:', error);
+    return false;
+  }
+};
+
+// Client-side fallback for the Maybe-you-know / Spam classification. The
+// AUTHORITATIVE source is now the Gateway: `POST /api/message_requests` is
+// intercepted by the gateway and the category is computed on the friends host
+// (friends and conversations live in separate projects, so client-side / DB
+// cross-project joins are not reliable — see `gateway/src/features/
+// messageRequestCategory.ts`). The client supplies a best guess so behavior is
+// correct even while a gateway without the feature is still deployed, but the
+// gateway always overrides.
+//
+// Exact messages.md semantics — the stored value is the DB enum 'you_may_know',
+// displayed as "Maybe you know":
+//   'you_may_know' — >= 1 MUTUAL ACCEPTED friend: friends(S) ∩ friends(R)
+//   'spam'         — restricted/blocked sender, or zero mutual accepted friends
+// Followers, following, profile visits, likes and a PENDING friend request are
+// NOT substitutes for mutual friendship (messages.md). Never throws.
 export const determineMessageRequestCategory = async (
   currentUserId?: string,
   otherUserId?: string
@@ -18,6 +49,22 @@ export const determineMessageRequestCategory = async (
   if (!currentUserId || !otherUserId || currentUserId === otherUserId) {
     return 'spam';
   }
+
+  const acceptedFriends = async (userId: string): Promise<Set<string>> => {
+    const { data, error } = await gateway
+      .from('friends')
+      .select('requester_id, receiver_id')
+      .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+      .eq('status', 'accepted');
+    if (error) throw error;
+    const ids = new Set<string>();
+    for (const f of (data || []) as Array<{ requester_id?: string; receiver_id?: string }>) {
+      if (!f) continue;
+      const other = f.requester_id === userId ? f.receiver_id : f.requester_id;
+      if (typeof other === 'string') ids.add(other);
+    }
+    return ids;
+  };
 
   try {
     // Restricted users are always spam.
@@ -29,23 +76,14 @@ export const determineMessageRequestCategory = async (
       .maybeSingle();
     if (restricted) return 'spam';
 
-    // Mutual friends (re-uses the existing get_mutual_friends_count RPC).
-    const { data: mutual } = await gateway.rpc('get_mutual_friends_count', {
-      user_a: currentUserId,
-      user_b: otherUserId
-    });
-    if (mutual && mutual > 0) return 'you_may_know';
-
-    // Pending friend request sent by the sender to the receiver.
-    const { data: pendingFriend } = await gateway
-      .from('friends')
-      .select('id')
-      .eq('requester_id', currentUserId)
-      .eq('receiver_id', otherUserId)
-      .eq('status', 'pending')
-      .maybeSingle();
-    if (pendingFriend) return 'you_may_know';
-
+    // Mutual friends: intersection of the two users' actual accepted friendships.
+    const [myFriends, theirFriends] = await Promise.all([
+      acceptedFriends(currentUserId),
+      acceptedFriends(otherUserId),
+    ]);
+    for (const id of myFriends) {
+      if (theirFriends.has(id)) return 'you_may_know';
+    }
     return 'spam';
   } catch (error) {
     console.error('[messageRequests] Error determining category:', error);
@@ -58,6 +96,13 @@ export const determineMessageRequestCategory = async (
 //
 // Exactly one pending request exists per conversation:
 //   ONE conversation -> ONE pending request -> MANY messages
+//
+// The request's CATEGORY (maybe_you_know | spam) is decided ONCE — when this
+// FIRST request row is created (messages.md: "the category is created only when
+// the first Message Request is made"). The Gateway computes it on insert
+// (authoritative); the optional `category` param is a client best-guess
+// fallback. Because later sends find the existing row in step (2) and stop, the
+// category can never be re-classified by a per-message send.
 //
 // ensureMessageRequest (NOT createMessageRequest): every send fuses through
 // this single well-known function, which checks-before-creates and so reuses
@@ -125,42 +170,62 @@ export const ensureMessageRequest = async (params: {
     return;
   }
 
-  // (3) Insert one pending request. `conversation_id` is intentionally NOT
-  // written: the live message_requests table has no such column, and selecting
-  // or inserting it 400s (42703), which previously prevented the request from
-  // ever reaching the recipient's Pending list. The sender/receiver UNIQUE
-  // constraint still dedups, so the "many messages -> one request" invariant is
-  // preserved.
-  {
-    const { error: reqError } = await gateway
+//   (3) Insert one pending request carrying the conversation_id it arose from
+  //       (messages.md: conversation_id is the identity of the request
+  //       relationship — NEVER message_id, NEVER "one request per message").
+  //   (4) The DB enforces this authoritatively for concurrency: a partial UNIQUE
+  //       index on conversation_id WHERE status = 'pending' rejects any concurrent
+  //       second pending insert for the same conversation
+  //       (20260902000000_add_conversation_id_to_message_requests.sql), and the
+  //       pre-existing UNIQUE(sender_id, receiver_id) still stops a second
+  //       request for the same pair — so two near-simultaneous sends can never
+  //       create two requests.
+  //
+  // An already-accepted/declined/blocked request is left untouched. Never throws.
+  const insertRequest = (withConversationId: boolean) =>
+    gateway
       .from('message_requests')
       .insert({
         sender_id: senderId,
         receiver_id: receiverId,
         status: 'pending',
-        category: resolvedCategory
+        category: resolvedCategory,
+        ...(withConversationId && conversationId ? { conversation_id: conversationId } : {}),
       })
       .select('id, sender_id, receiver_id, status');
 
-    if (reqError) {
-      // The gateway client reports error.code as an HTTP status, so a duplicate
-      // (Postgres 23505 unique violation on sender_id/receiver_id) surfaces as
-      // 409. A duplicate means another request already exists — exactly what we
-      // want — so it is not an error.
-      const isDuplicate = reqError.code === '23505' || reqError.code === '409';
-      if (!isDuplicate) {
-        console.error('[messageRequests] Message request insert error:', reqError);
-      }
-      return;
-    }
-
-    createNotification({
-      userId: receiverId,
-      actorId: senderId,
-      type: 'message_request',
-      message: 'sent you a message'
-    });
+  // Write the request. If the live host does not yet have the conversation_id
+  // column (the migration has not been applied there), fall back to the
+  // schema-stable insert so messaging is never broken during a migration window.
+  let insertResult = await insertRequest(Boolean(conversationId));
+  if (
+    insertResult.error &&
+    conversationId &&
+    /conversation_id|42P01|42703/i.test(insertResult.error.message || '')
+  ) {
+    console.warn('[messageRequests] conversation_id column missing on host — retrying without it');
+    insertResult = await insertRequest(false);
   }
+  const reqError = insertResult.error;
+
+  if (reqError) {
+    // The gateway client reports error.code as an HTTP status, so a duplicate
+    // (Postgres 23505 unique violation on sender_id/receiver_id or the pending
+    // conversation_id index) surfaces as 409. A duplicate means another request
+    // already exists — exactly what we want — so it is not an error.
+    const isDuplicate = reqError.code === '23505' || reqError.code === '409';
+    if (!isDuplicate) {
+      console.error('[messageRequests] Message request insert error:', reqError);
+    }
+    return;
+  }
+
+  createNotification({
+    userId: receiverId,
+    actorId: senderId,
+    type: 'message_request',
+    message: 'sent you a message'
+  });
 };
 
 // Resolves the conversation_id backing a message_request notification so a

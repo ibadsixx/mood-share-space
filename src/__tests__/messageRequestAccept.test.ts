@@ -23,6 +23,7 @@ import {
   filterRequestConversations,
   fetchConversationsDirectly,
   isReadOnlyPendingConversation,
+  assertCanSendMessage,
 } from '@/hooks/useConversations';
 
 export const __notifications: unknown[] = [];
@@ -51,7 +52,7 @@ const A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'; // sender (initiated the DM)
 const B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'; // non-friend recipient
 const C = 'cccccccc-cccc-cccc-cccc-cccccccccccc'; // the ONE shared conversation
 
-function makeInMemoryDb() {
+function makeInMemoryDb(opts?: { bSent?: boolean }) {
   const messageRequests: any[] = [
     {
       id: 'req-1',
@@ -74,10 +75,14 @@ function makeInMemoryDb() {
     { id: A, username: 'a', display_name: 'A', profile_pic: null, last_seen_at: null },
     { id: B, username: 'b', display_name: 'B', profile_pic: null, last_seen_at: null },
   ];
+  // By default B has already replied (m3) — that alone surfaces C in B's Chats
+  // via the "sent a message" path. For the pending-block regression test we
+  // model the pristine case (recipient has sent nothing) so visibility is
+  // decided purely by request state.
   const messages: any[] = [
     { id: 'm1', conversation_id: C, sender_id: A, receiver_id: B, content: '1st', created_at: '2026-01-01T00:00:01Z' },
     { id: 'm2', conversation_id: C, sender_id: A, receiver_id: B, content: '2nd', created_at: '2026-01-01T00:00:02Z' },
-    { id: 'm3', conversation_id: C, sender_id: B, receiver_id: A, content: '3rd', created_at: '2026-01-01T00:00:03Z' },
+    ...(opts?.bSent === false ? [] : [{ id: 'm3', conversation_id: C, sender_id: B, receiver_id: A, content: '3rd', created_at: '2026-01-01T00:00:03Z' }]),
   ];
 
   const qs = (url: URL) => Object.fromEntries(url.searchParams.entries());
@@ -270,5 +275,63 @@ describe('final Message Request acceptance behavior', () => {
     expect(chatsB.length).toBe(1);
     expect(chatsB[0].conversation_id).toBe(C);
     expect(chatsB[0].last_message?.content).toBe('4th');
+  });
+
+  it('blocks a reply send from the recipient while the request is still PENDING (no implicit acceptance)', async () => {
+    // Regression for the auto-accept / auto-move observation. Model the pristine
+    // case: the RECIPIENT (B) has NOT sent anything yet — the conversation's
+    // visibility depends purely on the request state. While A's request is
+    // still PENDING:
+    //   - B's data-layer send guard must refuse (sendMessage calls
+    //     assertCanSendMessage before any write) — no implicit acceptance,
+    //   - B can neither write a reply nor surface the conversation in Chats,
+    //   - the sender (A) keeps the normal composer.
+    // Only an explicit accept opens B's composer AND surfaces the chat.
+    const pendingOnly = makeInMemoryDb({ bSent: false });
+    const fetchMock2 = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const method = init?.method || 'GET';
+      let body: unknown = undefined;
+      if (init?.body) body = JSON.parse(init.body as string);
+      const resp = pendingOnly.handle({ url, method, body });
+      return {
+        ok: resp.status < 400,
+        status: resp.status,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => resp.json,
+      } as Response;
+    });
+    (globalThis as any).fetch = fetchMock2;
+
+    const before = ((await gateway.from('messages').select('*')).data || []).length;
+
+    // The RECIPIENT is refused...
+    expect(await assertCanSendMessage(C, B)).toBe(false);
+    // ...the SENDER keeps the normal composer...
+    expect(await assertCanSendMessage(C, A)).toBe(true);
+
+    // The read-only treatment is still active, and NOTHING was written by the
+    // guard itself (no message insert), and the request is STILL pending.
+    expect(await isReadOnlyPendingConversation(C, B)).toBe(true);
+    const after = ((await gateway.from('messages').select('*')).data || []).length;
+    expect(after).toBe(before); // no reply leaked into the shared conversation
+    expect(pendingOnly.messageRequests).toHaveLength(1);
+    expect(pendingOnly.messageRequests[0].status).toBe('pending'); // status must NOT flip
+
+    // Pending: conversation holds OUT of the recipient's Chats (nothing sent by
+    // B, request not accepted), while the sender sees it.
+    const chatsB = await fetchConversationsDirectly(B);
+    expect(chatsB.length).toBe(0);
+    const chatsA = await fetchConversationsDirectly(A);
+    expect(chatsA.length).toBe(1);
+
+    // Once the recipient EXPLICITLY accepts, the guard opens up and the SAME
+    // conversation surfaces in the recipient's Chats.
+    await gateway.from('message_requests').update({ status: 'accepted' }).eq('id', 'req-1');
+    expect(await assertCanSendMessage(C, B)).toBe(true);
+    expect(await isReadOnlyPendingConversation(C, B)).toBe(false);
+    const chatsBAfter = await fetchConversationsDirectly(B);
+    expect(chatsBAfter.length).toBe(1);
+    expect(chatsBAfter[0].conversation_id).toBe(C);
   });
 });

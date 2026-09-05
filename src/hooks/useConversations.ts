@@ -14,7 +14,7 @@ import { loadEcdhPrivateKey } from '@/hooks/useEncryptionKeys';
 import { playMessageNotification } from '@/lib/notificationSounds';
 import { parseCallLog, callLogLabel, formatCallDuration } from '@/lib/callLog';
 import { subscribeToMessages, getMessageRealtime } from '@/lib/messageRealtime';
-import { ensureMessageRequest } from '@/lib/messageRequests';
+import { ensureMessageRequest, hasAcceptedFriendship } from '@/lib/messageRequests';
 
 // Call-log messages store a JSON envelope in `content`; show a readable label
 // ("Malak missed your voice call") in conversation-list previews, phrased from
@@ -213,6 +213,20 @@ export async function isReadOnlyPendingConversation(
   } catch (error) {
     return false;
   }
+}
+
+// True when the user may send a message in this conversation. Sends are refused
+// while the conversation is a still-pending INCOMING message request: the
+// recipient may only preview until they explicitly press Accept. Refusing at
+// this data layer (not the UI hide-the-composer trick) is what guarantees a
+// stray send can never implicitly accept the request nor pull the conversation
+// into the recipient's Chats via "sent a message".
+export async function assertCanSendMessage(
+  conversationId: string,
+  currentUserId: string
+): Promise<boolean> {
+  if (!conversationId || !currentUserId) return true;
+  return !(await isReadOnlyPendingConversation(conversationId, currentUserId));
 }
 
 export async function fetchConversationsDirectly(userId: string): Promise<Conversation[]> {
@@ -719,27 +733,28 @@ export const useConversations = (currentUserId?: string) => {
 
   // Whether the current user and `receiverId` are accepted friends. Decides
   // whether a message lands as a plain DM or as a pending message request.
-  const checkFriendship = async (receiverId: string): Promise<boolean> => {
-    if (!currentUserId) return false;
-    try {
-      const { data, error } = await gateway
-        .from('friends')
-        .select('id')
-        .or(`and(requester_id.eq.${currentUserId},receiver_id.eq.${receiverId}),and(requester_id.eq.${receiverId},receiver_id.eq.${currentUserId})`)
-        .eq('status', 'accepted')
-        .maybeSingle();
-
-      if (error) throw error;
-      return !!data;
-    } catch (error) {
-      console.error('[useConversations] Error checking friendship:', error);
-      return false;
-    }
-  };
+  const checkFriendship = (receiverId: string): Promise<boolean> =>
+    hasAcceptedFriendship(currentUserId, receiverId);
 
   // Send a new message
   const sendMessage = async (conversationId: string, content?: string, attachmentUrl?: string, replyToId?: string, receiverId?: string) => {
     if (!currentUserId || (!content && !attachmentUrl)) return false;
+
+    // A message request can only ever be accepted by an explicit recipient click
+    // on the in-chat Accept bar (or the Pending list). As the RECIPIENT of a
+    // still-pending request this conversation is read-only: a reply may not be
+    // sent until the request is accepted. This guard is the single data-layer
+    // choke point covering every composer (ChatWindow, MiniChatWindow,
+    // SendMessageModal, MessagingTestInterface); it also prevents a stray send
+    // from implicitly "accepting" the request.
+    if (!(await assertCanSendMessage(conversationId, currentUserId))) {
+      toast({
+        title: 'Message request pending',
+        description: 'Accept the message request before replying.',
+        variant: 'destructive',
+      });
+      return false;
+    }
 
     // Determine if the attachment is an image or video by file extension only
     const urlPath = attachmentUrl ? attachmentUrl.split('?')[0] : '';
