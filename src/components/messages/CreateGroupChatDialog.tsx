@@ -129,7 +129,10 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
         .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
         .limit(10);
       if (error) throw error;
-      setUsers((data || []).filter(u => eligibleUserIds.has(u.id) && !selectedIdsSet.has(u.id)));
+      const uniqueUsers = Array.from(
+        new Map((data || []).map(u => [u.id, u])).values()
+      ).filter(u => eligibleUserIds.has(u.id) && !selectedIdsSet.has(u.id));
+      setUsers(uniqueUsers);
     } catch (error) {
       console.error('Error searching users:', error);
     } finally {
