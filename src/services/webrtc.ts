@@ -86,10 +86,16 @@ export interface CallSignal {
   };
 }
 
+// TEMP-CALL-DIAG (messages.md §9): temporary diagnostics to determine where the
+// media flow stops. Remove after the regression is fixed.
+let diagCallSeq = 0;
+const nextDiagCallId = () => `call-${Date.now().toString(36)}-${(diagCallSeq++).toString(36)}`;
+
 export class WebRTCService {
   private peerConnection: RTCPeerConnection | null = null;
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
+  private diagCallId = nextDiagCallId();
   
   private onRemoteStream: ((stream: MediaStream) => void) | null = null;
   private onIceCandidate: ((candidate: RTCIceCandidateInit) => void) | null = null;
@@ -111,7 +117,7 @@ export class WebRTCService {
   }
 
   private createPeerConnection(iceServers: RTCIceServer[] = DEFAULT_ICE_SERVERS) {
-    console.log('[WebRTC] Creating peer connection');
+    console.log('[WEBRTC] peer connection created', { diagCallId: this.diagCallId });
     this.peerConnection = new RTCPeerConnection({
       iceServers,
       iceCandidatePoolSize: 10,
@@ -126,7 +132,7 @@ export class WebRTCService {
 
     this.peerConnection.oniceconnectionstatechange = () => {
       const state = this.peerConnection?.iceConnectionState;
-      console.log('[WebRTC] ICE connection state:', state);
+      console.log('[CONNECTION] iceConnectionState:', state, '(call', this.diagCallId + ')');
       
       // Handle ICE connection failures
       if (state === 'failed') {
@@ -144,7 +150,13 @@ export class WebRTCService {
     };
 
     this.peerConnection.ontrack = (event) => {
-      console.log('[WebRTC] Track received:', event.track.kind);
+      console.log('[MEDIA] remote track:', event.track.kind, {
+        diagCallId: this.diagCallId,
+        streams: event.streams.length,
+        enabled: event.track.enabled,
+        readyState: event.track.readyState,
+      });
+      console.log('[MEDIA]', event.track.kind === 'audio' ? 'remote audio track' : 'remote video track');
       if (event.streams[0]) {
         this.remoteStream = event.streams[0];
         if (this.onRemoteStream) {
@@ -155,7 +167,7 @@ export class WebRTCService {
 
     this.peerConnection.onconnectionstatechange = () => {
       const state = this.peerConnection?.connectionState;
-      console.log('[WebRTC] Connection state:', state);
+      console.log('[CONNECTION] connectionState:', state, '(call', this.diagCallId + ')');
       if (this.peerConnection && this.onConnectionStateChange && state) {
         this.onConnectionStateChange(state);
       }
@@ -204,7 +216,11 @@ export class WebRTCService {
       // Add tracks to peer connection
       this.localStream.getTracks().forEach((track) => {
         if (this.peerConnection && this.localStream) {
-          console.log('[WebRTC] Adding track to peer connection:', track.kind);
+          console.log('[MEDIA]', track.kind === 'audio' ? 'local audio track' : 'local video track', {
+            diagCallId: this.diagCallId,
+            enabled: track.enabled,
+            readyState: track.readyState,
+          });
           this.peerConnection.addTrack(track, this.localStream);
         }
       });

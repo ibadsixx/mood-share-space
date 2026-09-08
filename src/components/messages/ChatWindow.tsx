@@ -632,7 +632,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               ) : (
                 <>
                   {/* Call Buttons */}
-                  {!readOnly && (<>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -661,8 +660,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   >
                     <Video className="h-5 w-5" />
                   </Button>
-                  </>)}
-                </>
+              </>
               )}
 
               <Button

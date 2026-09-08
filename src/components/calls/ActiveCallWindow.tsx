@@ -121,6 +121,12 @@ export const ActiveCallWindow: React.FC = () => {
   // becomes 'connected' — without it the effect runs before the ref exists.
   useEffect(() => {
     if (remoteStream && callType === 'voice' && remoteAudioRef.current) {
+      console.log('[MEDIA] attaching remote stream to <audio>', {
+        muted: remoteAudioRef.current.muted,
+        paused: remoteAudioRef.current.paused,
+        alreadyAttached: !!remoteAudioRef.current.srcObject,
+        audioTracks: remoteStream.getAudioTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState })),
+      });
       remoteAudioRef.current.srcObject = remoteStream;
       remoteAudioRef.current.play().catch(() => {
         // Autoplay blocked by browser — retry on next user gesture.
@@ -139,6 +145,12 @@ export const ActiveCallWindow: React.FC = () => {
   // element only renders once status is 'connected' (same remount concern as above).
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
+      console.log('[MEDIA] attaching remote stream to <video>', {
+        muted: remoteVideoRef.current.muted,
+        paused: remoteVideoRef.current.paused,
+        videoTracks: remoteStream.getVideoTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState })),
+        audioTracks: remoteStream.getAudioTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState })),
+      });
       remoteVideoRef.current.srcObject = remoteStream;
     }
   }, [remoteStream, status]);

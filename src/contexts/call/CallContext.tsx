@@ -195,6 +195,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     webrtcRef.current.setOnIceCandidate((candidate) => {
+      console.log('[SIGNALING] ICE candidate sent (to', targetUserId + ')');
       sendSignal({
         type: 'ice-candidate',
         from: user.id,
@@ -249,6 +250,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     switch (signal.type) {
       case 'call-request': {
+        console.log('[CALL]', { caller_id: signal.from, recipient_id: user.id, call_type: signal.callType });
         // Self-heal zombie state: if we think we're in a call but the peer
         // connection is gone (failed/closed — e.g. a lost `call-ended` during a
         // signaling reconnect), recover instead of auto-replying busy forever.
@@ -325,6 +327,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           try {
             const offer = await webrtcRef.current.createOffer();
+            console.log('[SIGNALING] offer sent (to', signal.from + ')');
             await sendSignal({
               type: 'offer',
               from: user.id,
@@ -345,13 +348,14 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         break;
 
       case 'offer':
+        console.log('[SIGNALING] offer received (from', signal.from + ')');
         if (webrtcRef.current && (currentState.status === 'connecting' || currentState.status === 'ringing')) {
           console.log('[Call] Received offer, creating answer');
           try {
             await webrtcRef.current.setRemoteDescription(signal.payload as RTCSessionDescriptionInit);
             await processIceCandidateQueue();
             const answer = await webrtcRef.current.createAnswer();
-            
+            console.log('[SIGNALING] answer sent (to', signal.from + ')');
             await sendSignal({
               type: 'answer',
               from: user.id,
@@ -372,6 +376,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         break;
 
       case 'answer':
+        console.log('[SIGNALING] answer received (from', signal.from + ')');
         if (webrtcRef.current && currentState.status === 'connecting') {
           console.log('[Call] Received answer');
           try {
@@ -384,6 +389,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         break;
 
       case 'ice-candidate':
+        console.log('[SIGNALING] ICE candidate received (from', signal.from + ')');
         if (webrtcRef.current && signal.payload) {
           if (webrtcRef.current.hasRemoteDescription()) {
             try {
@@ -573,6 +579,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    console.log('[CALL]', { caller_id: user.id, recipient_id: userId, call_type: callType });
     console.log('[Call] Initiating', callType, 'call to', userId);
 
     try {
