@@ -122,11 +122,12 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
         setUsers([]);
         return;
       }
+      const query = searchQuery.trim();
       const { data, error } = await gateway
         .from('profiles')
         .select('id, username, display_name, profile_pic')
         .neq('id', currentUserId)
-        .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`);
+        .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`);
       if (error) throw error;
       const uniqueUsers = Array.from(
         new Map((data || []).map(u => [u.id, u])).values()
