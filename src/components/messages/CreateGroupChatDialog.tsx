@@ -73,7 +73,7 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
         .eq('status', 'accepted');
 
       const friendIds = new Set<string>();
-      (friends || []).forEach((f: any) => {
+      (friends || []).forEach((f: { requester_id: string; receiver_id: string }) => {
         friendIds.add(f.requester_id === currentUserId ? f.receiver_id : f.requester_id);
       });
 
@@ -82,16 +82,16 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
         .select('conversation_id')
         .eq('user_id', currentUserId);
 
-      const convIds = (myPartRows || []).map((p: any) => p.conversation_id);
+      const convIds = (myPartRows || []).map((p: { conversation_id: string }) => p.conversation_id);
 
-      let chatPartnerIds = new Set<string>();
+      const chatPartnerIds = new Set<string>();
       if (convIds.length > 0) {
         const { data: otherParts } = await gateway
           .from('conversation_participants')
           .select('user_id')
           .in('conversation_id', convIds)
           .neq('user_id', currentUserId);
-        (otherParts || []).forEach((p: any) => chatPartnerIds.add(p.user_id));
+        (otherParts || []).forEach((p: { user_id: string }) => chatPartnerIds.add(p.user_id));
       }
 
       const eligible = new Set<string>();
@@ -126,12 +126,13 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
         .from('profiles')
         .select('id, username, display_name, profile_pic')
         .neq('id', currentUserId)
-        .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
-        .limit(10);
+        .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`);
       if (error) throw error;
       const uniqueUsers = Array.from(
         new Map((data || []).map(u => [u.id, u])).values()
-      ).filter(u => eligibleUserIds.has(u.id) && !selectedIdsSet.has(u.id));
+      )
+        .filter(u => eligibleUserIds.has(u.id) && !selectedIdsSet.has(u.id))
+        .slice(0, 10);
       setUsers(uniqueUsers);
     } catch (error) {
       console.error('Error searching users:', error);
