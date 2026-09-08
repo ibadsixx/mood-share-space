@@ -47,6 +47,7 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
   const [canAddMembers, setCanAddMembers] = useState<'anyone' | 'admins_only'>('admins_only');
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [eligibleUserIds, setEligibleUserIds] = useState<Set<string> | null>(null);
 
   const selectedIdsSet = useMemo(() => new Set(selectedUsers.map(u => u.id)), [selectedUsers]);
 
@@ -58,8 +59,50 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
       setSelectedUsers([]);
       setAdminIds(new Set());
       setCanAddMembers('admins_only');
+      setEligibleUserIds(null);
+      fetchEligibleUsers();
     }
   }, [open]);
+
+  const fetchEligibleUsers = async () => {
+    try {
+      const { data: friends } = await gateway
+        .from('friends')
+        .select('requester_id, receiver_id')
+        .or(`requester_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
+        .eq('status', 'accepted');
+
+      const friendIds = new Set<string>();
+      (friends || []).forEach((f: any) => {
+        friendIds.add(f.requester_id === currentUserId ? f.receiver_id : f.requester_id);
+      });
+
+      const { data: myPartRows } = await gateway
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', currentUserId);
+
+      const convIds = (myPartRows || []).map((p: any) => p.conversation_id);
+
+      let chatPartnerIds = new Set<string>();
+      if (convIds.length > 0) {
+        const { data: otherParts } = await gateway
+          .from('conversation_participants')
+          .select('user_id')
+          .in('conversation_id', convIds)
+          .neq('user_id', currentUserId);
+        (otherParts || []).forEach((p: any) => chatPartnerIds.add(p.user_id));
+      }
+
+      const eligible = new Set<string>();
+      friendIds.forEach(id => eligible.add(id));
+      chatPartnerIds.forEach(id => eligible.add(id));
+      setEligibleUserIds(eligible);
+    } catch (err) {
+      console.error('Error fetching eligible users:', err);
+      setEligibleUserIds(new Set());
+    }
+  };
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -70,11 +113,15 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
       }
     }, 300);
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, selectedUsers]);
+  }, [searchQuery, selectedUsers, eligibleUserIds]);
 
   const searchUsers = async () => {
     setLoading(true);
     try {
+      if (!eligibleUserIds) {
+        setUsers([]);
+        return;
+      }
       const { data, error } = await gateway
         .from('profiles')
         .select('id, username, display_name, profile_pic')
@@ -82,7 +129,7 @@ export const CreateGroupChatDialog: React.FC<CreateGroupChatDialogProps> = ({
         .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
         .limit(10);
       if (error) throw error;
-      setUsers((data || []).filter(u => !selectedIdsSet.has(u.id)));
+      setUsers((data || []).filter(u => eligibleUserIds.has(u.id) && !selectedIdsSet.has(u.id)));
     } catch (error) {
       console.error('Error searching users:', error);
     } finally {
