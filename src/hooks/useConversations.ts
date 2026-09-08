@@ -246,7 +246,7 @@ export async function fetchConversationsDirectly(userId: string): Promise<Conver
 
   const { data: convs } = await gateway
     .from('conversations')
-    .select('id, type, description, created_at, updated_at')
+    .select('id, type, name, description, created_at, updated_at')
     .in('id', convIds);
 
   if (!convs) return [];
@@ -306,7 +306,7 @@ export async function fetchConversationsDirectly(userId: string): Promise<Conver
     return {
       conversation_id: conv.id,
       type: conv.type,
-      name: undefined,
+      name: conv.name ?? undefined,
       description: conv.description,
       created_at: conv.created_at,
       updated_at: conv.updated_at,
@@ -329,7 +329,7 @@ export async function fetchConversationsDirectly(userId: string): Promise<Conver
 async function fetchPageConversationsDirectly(pageId: string, userId: string): Promise<Conversation[]> {
   const { data: convs } = await gateway
     .from('conversations')
-    .select('id, type, description, created_at, updated_at')
+    .select('id, type, name, description, created_at, updated_at')
     .eq('page_id', pageId)
     .order('updated_at', { ascending: false });
 
@@ -386,7 +386,7 @@ async function fetchPageConversationsDirectly(pageId: string, userId: string): P
     return {
       conversation_id: conv.id,
       type: conv.type,
-      name: undefined,
+      name: conv.name ?? undefined,
       description: conv.description,
       created_at: conv.created_at,
       updated_at: conv.updated_at,

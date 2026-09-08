@@ -4,11 +4,11 @@ import type { Conversation, Message } from './types';
 import { encodeCallLogContent } from '@/lib/callLog';
 
 export async function getConversationsByIds(ids: string[]): Promise<ApiResult<Conversation[]>> {
-  return gateway.from('conversations').select('id, type, description, created_at, updated_at').in('id', ids) as Promise<ApiResult<Conversation[]>>;
+  return gateway.from('conversations').select('id, type, name, description, created_at, updated_at').in('id', ids) as Promise<ApiResult<Conversation[]>>;
 }
 
 export async function getConversationsByPage(pageId: string): Promise<ApiResult<Conversation[]>> {
-  return gateway.from('conversations').select('id, type, description, created_at, updated_at').eq('page_id', pageId).order('updated_at', { ascending: false }) as Promise<ApiResult<Conversation[]>>;
+  return gateway.from('conversations').select('id, type, name, description, created_at, updated_at').eq('page_id', pageId).order('updated_at', { ascending: false }) as Promise<ApiResult<Conversation[]>>;
 }
 
 export async function createConversation(data: Partial<Conversation>): Promise<ApiResult<Conversation>> {
