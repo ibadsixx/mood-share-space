@@ -74,6 +74,7 @@ const ConversationItem = memo(({
   const initial = displayName.charAt(0).toUpperCase();
   const previewText = formatLastMessage(conversation.last_message);
   const online = !isMulti && !presenceHidden && isOnline(conversation.other_user?.last_seen_at);
+  const isGroupOnline = isGroup && (conversation.online_count || 0) >= 2;
 
   return (
     <button
@@ -107,6 +108,12 @@ const ConversationItem = memo(({
               {initial}
             </AvatarFallback>
           </Avatar>
+        )}
+        {isGroup && (
+          <div className={cn(
+            "absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card",
+            isGroupOnline ? "bg-green-500" : "bg-gray-400"
+          )} />
         )}
         {!isMulti && !presenceHidden && (
           <div className={cn(
