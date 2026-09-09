@@ -809,6 +809,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                     <Settings className="h-5 w-5 text-muted-foreground" />
                     <span>Messaging controls</span>
                   </button>
+                  {!isGroup && (
                   <button 
                     onClick={toggleVanishingMessages}
                     disabled={loading || !conversationId}
@@ -820,6 +821,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                     </div>
                     <span className="text-muted-foreground text-xs">{vanishingEnabled ? 'On' : 'Off'}</span>
                   </button>
+                  )}
                   <button 
                     onClick={toggleReadReceipts}
                     disabled={loading || !conversationId}
@@ -831,7 +833,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                     </div>
                     <span className="text-muted-foreground text-xs">{readReceiptsEnabled ? 'On' : 'Off'}</span>
                   </button>
-                  {readReceiptsEnabled && otherUserReadReceiptsEnabled === false && (
+                  {!isGroup && readReceiptsEnabled && otherUserReadReceiptsEnabled === false && (
                     <p className="text-xs text-muted-foreground/50 pl-11 -mt-1 mb-1">
                       {otherUser.display_name} has read receipts off
                     </p>
@@ -844,6 +846,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                     <Lock className="h-5 w-5 text-muted-foreground" />
                     <span>Check encryption</span>
                   </button>
+                  {!isGroup && (
                   <button 
                     onClick={handleLimitInteractions}
                     className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 text-foreground text-sm"
@@ -851,6 +854,8 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                     <Shield className="h-5 w-5 text-muted-foreground" />
                     <span>{isRestricted ? 'Remove restriction' : 'Limit interactions'}</span>
                   </button>
+                  )}
+                  {!isGroup && (
                   <button 
                     onClick={() => isBlocked ? onBlock?.() : setShowBlockDialog(true)}
                     className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 text-foreground text-sm"
@@ -858,6 +863,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                     <Ban className="h-5 w-5 text-muted-foreground" />
                     <span>{isBlocked ? 'Unblock' : 'Block'}</span>
                   </button>
+                  )}
                   <button 
                     onClick={handleReport}
                     className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 text-foreground text-sm"
