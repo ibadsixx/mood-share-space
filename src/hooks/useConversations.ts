@@ -310,7 +310,7 @@ export async function fetchConversationsDirectly(userId: string): Promise<Conver
       description: conv.description,
       created_at: conv.created_at,
       updated_at: conv.updated_at,
-      other_user: conv.type === 'channel' ? undefined : otherProfile ? {
+      other_user: conv.type !== 'dm' ? undefined : otherProfile ? {
         id: otherProfile.id,
         username: otherProfile.username,
         display_name: otherProfile.display_name,

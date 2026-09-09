@@ -469,11 +469,12 @@ const Messages = () => {
             .maybeSingle(),
         ]);
         if (cancelled) return;
+        const convType = (convData as any)?.type || 'dm';
         setFallbackConvInfo({
-          type: (convData as any)?.type || 'dm',
+          type: convType,
           name: (convData as any)?.name,
           description: (convData as any)?.description,
-          other_user: profileData ? {
+          other_user: convType !== 'dm' ? undefined : profileData ? {
             id: profileData.id,
             username: profileData.username,
             display_name: profileData.display_name,
