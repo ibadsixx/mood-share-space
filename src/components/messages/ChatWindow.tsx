@@ -902,6 +902,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         isOpen={isInfoPanelOpen}
         onClose={() => setIsInfoPanelOpen(false)}
         conversationId={conversationId}
+        conversationType={conversationType}
+        conversationName={conversationName}
+        onlineCount={onlineCount}
         otherUser={otherUser}
         pinnedMessageIds={pinnedMessageIds}
         chatTheme={chatTheme}

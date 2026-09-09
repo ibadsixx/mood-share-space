@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   X, User, Bell, BellOff, Search, ChevronDown, ChevronUp, 
   Lock, Image, FileText, Link, Shield, Ban, Flag, Trash2, Pin,
-  Settings, Clock, Eye, Loader2, MessageCircle, ChevronRight
+  Settings, Clock, Eye, Loader2, MessageCircle, ChevronRight, Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isOnline, formatLastSeen } from '@/hooks/usePresence';
@@ -101,6 +101,9 @@ interface ChatInfoPanelProps {
   isOpen: boolean;
   onClose: () => void;
   conversationId?: string;
+  conversationType?: string;
+  conversationName?: string;
+  onlineCount?: number;
   otherUser: {
     id: string;
     username: string;
@@ -125,12 +128,15 @@ interface ChatInfoPanelProps {
   otherUserReadReceiptsEnabled?: boolean;
 }
 
-type ExpandableSection = 'chat-info' | 'customize' | 'media' | 'privacy' | null;
+type ExpandableSection = 'chat-info' | 'members' | 'customize' | 'media' | 'privacy' | null;
 
 export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
   isOpen,
   onClose,
   conversationId,
+  conversationType,
+  conversationName,
+  onlineCount = 0,
   otherUser,
   pinnedMessageIds = [],
   chatTheme = 'default',
@@ -149,6 +155,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
   otherUserReadReceiptsEnabled,
 }) => {
   const [expandedSection, setExpandedSection] = useState<ExpandableSection>(null);
+  const isGroup = conversationType === 'group';
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [showEmojiModal, setShowEmojiModal] = useState(false);
   const [showMediaModal, setShowMediaModal] = useState(false);
@@ -175,12 +182,54 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { isPresenceHidden } = usePresencePrivacy(currentUserId || undefined);
   const presenceHidden = isPresenceHidden(otherUser?.id);
-  
+  const [groupMembers, setGroupMembers] = useState<Array<{
+    user_id: string;
+    display_name: string;
+    username: string;
+    profile_pic?: string;
+    last_seen_at?: string;
+  }> | null>(null);
+
   useEffect(() => {
     gateway.auth.getUser().then(({ data }) => {
       if (data?.user) setCurrentUserId(data.user.id);
     });
   }, []);
+
+  // Fetch group members when the panel opens for a group conversation
+  useEffect(() => {
+    if (isOpen && isGroup && conversationId) {
+      setGroupMembers(null);
+      (async () => {
+        try {
+          const { data: parts } = await gateway
+            .from('conversation_participants')
+            .select('user_id')
+            .eq('conversation_id', conversationId);
+          const ids = ((parts || []) as Array<{ user_id: string }>).map(p => p.user_id);
+          if (ids.length === 0) {
+            setGroupMembers([]);
+            return;
+          }
+          const { data: profilesData } = await gateway
+            .from('profiles')
+            .select('id, username, display_name, profile_pic, last_seen_at')
+            .in('id', ids);
+          setGroupMembers((profilesData || []).map(p => ({
+            user_id: p.id,
+            display_name: p.display_name,
+            username: p.username,
+            profile_pic: p.profile_pic ?? undefined,
+            last_seen_at: p.last_seen_at ?? undefined,
+          })));
+        } catch {
+          setGroupMembers([]);
+        }
+      })();
+    } else if (!isOpen) {
+      setGroupMembers(null);
+    }
+  }, [isOpen, isGroup, conversationId]);
 
   // Auto-fetch encryption status when panel opens
   useEffect(() => {
@@ -417,7 +466,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
     }
   };
 
-  if (!otherUser) return null;
+  if (!otherUser && !isGroup) return null;
 
   const isMuted = settings?.is_muted ?? false;
   const readReceiptsEnabled = settings?.read_receipts_enabled ?? true;
@@ -454,6 +503,28 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
           <div className="p-6 pt-12 lg:pt-6">
             {/* Profile Section */}
             <div className="flex flex-col items-center text-center mb-6">
+              {isGroup ? (
+                <>
+                  <Avatar className="w-20 h-20 mb-3">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                      <Users className="h-10 w-10" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <h3 className="font-semibold text-lg text-foreground">{conversationName || 'Group'}</h3>
+                  <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                    <span className={cn(
+                      "inline-block w-2 h-2 rounded-full",
+                      onlineCount >= 2 ? "bg-green-500" : "bg-gray-400"
+                    )} />
+                    {onlineCount >= 2
+                      ? `${onlineCount} members online`
+                      : groupMembers
+                        ? `${groupMembers.length} members`
+                        : 'Group conversation'}
+                  </p>
+                </>
+              ) : (
+              <>
               <Avatar className="w-20 h-20 mb-3">
                 <AvatarImage src={otherUser.profile_pic} alt={otherUser.display_name} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
@@ -474,6 +545,8 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                   )}
                 </p>
               )}
+              </>
+              )}
               
               {/* Encryption Badge — only shown when real keys exist */}
               {encryptionStatus === 'encrypted' && (
@@ -486,6 +559,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
             {/* Quick Actions */}
             <div className="flex justify-center gap-6 mb-6 pb-6 border-b border-border">
+              {!isGroup && (
               <button
                 onClick={onViewProfile}
                 className="flex flex-col items-center gap-1.5 text-foreground hover:text-primary transition-colors"
@@ -495,6 +569,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                 </div>
                 <span className="text-xs">Profile</span>
               </button>
+              )}
               
               <button
                 onClick={toggleMute}
@@ -558,8 +633,64 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                       </span>
                     </div>
                   </button>
-                  <p className="text-sm text-muted-foreground">@{otherUser?.username || ''}</p>
+                  {!isGroup && (
+                    <p className="text-sm text-muted-foreground">@{otherUser?.username || ''}</p>
+                  )}
                 </div>
+              )}
+
+              {/* Members (group chats) */}
+              {isGroup && (
+                <>
+                  <button
+                    onClick={() => toggleSection('members')}
+                    className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <span className="font-medium text-foreground">Members</span>
+                    {expandedSection === 'members' ? (
+                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </button>
+                  {expandedSection === 'members' && (
+                    <div className="px-3 pb-3 space-y-2">
+                      {groupMembers ? (
+                        groupMembers.length > 0 ? (
+                          groupMembers.map(member => (
+                            <div key={member.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
+                              <div className="relative shrink-0">
+                                <Avatar className="h-9 w-9">
+                                  <AvatarImage src={member.profile_pic} alt={member.display_name} />
+                                  <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                                    {member.display_name?.charAt(0)?.toUpperCase() || '?'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                {!isPresenceHidden(member.user_id) && (
+                                  <div className={cn(
+                                    "absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card",
+                                    isOnline(member.last_seen_at) ? "bg-green-500" : "bg-gray-400"
+                                  )} />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{member.display_name}</p>
+                                <p className="text-xs text-muted-foreground truncate">@{member.username}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No members found</p>
+                        )
+                      ) : (
+                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading members...
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Customize Chat */}
