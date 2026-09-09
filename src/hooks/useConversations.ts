@@ -15,6 +15,7 @@ import { playMessageNotification } from '@/lib/notificationSounds';
 import { parseCallLog, callLogLabel, formatCallDuration } from '@/lib/callLog';
 import { subscribeToMessages, getMessageRealtime } from '@/lib/messageRealtime';
 import { ensureMessageRequest, hasAcceptedFriendship } from '@/lib/messageRequests';
+import { isOnline } from '@/hooks/usePresence';
 
 // Call-log messages store a JSON envelope in `content`; show a readable label
 // ("Malak missed your voice call") in conversation-list previews, phrased from
@@ -229,6 +230,43 @@ export async function assertCanSendMessage(
   return !(await isReadOnlyPendingConversation(conversationId, currentUserId));
 }
 
+// Group Chat presence: returns a map of group conversation_id → number of
+// OTHER members currently online. Only group members (from
+// `conversation_participants`) count, the current user is excluded, and a
+// member is online only when their `profiles.last_seen_at` is fresh (the same
+// `isOnline` source DMs use).
+async function fetchGroupOnlineCounts(
+  groupConvIds: string[],
+  userId: string
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (groupConvIds.length === 0) return counts;
+
+  const { data: groupParts } = await gateway
+    .from('conversation_participants')
+    .select('conversation_id, user_id')
+    .in('conversation_id', groupConvIds)
+    .neq('user_id', userId);
+
+  const groupMemberIds = [...new Set((groupParts || []).map(p => p.user_id))];
+  let profileMap = new Map<string, string | undefined>();
+  if (groupMemberIds.length > 0) {
+    const { data: groupProfiles } = await gateway
+      .from('profiles')
+      .select('id, last_seen_at')
+      .in('id', groupMemberIds);
+    profileMap = new Map((groupProfiles || []).map(p => [p.id, p.last_seen_at]));
+  }
+
+  (groupParts || []).forEach(p => {
+    const lastSeen = profileMap.get(p.user_id);
+    if (lastSeen && isOnline(lastSeen)) {
+      counts.set(p.conversation_id, (counts.get(p.conversation_id) || 0) + 1);
+    }
+  });
+  return counts;
+}
+
 export async function fetchConversationsDirectly(userId: string): Promise<Conversation[]> {
   const { data: participants } = await gateway
     .from('conversation_participants')
@@ -298,6 +336,11 @@ export async function fetchConversationsDirectly(userId: string): Promise<Conver
     }
   });
 
+  // Group Chat presence: count OTHER online group members (current user
+  // excluded) using the same `profiles.last_seen_at` online source as DMs.
+  const groupConvIds = visibleConvs.filter(c => c.type === 'group').map(c => c.id);
+  const groupOnlineCounts = await fetchGroupOnlineCounts(groupConvIds, userId);
+
   return visibleConvs.map(conv => {
     const otherUserId = firstOtherPerConv.get(conv.id);
     const otherProfile = otherUserId ? profileMap.get(otherUserId) : null;
@@ -317,6 +360,7 @@ export async function fetchConversationsDirectly(userId: string): Promise<Conver
         profile_pic: otherProfile.profile_pic,
         last_seen_at: otherProfile.last_seen_at,
       } : undefined,
+      online_count: conv.type === 'group' ? (groupOnlineCounts.get(conv.id) || 0) : undefined,
       last_message: lastMsg ? {
         content: previewContent(lastMsg.content, userId),
         created_at: lastMsg.created_at,
@@ -425,6 +469,7 @@ type Conversation = {
     created_at: string;
   };
   unread_count: number;
+  online_count?: number;
 };
 
 type Message = {
@@ -1309,6 +1354,18 @@ export const useConversations = (currentUserId?: string) => {
               last_seen_at: newLastSeen,
             }
           };
+        }));
+      }
+
+      // Refresh Group Chat presence (2+ other members online = group Online).
+      const groupConvIds = allConvs.filter(c => c.type === 'group').map(c => c.conversation_id);
+      if (groupConvIds.length > 0) {
+        const groupOnlineCounts = await fetchGroupOnlineCounts(groupConvIds, currentUserId);
+        setConversations(prev => prev.map(conv => {
+          if (conv.type !== 'group') return conv;
+          const newCount = groupOnlineCounts.get(conv.conversation_id) || 0;
+          if (newCount === conv.online_count) return conv;
+          return { ...conv, online_count: newCount };
         }));
       }
     };

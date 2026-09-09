@@ -429,6 +429,7 @@ const Messages = () => {
     type: string;
     name?: string;
     description?: string | null;
+    online_count?: number;
     other_user?: {
       id: string;
       username: string;
@@ -1055,6 +1056,7 @@ const Messages = () => {
           conversationType={resolvedConvInfo?.type}
           conversationName={resolvedConvInfo?.name}
           conversationDescription={resolvedConvInfo?.description}
+          onlineCount={resolvedConvInfo?.online_count}
           messages={messages}
           firstUnreadIndex={firstUnreadIndex}
           currentUserId={currentUserId}

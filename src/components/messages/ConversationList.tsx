@@ -28,6 +28,7 @@ type Conversation = {
     created_at: string;
   };
   unread_count: number;
+  online_count?: number;
 };
 
 interface ConversationListProps {
@@ -155,6 +156,16 @@ const ConversationItem = memo(({
         {!isMulti && !presenceHidden && (
           <p className="text-xs text-muted-foreground truncate mt-0.5">
             {online ? 'Online' : formatLastSeen(conversation.other_user?.last_seen_at)}
+          </p>
+        )}
+        {isGroup && (
+          <p className={cn(
+            "text-xs mt-0.5",
+            (conversation.online_count || 0) >= 2 ? "text-green-500" : "text-muted-foreground"
+          )}>
+            {(conversation.online_count || 0) >= 2
+              ? `${conversation.online_count} members online`
+              : 'Group'}
           </p>
         )}
         {isChannel && conversation.description && (

@@ -40,6 +40,7 @@ interface ChatWindowProps {
   conversationType?: string;
   conversationName?: string;
   conversationDescription?: string | null;
+  onlineCount?: number;
   messages: Message[];
   firstUnreadIndex?: number;
   currentUserId: string;
@@ -64,6 +65,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   conversationType,
   conversationName,
   conversationDescription,
+  onlineCount = 0,
   messages,
   firstUnreadIndex,
   currentUserId,
@@ -587,9 +589,16 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   vanishingMessagesEnabled ? "text-zinc-100" : "text-foreground"
                 )}>{conversationName}</h3>
                 <p className={cn(
-                  "text-sm transition-colors",
-                  vanishingMessagesEnabled ? "text-zinc-400" : "text-muted-foreground"
-                )}>Group conversation</p>
+                  "text-sm transition-colors flex items-center gap-1",
+                  onlineCount >= 2 ? "text-green-500" : (vanishingMessagesEnabled ? "text-zinc-400" : "text-muted-foreground")
+                )}>
+                  {onlineCount >= 2 ? (
+                    <>
+                      <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                      {onlineCount} members online
+                    </>
+                  ) : 'Group conversation'}
+                </p>
               </div>
             )}
             </div>
